@@ -1,0 +1,39 @@
+{
+  "name": "soc_watchtower_backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix",
+    "format": "prettier --write ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "morgan": "^1.10.1",
+    "winston": "^3.18.3"
+  },
+  "devDependencies": {
+    "eslint": "^9.37.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-define-config": "^2.1.0",
+    "husky": "^9.1.7",
+    "jest": "^30.2.0",
+    "jest-environment-node": "^30.2.0",
+    "lint-staged": "^15.5.2",
+    "nodemon": "^3.1.10",
+    "prettier": "^3.6.2",
+    "supertest": "^7.1.4"
+  }
+}

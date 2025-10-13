@@ -1,0 +1,117 @@
+# --- Node & dependencies ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+.pnpm-store/
+
+# --- Build output ---
+dist/
+build/
+.tmp/
+temp/
+coverage/
+.cache/
+.next/
+out/
+storybook-static/
+
+# --- Environment files ---
+.env
+.env.*
+!.env.example   # Keep a sample env file for reference
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# --- Logs ---
+logs/
+*.log
+*.csv
+*.out
+*.pid
+*.seed
+*.gz
+*.tgz
+
+# --- OS generated files ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+._*
+
+# --- IDEs & Editors ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+*.orig
+*.rej
+*.sublime-project
+*.sublime-workspace
+
+# --- Test coverage ---
+coverage/
+.nyc_output/
+jest-html-reporters-*
+
+# --- Docker ---
+docker-compose.override.yml
+.docker/
+*.dockerfile
+*.dockerignore
+docker-compose.local.yml
+
+# --- TypeScript / Babel / Transpiled files ---
+*.tsbuildinfo
+*.map
+*.d.ts
+
+# --- Security / Secrets ---
+secrets/
+keys/
+*.pem
+*.crt
+*.key
+*.csr
+*.p12
+*.pfx
+
+# --- Local database / cache ---
+data/
+db/
+*.sqlite
+*.db
+*.rdb
+dump.rdb
+__pycache__/
+.mongoose_cache/
+
+# --- Cloud / Deployment files ---
+.vercel/
+.netlify/
+.firebase/
+.expo/
+.aws/
+.azure/
+.gcloud/
+
+# --- Lint / Formatter caches ---
+.eslintcache
+.stylelintcache
+.prettiercache
+
+# --- Temporary test files ---
+__tests__/tmp/
+tests/tmp/
+test-results/
+debug/
