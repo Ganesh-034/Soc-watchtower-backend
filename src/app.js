@@ -29,7 +29,6 @@
 
 
 
-
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
@@ -38,7 +37,8 @@ import morgan from "morgan";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { notFound } from "./middlewares/notFound.js";
 import userRoutes from "./routes/user.routes.js";
-import incidentRoutes from "./routes/incident.routes.js"; // Add this line
+import incidentRoutes from "./routes/incident.routes.js";
+import incidentTicketRoutes from "./routes/incidentTicket.routes.js"; // Add this line
 
 const app = express();
 
@@ -51,7 +51,8 @@ app.use(morgan("dev"));
 
 // Routes
 app.use("/api/users", userRoutes);
-app.use("/api", incidentRoutes); // Add this line to include incident routes
+app.use("/api", incidentRoutes);
+app.use("/api", incidentTicketRoutes); // Add this line to include incident ticket routes
 
 // 404 handler
 app.use(notFound);
