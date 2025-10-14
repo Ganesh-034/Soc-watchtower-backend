@@ -119,8 +119,8 @@ export default Incident;
 // );
 
 // // Add text index for better search performance
-// incidentSchema.index({ 
-//   subject: 'text', 
+// incidentSchema.index({
+//   subject: 'text',
 //   description: 'text',
 //   incident_type: 'text',
 //   incident_sub_status: 'text',
