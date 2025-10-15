@@ -257,7 +257,9 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
           socAnalysis: 'soc_analysis',
           socRecommendation: 'soc_recommendation',
           sentinelIncidentNumber: 'sentinel_incident_number',
-          ttps: 'ttps'
+          ttps: 'ttps',
+            agentName: 'agent_name',     // Add this line
+    customerName: 'customer_name' // Add this line
         };
         
         const dbField = fieldMap[column];
