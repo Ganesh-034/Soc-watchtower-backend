@@ -42,6 +42,8 @@ import incidentTicketRoutes from "./routes/incidentTicket.routes.js"; // Add thi
 import incidentSeverityRoutes from "./routes/incident.severity.routes.js"; // add
 import incidentDSRoutes from "./routes/incidentDS.routes.js";
 import incidentViewRoutes from "./routes/incidentView.routes.js";
+import incidentHSRoutes from "./routes/incidentHS.routes.js";
+import incidentSSRoutes from "./routes/incidentSS.routes.js";
 
 const app = express();
 
@@ -59,6 +61,8 @@ app.use("/api", incidentTicketRoutes); // Add this line to include incident tick
 app.use("/api", incidentSeverityRoutes); // Add this line to include incident Severity routes
 app.use("/api", incidentDSRoutes);
 app.use("/api", incidentViewRoutes);
+app.use("/api", incidentHSRoutes);
+app.use("/api", incidentSSRoutes);
 
 // 404 handler
 app.use(notFound);
