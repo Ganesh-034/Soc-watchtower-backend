@@ -39,6 +39,9 @@ import { notFound } from "./middlewares/notFound.js";
 import userRoutes from "./routes/user.routes.js";
 import incidentRoutes from "./routes/incident.routes.js";
 import incidentTicketRoutes from "./routes/incidentTicket.routes.js"; // Add this line
+import incidentSeverityRoutes from "./routes/incident.severity.routes.js"; // add
+import incidentDSRoutes from "./routes/incidentDS.routes.js";
+import incidentViewRoutes from "./routes/incidentView.routes.js";
 
 const app = express();
 
@@ -53,6 +56,9 @@ app.use(morgan("dev"));
 app.use("/api/users", userRoutes);
 app.use("/api", incidentRoutes);
 app.use("/api", incidentTicketRoutes); // Add this line to include incident ticket routes
+app.use("/api", incidentSeverityRoutes); // Add this line to include incident Severity routes
+app.use("/api", incidentDSRoutes);
+app.use("/api", incidentViewRoutes);
 
 // 404 handler
 app.use(notFound);
