@@ -255,6 +255,7 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
           incidentType: 'incident_type',
           incidentSubStatus: 'incident_sub_status',
           socAnalysis: 'soc_analysis',
+          socRecommendation: 'soc_recommendation',
           sentinelIncidentNumber: 'sentinel_incident_number',
           ttps: 'ttps'
         };
