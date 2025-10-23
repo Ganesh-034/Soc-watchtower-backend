@@ -4,9 +4,13 @@ export const getIncidentsSubStatus = async (userMonth) => {
   try {
     // Get the raw collection for more direct access
     const collection = Incident.collection;
+    // const userMonth = "2025-10";
+    // Get total count
+    // const totalCount = await collection.countDocuments({});
 
     // Use aggregation to get counts by detection source
     const pipeline = [
+
       {
         $addFields: {
           month: {
@@ -31,23 +35,26 @@ export const getIncidentsSubStatus = async (userMonth) => {
       {
         $sort: { count: -1 }
       }
+
     ];
 
     const substatusCounts = await collection.aggregate(pipeline).toArray();
-    
-    // Clean up the &nbsp; entity in the substatus values
-    const cleanedSubstatusCounts = substatusCounts.map(item => {
-      if (item._id) {
-        return {
-          _id: item._id.replace(/&nbsp;/g, ' ').trim(),
-          count: item.count
-        };
-      }
-      return item;
-    });
+
+    // // Initialize counts
+    // let openCount = 0;
+    // let closedCount = 0;
+
+    // // Find the counts for status 2 (open) and status 5 (closed)
+    // detectionsourceCounts.forEach(item => {
+    //   if (item._id === 2) openCount = item.count;
+    //   if (item._id === 5) closedCount = item.count;
+    // });
 
     return {
-      substatus: cleanedSubstatusCounts
+      substatus: substatusCounts
+      //   total: totalCount,
+      //   open: openCount,
+      //   closed: closedCount
     };
   } catch (error) {
     console.error('Error in getTotalIncidents:', error);
