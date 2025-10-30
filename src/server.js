@@ -1,5 +1,3 @@
-<<<<<<< Updated upstream
-=======
 // import dotenv from "dotenv";
 // import app from "./app.js";
 // import { connectDB } from "./config/db.js";
@@ -20,7 +18,6 @@
 // })();
 
 // server.js
->>>>>>> Stashed changes
 import dotenv from "dotenv";
 import app from "./app.js";
 import { connectDB } from "./config/db.js";
