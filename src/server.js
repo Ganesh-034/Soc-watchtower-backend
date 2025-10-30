@@ -1,5 +1,3 @@
-<<<<<<< Updated upstream
-=======
 // import dotenv from "dotenv";
 // import app from "./app.js";
 // import { connectDB } from "./config/db.js";
@@ -11,7 +9,7 @@
 
 // (async () => {
 //   try {
-//     await connectDB();
+//     await connectDB(); 
 //     app.listen(PORT, () => logger.info(`🚀 Server running on port ${PORT}`));
 //   } catch (err) {
 //     logger.error("❌ Server startup failed:", err);
@@ -19,8 +17,12 @@
 //   }
 // })();
 
+
+
+
+
+
 // server.js
->>>>>>> Stashed changes
 import dotenv from "dotenv";
 import app from "./app.js";
 import { connectDB } from "./config/db.js";
