@@ -1,69 +1,69 @@
 # SOC Watchtower Backend
 
 > A production-ready Node.js backend for SOC Watchtower Dashboard (MERN stack).  
-> Fully ESM + Node v22 compatible, includes Jest tests, ESLint, Prettier, and MongoDB integration.  
+> Fully ESM + Node v22 compatible, includes Jest tests, ESLint, Prettier, and MongoDB integration.
 
 ---
 
 ## Table of Contents
 
-- [Project Overview](#project-overview)  
-- [Features](#features)  
-- [Tech Stack](#tech-stack)  
-- [Prerequisites](#prerequisites)  
-- [Installation](#installation)  
-- [Scripts](#scripts)  
-- [Project Structure](#project-structure)  
-- [Testing](#testing)  
-- [Linting & Formatting](#linting--formatting)  
-- [Contribution](#contribution)  
+- [Project Overview](#project-overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Scripts](#scripts)
+- [Project Structure](#project-structure)
+- [Testing](#testing)
+- [Linting & Formatting](#linting--formatting)
+- [Contribution](#contribution)
 
 ---
 
 ## Project Overview
 
 SOC Watchtower Backend is a modern Node.js backend designed for scalability, maintainability, and enterprise-grade best practices.  
-It currently supports:  
+It currently supports:
 
-- Express.js server setup  
-- Middleware for error handling & 404 routes  
-- ESM module syntax (Node v22)  
-- Jest for unit & integration tests  
-- ESLint + Prettier for code quality & formatting  
+- Express.js server setup
+- Middleware for error handling & 404 routes
+- ESM module syntax (Node v22)
+- Jest for unit & integration tests
+- ESLint + Prettier for code quality & formatting
 
 ---
 
 ## Features
 
-- Node.js v22 + ESM modules  
-- Express-based API  
-- Preconfigured middleware for errors and 404  
-- Comprehensive Jest testing setup (unit & integration)  
-- ESLint flat config (v9+) for linting  
-- Prettier for auto-formatting  
-- Git ignore configured for production-safe commits  
+- Node.js v22 + ESM modules
+- Express-based API
+- Preconfigured middleware for errors and 404
+- Comprehensive Jest testing setup (unit & integration)
+- ESLint flat config (v9+) for linting
+- Prettier for auto-formatting
+- Git ignore configured for production-safe commits
 
 ---
 
 ## Tech Stack
 
-| Layer              | Technology |
-|-------------------|------------|
-| Runtime            | Node.js v22 |
-| Framework          | Express.js |
-| Testing            | Jest + Supertest |
+| Layer                | Technology           |
+| -------------------- | -------------------- |
+| Runtime              | Node.js v22          |
+| Framework            | Express.js           |
+| Testing              | Jest + Supertest     |
 | Linting & Formatting | ESLint v9 + Prettier |
-| Version Control    | Git |
-| DB        | MongoDB |
+| Version Control      | Git                  |
+| DB                   | MongoDB              |
 
 ---
 
 ## Prerequisites
 
-- Node.js v22.x  
-- npm v9.x or above  
-- Git  
-- MongoDB  
+- Node.js v22.x
+- npm v9.x or above
+- Git
+- MongoDB
 
 ---
 
@@ -82,14 +82,13 @@ npm install
 
 ## Scripts
 
-| Command           | Description                                        |
-|------------------|----------------------------------------------------|
-| `npm run dev`     | Start the server in development mode |
-| `npm test`        | Run all Jest tests (unit & integration)           |
-| `npm run lint`    | Check code for linting issues                      |
-| `npm run lint:fix`| Auto-fix linting issues                            |
-| `npm run format`  | Auto-format code using Prettier                    |
-
+| Command            | Description                             |
+| ------------------ | --------------------------------------- |
+| `npm run dev`      | Start the server in development mode    |
+| `npm test`         | Run all Jest tests (unit & integration) |
+| `npm run lint`     | Check code for linting issues           |
+| `npm run lint:fix` | Auto-fix linting issues                 |
+| `npm run format`   | Auto-format code using Prettier         |
 
 ## Project Structure
 
@@ -123,6 +122,7 @@ Jest is configured for **unit and integration tests**:
 ```bash
 npm test
 ```
+
 Tests are written in ESM syntax (import/export)
 
 Jest globals (describe, it, expect) are preconfigured
@@ -130,16 +130,21 @@ Jest globals (describe, it, expect) are preconfigured
 Example test folders: src/tests/unit and src/tests/integration
 
 ## Linting & Formatting
+
 Check lint:
 
 ```bash
 npm run lint
 ```
+
 Auto-fix lint issues:
+
 ```bash
 npm run lint:fix
 ```
+
 Format code using Prettier:
+
 ```bash
 npm run format
 ```
@@ -147,6 +152,7 @@ npm run format
 This ensures your code is consistent and production-ready.
 
 ## Contribution
+
 1. Clone the repo
 2. Create a new branch (`feature/your-feature`)
 3. Commit your changes
