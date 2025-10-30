@@ -15,10 +15,10 @@ export const connectDB = async () => {
       dbName: process.env.MONGODB_DB_NAME, // Explicitly set the database name
     });
 
-    logger.info(`MongoDB Connected: \${conn.connection.host}`);
+    logger.info(`MongoDB Connected: ${conn.connection.host}`);
     return conn;
   } catch (error) {
-    logger.error(`Error connecting to MongoDB: \${error.message}`);
+    logger.error(`Error connecting to MongoDB: ${error.message}`);
     process.exit(1);
   }
 };

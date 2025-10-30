@@ -5,7 +5,7 @@ import compression from "compression";
 import morgan from "morgan";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { notFound } from "./middlewares/notFound.js";
-import userRoutes from "./routes/user.routes.js";
+// import userRoutes from "./routes/user.routes.js";
 import incidentRoutes from "./routes/incident.routes.js";
 import incidentTicketRoutes from "./routes/incidentTicket.routes.js";
 import incidentSeverityRoutes from "./routes/incident.severity.routes.js";
@@ -24,7 +24,7 @@ app.use(compression());
 app.use(morgan("dev"));
 
 // Routes
-app.use("/api/users", userRoutes);
+// app.use("/api/users", userRoutes);
 app.use("/api", incidentRoutes);
 app.use("/api", incidentTicketRoutes);
 app.use("/api", incidentSeverityRoutes);
