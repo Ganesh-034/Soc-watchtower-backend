@@ -22,16 +22,14 @@
     "express": "^5.1.0",
     "express-jwt": "^8.5.1",
     "helmet": "^8.1.0",
-<<<<<<< Updated upstream
-=======
     "jsonwebtoken": "^9.0.2",
     "jwks-rsa": "^3.2.0",
     "mongoose": "^8.19.2",
->>>>>>> Stashed changes
     "morgan": "^1.10.1",
     "winston": "^3.18.3"
   },
   "devDependencies": {
+    "axios": "^1.13.1",
     "eslint": "^9.37.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-define-config": "^2.1.0",
