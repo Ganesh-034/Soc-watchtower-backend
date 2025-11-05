@@ -12,6 +12,7 @@ import incidentDSRoutes from "./routes/incidentDS.routes.js";
 import incidentViewRoutes from "./routes/incidentView.routes.js";
 import incidentHSRoutes from "./routes/incidentHS.routes.js";
 import incidentSSRoutes from "./routes/incidentSS.routes.js";
+import reportRoutes from "./routes/report.routes.js"
 
 const app = express();
 
@@ -30,7 +31,8 @@ app.use("/api", incidentDSRoutes);
 app.use("/api", incidentViewRoutes);
 app.use("/api", incidentHSRoutes);
 app.use("/api", incidentSSRoutes);
-
+app.use("/api/incidents", incidentRoutes); // Assuming this already exists
+app.use("/api/reports", reportRoutes); // Add this line
 // 404 handler
 app.use(notFound);
 
