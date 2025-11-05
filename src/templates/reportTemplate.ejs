@@ -711,10 +711,20 @@ ctx.fillText(data, barCenterX, barTopY - 6);
         data: {
           labels: subStatusChartLabels,
           datasets: [
-            {
-              label: "Incidents",
-              data: subStatusChartData,
-              backgroundColor: subStatusColors, // Use colors from backend
+                  {
+              label: "Resolved",
+              data: subStatusChartData.resolved,
+              backgroundColor: "#70db70",
+            },
+                  {
+              label: "In Progress",
+              data: subStatusChartData.inprogress,
+              backgroundColor: "#f1b44c",
+            },
+                  {
+              label: "Closed",
+              data: subStatusChartData.closed,
+              backgroundColor: "#66b2ff",
             },
           ],
         },
