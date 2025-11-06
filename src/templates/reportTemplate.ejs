@@ -363,7 +363,7 @@
       <!-- New: Date Range and Summary for Incident Tickets -->
       <div class="date-range-summary">
         <div class="date-range">1 November 25-30 November 25</div>
-        <div class="date-summary">During this period, our team handled 45 incident tickets with a 95% resolution rate within SLA.</div>
+        <div class="date-summary">During this period, our team handled <%- incidentTickets.length %> non-health incident tickets with customer escalation.</div>
       </div>
 
       <!-- 11th row: Incident Ticket Table -->
@@ -372,9 +372,10 @@
           <thead>
             <tr>
               <th>Ticket ID</th>
+              <th>Subject</th>
               <th>Date</th>
               <th>Affiliate</th>
-              <th>Severity</th>
+              <th>Priority</th>
               <th>Status</th>
               <th>Description</th>
             </tr>
@@ -383,9 +384,10 @@
             <% incidentTickets.forEach(function(ticket) { %>
             <tr>
               <td><%= ticket.id %></td>
-              <td><%= ticket.date %></td>
-              <td><%= ticket.affiliate %></td>
-              <td><%= ticket.severity %></td>
+              <td><%= ticket.subject %></td>
+              <td><%= new Date(ticket.createdDate).toLocaleDateString() %></td>
+              <td><%= ticket.customerName %></td>
+              <td><%= ticket.priority %></td>
               <td><%= ticket.status %></td>
               <td><%= ticket.description %></td>
             </tr>
@@ -400,7 +402,7 @@
       <!-- New: Date Range and Summary for Health Tickets -->
       <div class="date-range-summary">
         <div class="date-range">1 November 25-30 November 25</div>
-        <div class="date-summary">System health monitoring identified 28 issues requiring attention, with 100% resolved within the target timeframe.</div>
+        <div class="date-summary">System health monitoring identified <%- healthTickets.length %> health incidents with customer escalation.</div>
       </div>
 
       <!-- 13th row: Health Ticket Table -->
@@ -409,6 +411,7 @@
           <thead>
             <tr>
               <th>Ticket ID</th>
+              <th>Subject</th>
               <th>Date</th>
               <th>Affiliate</th>
               <th>System</th>
@@ -420,9 +423,10 @@
             <% healthTickets.forEach(function(ticket) { %>
             <tr>
               <td><%= ticket.id %></td>
-              <td><%= ticket.date %></td>
-              <td><%= ticket.affiliate %></td>
-              <td><%= ticket.system %></td>
+              <td><%= ticket.subject %></td>
+              <td><%= new Date(ticket.createdDate).toLocaleDateString() %></td>
+              <td><%= ticket.customerName %></td>
+              <td><%= ticket.incidentType %></td>
               <td><%= ticket.status %></td>
               <td><%= ticket.description %></td>
             </tr>

@@ -47,11 +47,10 @@ export const getHealthEscalationIncidents = async () => {
       incident_type: "Health Incident",
       customer_escalation: { $regex: /^yes$/i },
       created_at: { $regex: november2025Regex },
+      customer_name: "centralmotorwheel-thailand",
     };
 
-    const tickets = await Incident.find(filters)
-      .sort({ created_at: 1 })
-      .lean();
+    const tickets = await Incident.find(filters).sort({ created_at: 1 }).lean();
 
     const formattedTickets = tickets.map(formatTicket);
 
@@ -76,11 +75,10 @@ export const getNonHealthEscalationIncidents = async () => {
       incident_type: { $ne: "Health Incident" },
       customer_escalation: { $regex: /^yes$/i },
       created_at: { $regex: november2025Regex },
+      customer_name: "centralmotorwheel-thailand",
     };
 
-    const tickets = await Incident.find(filters)
-      .sort({ created_at: 1 })
-      .lean();
+    const tickets = await Incident.find(filters).sort({ created_at: 1 }).lean();
 
     const formattedTickets = tickets.map(formatTicket);
 

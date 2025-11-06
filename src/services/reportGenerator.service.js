@@ -8,6 +8,99 @@ import * as incidentDSService from "./incidentDS.service.js";
 import * as incidentHSService from "./incidentHS.service.js";
 import * as incidentSSService from "./incidentSS.service.js";
 import logger from "../config/logger.js";
+import Incident from "../models/incident.model.js"; // Import the Incident model
+
+// Helper function to format ticket data (moved from controller for reuse)
+const formatTicket = (ticket) => ({
+  id: ticket._id || "NA",
+  subject: ticket.subject || "NA",
+  status: mapStatus(ticket.status),
+  priority: ticket.priority || "NA",
+  socAnalysis: ticket.soc_analysis || "NA",
+  socRecommendation: ticket.soc_recommendation || "NA",
+  sentinelIncidentNumber: ticket.sentinel_incident_number || "NA",
+  ttps: ticket.ttps || "NA",
+  description: ticket.description || "NA",
+  incidentType: ticket.incident_type || "NA",
+  incidentSubStatus: ticket.incident_sub_status || "NA",
+  createdDate: ticket.created_at || "NA",
+  updatedDate: ticket.updated_at || "NA",
+  agentName: ticket.agent_name || "NA",
+  customerName: ticket.customer_name || "NA",
+  customerId: ticket.responder_id || "NA",
+  customerSubLocation: ticket.customer_sub_location || "NA",
+  resolvedBy: ticket.resolved_by || "NA",
+  customerEscalation: ticket.customer_escalation || "NA",
+});
+
+// Helper function to map status codes to readable strings
+function mapStatus(statusCode) {
+  if (statusCode == null) return "NA";
+
+  const statusMap = {
+    2: "Open",
+    3: "Pending",
+    4: "Resolved",
+    5: "Closed",
+    6: "Escalated",
+  };
+  return statusMap[statusCode] || `Unknown (${statusCode})`;
+}
+
+// ✅ UPDATED: Function to get Health Escalation Incidents
+const getHealthEscalationIncidents = async () => {
+  try {
+    // Regex for November 2025
+    const november2025Regex = /^2025-11/;
+
+    const filters = {
+      customer_name: "centralmotorwheel-thailand", // ✅ ADDED: Customer name filter
+      incident_type: "Health Incident",
+      customer_escalation: { $regex: /^yes$/i },
+      created_at: { $regex: november2025Regex }, // ✅ UPDATED: Specific date filter
+    };
+
+    const tickets = await Incident.find(filters)
+      .sort({ created_at: 1 })
+      .lean();
+
+    const formattedTickets = tickets.map(formatTicket);
+
+    logger.info(`🎫 Fetched ${formattedTickets.length} health escalation tickets for centralmotorwheel-thailand (Nov 2025).`);
+    return formattedTickets;
+  } catch (error) {
+    logger.error("Error in getHealthEscalationIncidents:", error);
+    throw new Error("Error fetching health escalation incidents: " + error.message);
+  }
+};
+
+// ✅ UPDATED: Function to get Non-Health Escalation Incidents
+const getNonHealthEscalationIncidents = async () => {
+  try {
+    // Regex for November 2025
+    const november2025Regex = /^2025-11/;
+
+    const filters = {
+      customer_name: "centralmotorwheel-thailand", // ✅ ADDED: Customer name filter
+      incident_type: { $ne: "Health Incident" },
+      customer_escalation: { $regex: /^yes$/i },
+      created_at: { $regex: november2025Regex }, // ✅ UPDATED: Specific date filter
+    };
+
+    const tickets = await Incident.find(filters)
+      .sort({ created_at: 1 })
+      .lean();
+
+    const formattedTickets = tickets.map(formatTicket);
+
+    logger.info(`🎫 Fetched ${formattedTickets.length} non-health escalation tickets for centralmotorwheel-thailand (Nov 2025).`);
+    return formattedTickets;
+  } catch (error) {
+    logger.error("Error in getNonHealthEscalationIncidents:", error);
+    throw new Error("Error fetching non-health escalation incidents: " + error.message);
+  }
+};
+
 
 const __dirname = path.resolve();
 
@@ -24,6 +117,7 @@ async function generateMonthlyReport(month = null, year = null) {
   const reportFileName = `TTS-GSOC_Monthly_Report_${month || now.toLocaleString("default", { month: "short" })}_${year || now.getFullYear()}.pdf`;
 
   try {
+    // ... (All the existing data fetching for charts remains the same)
     // Fetch real incident severity data
     logger.info(
       "🔍 Fetching incident severity data for customer: centralmotorwheel-thailand"
@@ -85,21 +179,7 @@ async function generateMonthlyReport(month = null, year = null) {
       "centralmotorwheel-thailand"
     );
     
-    // Debug: Log the raw response for detection source
-    logger.info(
-      `📊 Raw incident detection source response: ${JSON.stringify(incidentDSResponse, null, 2)}`
-    );
-
-    // Debug: Log the raw response for handling status
-    logger.info(
-      `📊 Raw incident handling status response: ${JSON.stringify(incidentHSResponse, null, 2)}`
-    );
-
-    // Debug: Log the raw response for sub-status
-    logger.info(
-      `📊 Raw incident sub-status response: ${JSON.stringify(incidentSSResponse, null, 2)}`
-    );
-
+    // ... (All the existing data processing for charts remains the same)
     // Check if the severity response is valid
     if (!incidentSeverityResponse || !incidentSeverityResponse.months) {
       logger.error("❌ Invalid incident severity response");
@@ -366,9 +446,6 @@ async function generateMonthlyReport(month = null, year = null) {
       `📊 Handling Status Table data: ${JSON.stringify(incidentHandlingStatusData, null, 2)}`
     );
 
-    // ========================================================================
-    // START: UPDATED SUB-STATUS DATA PROCESSING
-    // ========================================================================
     // Process sub-status data for the chart - UPDATED to match React component
     const subStatusData = incidentSSResponse.substatus || [];
     
@@ -430,9 +507,6 @@ async function generateMonthlyReport(month = null, year = null) {
         
       logger.info(`📊 Sub-status counts - Resolved: ${resolvedCount}, In Progress: ${inProgressCount}, Closed: ${closedCount}`);
     }
-    // ========================================================================
-    // END: UPDATED SUB-STATUS DATA PROCESSING
-    // ========================================================================
 
     // Debug: Log the sub-status chart data
     logger.info(
@@ -460,6 +534,22 @@ async function generateMonthlyReport(month = null, year = null) {
     logger.info(
       `📊 Sub-Status Table data: ${JSON.stringify(incidentSubStatusData, null, 2)}`
     );
+
+    // ========================================================================
+    // START: FETCH REAL TICKET DATA
+    // ========================================================================
+    logger.info("🎫 Fetching real data for incident and health ticket tables...");
+    
+    // Fetch non-health escalation incidents for the "Analysis on Incident Ticket" table
+    const incidentTicketsData = await getNonHealthEscalationIncidents();
+    
+    // Fetch health escalation incidents for the "Analysis on Health Ticket" table
+    const healthTicketsData = await getHealthEscalationIncidents();
+    
+    logger.info(`✅ Fetched ${incidentTicketsData.length} incident tickets and ${healthTicketsData.length} health tickets.`);
+    // ========================================================================
+    // END: FETCH REAL TICKET DATA
+    // ========================================================================
 
     // Mock data for the rest of the report (you can replace these with real data later)
     const data = {
@@ -492,142 +582,11 @@ async function generateMonthlyReport(month = null, year = null) {
       subStatusColors, // Add colors for sub-status chart
       incidentSubStatusData,
 
-      // Incident Tickets (mock data for now)
-      incidentTickets: [
-        {
-          id: "INC-202502001",
-          date: "2025-02-01",
-          affiliate: "North America",
-          severity: "High",
-          status: "Resolved",
-          description:
-            "Suspicious login activity detected from multiple locations",
-        },
-        {
-          id: "INC-202502002",
-          date: "2025-02-03",
-          affiliate: "Europe",
-          severity: "Medium",
-          status: "In Progress",
-          description: "Malware detected on endpoint device",
-        },
-        {
-          id: "INC-202502003",
-          date: "2025-02-05",
-          affiliate: "Asia Pacific",
-          severity: "High",
-          status: "Resolved",
-          description: "Data exfiltration attempt blocked by firewall",
-        },
-        {
-          id: "INC-202502004",
-          date: "2025-02-07",
-          affiliate: "North America",
-          severity: "Low",
-          status: "Closed",
-          description: "Unauthorized software installation detected",
-        },
-        {
-          id: "INC-202502005",
-          date: "2025-02-10",
-          affiliate: "Europe",
-          severity: "Medium",
-          status: "In Progress",
-          description: "Phishing campaign targeting multiple users",
-        },
-        {
-          id: "INC-202502006",
-          date: "2025-02-12",
-          affiliate: "Asia Pacific",
-          severity: "Low",
-          status: "Resolved",
-          description: "Policy violation detected on file server",
-        },
-        {
-          id: "INC-202502007",
-          date: "2025-02-15",
-          affiliate: "North America",
-          severity: "Medium",
-          status: "Open",
-          description: "Unusual network traffic pattern detected",
-        },
-        {
-          id: "INC-202502008",
-          date: "2025-02-18",
-          affiliate: "Europe",
-          severity: "High",
-          status: "In Progress",
-          description: "Ransomware attack detected on critical server",
-        },
-      ],
+      // ✅ UPDATED: Real Incident Tickets Data
+      incidentTickets: incidentTicketsData,
 
-      // Health Tickets (mock data for now)
-      healthTickets: [
-        {
-          id: "HLTH-202502001",
-          date: "2025-02-02",
-          affiliate: "North America",
-          system: "Active Directory",
-          status: "Resolved",
-          description: "Replication failure between domain controllers",
-        },
-        {
-          id: "HLTH-202502002",
-          date: "2025-02-04",
-          affiliate: "Europe",
-          system: "Firewall",
-          status: "Resolved",
-          description: "High CPU utilization on security appliance",
-        },
-        {
-          id: "HLTH-202502003",
-          date: "2025-02-06",
-          affiliate: "Asia Pacific",
-          system: "SIEM",
-          status: "In Progress",
-          description: "Log ingestion delay from multiple sources",
-        },
-        {
-          id: "HLTH-202502004",
-          date: "2025-02-08",
-          affiliate: "North America",
-          system: "Endpoint Protection",
-          status: "Closed",
-          description: "Definition update failure on client systems",
-        },
-        {
-          id: "HLTH-202502005",
-          date: "2025-02-11",
-          affiliate: "Europe",
-          system: "IDS/IPS",
-          status: "Resolved",
-          description: "False positive alerts from signature 4521",
-        },
-        {
-          id: "HLTH-202502006",
-          date: "2025-02-14",
-          affiliate: "Asia Pacific",
-          system: "VPN",
-          status: "Open",
-          description: "Connection timeout issues for remote users",
-        },
-        {
-          id: "HLTH-202502007",
-          date: "2025-02-17",
-          affiliate: "North America",
-          system: "Email Security",
-          status: "In Progress",
-          description: "Spam filter not updating properly",
-        },
-        {
-          id: "HLTH-202502008",
-          date: "2025-02-20",
-          affiliate: "Europe",
-          system: "Network Monitoring",
-          status: "Resolved",
-          description: "Packet loss detected on core switch",
-        },
-      ],
+      // ✅ UPDATED: Real Health Tickets Data
+      healthTickets: healthTicketsData,
     };
 
     // ✅ CORRECTED PATH: Use absolute path from project root
@@ -685,6 +644,7 @@ async function getReportData() {
       year: "numeric",
     });
 
+    // ... (All the existing data fetching for charts remains the same)
     // Fetch real incident severity data
     logger.info(
       "🔍 Fetching incident severity data for customer: centralmotorwheel-thailand"
@@ -746,6 +706,7 @@ async function getReportData() {
       "centralmotorwheel-thailand"
     );
 
+    // ... (All the existing data processing for charts remains the same)
     // Debug: Log the raw response for detection source
     logger.info(
       `📊 Raw incident detection source response: ${JSON.stringify(incidentDSResponse, null, 2)}`
@@ -1030,9 +991,6 @@ async function getReportData() {
       `📊 Handling Status Table data: ${JSON.stringify(incidentHandlingStatusData, null, 2)}`
     );
 
-    // ========================================================================
-    // START: UPDATED SUB-STATUS DATA PROCESSING
-    // ========================================================================
     // Process sub-status data for the chart - UPDATED to match React component
     const subStatusData = incidentSSResponse.substatus || [];
     
@@ -1094,9 +1052,6 @@ async function getReportData() {
         
       logger.info(`📊 Sub-status counts - Resolved: ${resolvedCount}, In Progress: ${inProgressCount}, Closed: ${closedCount}`);
     }
-    // ========================================================================
-    // END: UPDATED SUB-STATUS DATA PROCESSING
-    // ========================================================================
 
     // Debug: Log the sub-status chart data
     logger.info(
@@ -1124,6 +1079,22 @@ async function getReportData() {
     logger.info(
       `📊 Sub-Status Table data: ${JSON.stringify(incidentSubStatusData, null, 2)}`
     );
+
+    // ========================================================================
+    // START: FETCH REAL TICKET DATA
+    // ========================================================================
+    logger.info("🎫 Fetching real data for incident and health ticket tables...");
+    
+    // Fetch non-health escalation incidents for the "Analysis on Incident Ticket" table
+    const incidentTicketsData = await getNonHealthEscalationIncidents();
+    
+    // Fetch health escalation incidents for the "Analysis on Health Ticket" table
+    const healthTicketsData = await getHealthEscalationIncidents();
+    
+    logger.info(`✅ Fetched ${incidentTicketsData.length} incident tickets and ${healthTicketsData.length} health tickets.`);
+    // ========================================================================
+    // END: FETCH REAL TICKET DATA
+    // ========================================================================
 
     // Return the data object
     return {
@@ -1156,142 +1127,11 @@ async function getReportData() {
       subStatusColors, // Add colors for sub-status chart
       incidentSubStatusData,
 
-      // Incident Tickets (mock data for now)
-      incidentTickets: [
-        {
-          id: "INC-202502001",
-          date: "2025-02-01",
-          affiliate: "North America",
-          severity: "High",
-          status: "Resolved",
-          description:
-            "Suspicious login activity detected from multiple locations",
-        },
-        {
-          id: "INC-202502002",
-          date: "2025-02-03",
-          affiliate: "Europe",
-          severity: "Medium",
-          status: "In Progress",
-          description: "Malware detected on endpoint device",
-        },
-        {
-          id: "INC-202502003",
-          date: "2025-02-05",
-          affiliate: "Asia Pacific",
-          severity: "High",
-          status: "Resolved",
-          description: "Data exfiltration attempt blocked by firewall",
-        },
-        {
-          id: "INC-202502004",
-          date: "2025-02-07",
-          affiliate: "North America",
-          severity: "Low",
-          status: "Closed",
-          description: "Unauthorized software installation detected",
-        },
-        {
-          id: "INC-202502005",
-          date: "2025-02-10",
-          affiliate: "Europe",
-          severity: "Medium",
-          status: "In Progress",
-          description: "Phishing campaign targeting multiple users",
-        },
-        {
-          id: "INC-202502006",
-          date: "2025-02-12",
-          affiliate: "Asia Pacific",
-          severity: "Low",
-          status: "Resolved",
-          description: "Policy violation detected on file server",
-        },
-        {
-          id: "INC-202502007",
-          date: "2025-02-15",
-          affiliate: "North America",
-          severity: "Medium",
-          status: "Open",
-          description: "Unusual network traffic pattern detected",
-        },
-        {
-          id: "INC-202502008",
-          date: "2025-02-18",
-          affiliate: "Europe",
-          severity: "High",
-          status: "In Progress",
-          description: "Ransomware attack detected on critical server",
-        },
-      ],
+      // ✅ UPDATED: Real Incident Tickets Data
+      incidentTickets: incidentTicketsData,
 
-      // Health Tickets (mock data for now)
-      healthTickets: [
-        {
-          id: "HLTH-202502001",
-          date: "2025-02-02",
-          affiliate: "North America",
-          system: "Active Directory",
-          status: "Resolved",
-          description: "Replication failure between domain controllers",
-        },
-        {
-          id: "HLTH-202502002",
-          date: "2025-02-04",
-          affiliate: "Europe",
-          system: "Firewall",
-          status: "Resolved",
-          description: "High CPU utilization on security appliance",
-        },
-        {
-          id: "HLTH-202502003",
-          date: "2025-02-06",
-          affiliate: "Asia Pacific",
-          system: "SIEM",
-          status: "In Progress",
-          description: "Log ingestion delay from multiple sources",
-        },
-        {
-          id: "HLTH-202502004",
-          date: "2025-02-08",
-          affiliate: "North America",
-          system: "Endpoint Protection",
-          status: "Closed",
-          description: "Definition update failure on client systems",
-        },
-        {
-          id: "HLTH-202502005",
-          date: "2025-02-11",
-          affiliate: "Europe",
-          system: "IDS/IPS",
-          status: "Resolved",
-          description: "False positive alerts from signature 4521",
-        },
-        {
-          id: "HLTH-202502006",
-          date: "2025-02-14",
-          affiliate: "Asia Pacific",
-          system: "VPN",
-          status: "Open",
-          description: "Connection timeout issues for remote users",
-        },
-        {
-          id: "HLTH-202502007",
-          date: "2025-02-17",
-          affiliate: "North America",
-          system: "Email Security",
-          status: "In Progress",
-          description: "Spam filter not updating properly",
-        },
-        {
-          id: "HLTH-202502008",
-          date: "2025-02-20",
-          affiliate: "Europe",
-          system: "Network Monitoring",
-          status: "Resolved",
-          description: "Packet loss detected on core switch",
-        },
-      ],
+      // ✅ UPDATED: Real Health Tickets Data
+      healthTickets: healthTicketsData,
     };
   } catch (error) {
     logger.error("❌ Error getting report data:", error);
