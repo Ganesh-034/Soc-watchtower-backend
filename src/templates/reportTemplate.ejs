@@ -587,7 +587,7 @@ ctx.fillText(data, barCenterX, barTopY - 6);
           },
           plugins: {
             legend: {
-              position: 'bottom',
+              position: 'bottom', // Legend is already at the bottom
             },
             tooltip: {
               callbacks: {
@@ -641,6 +641,11 @@ ctx.fillText(data, barCenterX, barTopY - 6);
           animation: {
             duration: 0 // Disable animation for PDF generation
           },
+          plugins: {
+            legend: {
+              position: 'bottom', // ✅ ADDED: Legend at the bottom
+            },
+          },
           scales: {
             y: {
               beginAtZero: true,
@@ -686,6 +691,11 @@ ctx.fillText(data, barCenterX, barTopY - 6);
           animation: {
             duration: 0 // Disable animation for PDF generation
           },
+          plugins: {
+            legend: {
+              position: 'bottom', // ✅ ADDED: Legend at the bottom
+            },
+          },
           scales: {
             x: {
               stacked: false,
@@ -699,6 +709,9 @@ ctx.fillText(data, barCenterX, barTopY - 6);
       });
     }
 
+    // ========================================================================
+    // START: UPDATED SUB-STATUS CHART CREATION
+    // ========================================================================
     // Incident by Sub Status Chart (Bar) - Updated to match frontend implementation
     const subStatusCtx = document.getElementById("subStatusChart");
     if (subStatusCtx && subStatusChartLabels && subStatusChartData) {
@@ -706,25 +719,15 @@ ctx.fillText(data, barCenterX, barTopY - 6);
       console.log("📊 Creating sub-status chart with data:", subStatusChartData);
       console.log("📊 Creating sub-status chart with colors:", subStatusColors);
       
-      new Chart(subStatusCtx.getContext("2d"), {
+      const subStatusChart = new Chart(subStatusCtx.getContext("2d"), {
         type: "bar",
         data: {
           labels: subStatusChartLabels,
           datasets: [
-                  {
-              label: "Resolved",
-              data: subStatusChartData.resolved,
-              backgroundColor: "#70db70",
-            },
-                  {
-              label: "In Progress",
-              data: subStatusChartData.inprogress,
-              backgroundColor: "#f1b44c",
-            },
-                  {
-              label: "Closed",
-              data: subStatusChartData.closed,
-              backgroundColor: "#66b2ff",
+            {
+              label: "Sub Status",
+              data: subStatusChartData, // This is now a simple array of counts
+              backgroundColor: subStatusColors, // Use the colors array
             },
           ],
         },
@@ -734,14 +737,112 @@ ctx.fillText(data, barCenterX, barTopY - 6);
           animation: {
             duration: 0 // Disable animation for PDF generation
           },
+          plugins: {
+            legend: {
+              display: false // Hide legend as we're using custom legend
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return context.raw + " incidents";
+                }
+              }
+            }
+          },
           scales: {
             y: {
               beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Count'
+              }
             },
-          },
+            x: {
+              ticks: {
+                // Handle long labels by breaking them at spaces
+                callback: function(value, index, values) {
+                  const label = this.getLabelForValue(value);
+                  if (label.length > 12) {
+                    const words = label.split(' ');
+                    let lines = [];
+                    let currentLine = words[0];
+                    
+                    for (let i = 1; i < words.length; i++) {
+                      const word = words[i];
+                      if ((currentLine + ' ' + word).length <= 12) {
+                        currentLine += ' ' + word;
+                      } else {
+                        lines.push(currentLine);
+                        currentLine = word;
+                      }
+                    }
+                    
+                    if (currentLine) {
+                      lines.push(currentLine);
+                    }
+                    
+                    return lines;
+                  }
+                  return label;
+                }
+              }
+            }
+          }
         },
       });
+      
+      // Add custom legend below the chart
+      const subStatusChartContainer = subStatusCtx.parentElement;
+      const legendContainer = document.createElement('div');
+      legendContainer.className = 'text-center';
+      legendContainer.style.marginTop = '5px';
+      
+      // Check if there are any statuses with "In Progress", "Investigating" or "Awaiting" in their name
+      const hasInProgressStatus = subStatusChartLabels && subStatusChartLabels.some(label =>
+        label && typeof label === 'string' &&
+        (label.includes('In Progress') || label.includes('Investigating') || label.includes('Awaiting'))
+      );
+      
+      // Check if there are any other statuses (assumed to be "Resolved" types)
+      const hasResolvedStatus = subStatusChartLabels && subStatusChartLabels.some(label =>
+        label && typeof label === 'string' &&
+        !(label.includes('In Progress') || label.includes('Investigating') || label.includes('Awaiting'))
+      );
+      
+      // Create legend items
+      if (hasResolvedStatus) {
+        const resolvedLegend = document.createElement('span');
+        resolvedLegend.className = 'me-3';
+        resolvedLegend.innerHTML = `
+          <span class="d-inline-block me-1" style="width: 12px; height: 12px; background-color: #70db70; display: inline-block;"></span>
+          Resolved
+        `;
+        legendContainer.appendChild(resolvedLegend);
+      }
+      
+      if (hasInProgressStatus) {
+        const inProgressLegend = document.createElement('span');
+        inProgressLegend.className = 'me-3';
+        inProgressLegend.innerHTML = `
+          <span class="d-inline-block me-1" style="width: 12px; height: 12px; background-color: #f1b44c; display: inline-block;"></span>
+          In Progress
+        `;
+        legendContainer.appendChild(inProgressLegend);
+      }
+      
+      // Always add Closed legend
+      const closedLegend = document.createElement('span');
+      closedLegend.innerHTML = `
+        <span class="d-inline-block me-1" style="width: 12px; height: 12px; background-color: #66b2ff; display: inline-block;"></span>
+        Closed
+      `;
+      legendContainer.appendChild(closedLegend);
+      
+      subStatusChartContainer.appendChild(legendContainer);
     }
+    // ========================================================================
+    // END: UPDATED SUB-STATUS CHART CREATION
+    // ========================================================================
   }
 
   // Create charts when DOM is loaded

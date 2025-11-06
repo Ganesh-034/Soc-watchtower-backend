@@ -366,7 +366,10 @@ async function generateMonthlyReport(month = null, year = null) {
       `📊 Handling Status Table data: ${JSON.stringify(incidentHandlingStatusData, null, 2)}`
     );
 
-    // Process sub-status data for the chart - FIXED VERSION
+    // ========================================================================
+    // START: UPDATED SUB-STATUS DATA PROCESSING
+    // ========================================================================
+    // Process sub-status data for the chart - UPDATED to match React component
     const subStatusData = incidentSSResponse.substatus || [];
     
     // Filter out null values from the substatus data
@@ -377,10 +380,10 @@ async function generateMonthlyReport(month = null, year = null) {
     if (filteredSubstatus.length === 0) {
       logger.warn("Warning: Sub-status array is empty after filtering");
       subStatusChartLabels = ["No data available"];
-      subStatusChartData = [0];
+      subStatusChartData = [0]; // Simple array
       subStatusColors = ["#556ee6"]; // Default blue
     } else {
-      // Format the data for the chart
+      // Format the data for the chart - exactly like the React component
       const formattedData = filteredSubstatus.map(item => {
         const status = item._id;
         let type = "In Progress";
@@ -409,9 +412,9 @@ async function generateMonthlyReport(month = null, year = null) {
         return typeOrder[a.type] - typeOrder[b.type];
       });
       
-      // Extract categories, counts, and colors
+      // Extract categories, counts, and colors - exactly like the React component
       subStatusChartLabels = formattedData.map(item => item.status);
-      subStatusChartData = formattedData.map(item => item.count);
+      subStatusChartData = formattedData.map(item => item.count); // Simple array of counts
       subStatusColors = formattedData.map(item => item.color);
       
       // Log the counts for each status type
@@ -427,6 +430,9 @@ async function generateMonthlyReport(month = null, year = null) {
         
       logger.info(`📊 Sub-status counts - Resolved: ${resolvedCount}, In Progress: ${inProgressCount}, Closed: ${closedCount}`);
     }
+    // ========================================================================
+    // END: UPDATED SUB-STATUS DATA PROCESSING
+    // ========================================================================
 
     // Debug: Log the sub-status chart data
     logger.info(
@@ -1024,7 +1030,10 @@ async function getReportData() {
       `📊 Handling Status Table data: ${JSON.stringify(incidentHandlingStatusData, null, 2)}`
     );
 
-    // Process sub-status data for the chart - FIXED VERSION
+    // ========================================================================
+    // START: UPDATED SUB-STATUS DATA PROCESSING
+    // ========================================================================
+    // Process sub-status data for the chart - UPDATED to match React component
     const subStatusData = incidentSSResponse.substatus || [];
     
     // Filter out null values from the substatus data
@@ -1035,10 +1044,10 @@ async function getReportData() {
     if (filteredSubstatus.length === 0) {
       logger.warn("Warning: Sub-status array is empty after filtering");
       subStatusChartLabels = ["No data available"];
-      subStatusChartData = [0];
+      subStatusChartData = [0]; // Simple array
       subStatusColors = ["#556ee6"]; // Default blue
     } else {
-      // Format the data for the chart
+      // Format the data for the chart - exactly like the React component
       const formattedData = filteredSubstatus.map(item => {
         const status = item._id;
         let type = "In Progress";
@@ -1067,9 +1076,9 @@ async function getReportData() {
         return typeOrder[a.type] - typeOrder[b.type];
       });
       
-      // Extract categories, counts, and colors
+      // Extract categories, counts, and colors - exactly like the React component
       subStatusChartLabels = formattedData.map(item => item.status);
-      subStatusChartData = formattedData.map(item => item.count);
+      subStatusChartData = formattedData.map(item => item.count); // Simple array of counts
       subStatusColors = formattedData.map(item => item.color);
       
       // Log the counts for each status type
@@ -1085,6 +1094,9 @@ async function getReportData() {
         
       logger.info(`📊 Sub-status counts - Resolved: ${resolvedCount}, In Progress: ${inProgressCount}, Closed: ${closedCount}`);
     }
+    // ========================================================================
+    // END: UPDATED SUB-STATUS DATA PROCESSING
+    // ========================================================================
 
     // Debug: Log the sub-status chart data
     logger.info(
