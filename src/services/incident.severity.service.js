@@ -1,6 +1,6 @@
 import Incident from "../models/incident.model.js";
 
-export const getIncidentSeverity = async (customerName) => {
+export const getIncidentSeverity = async (customerName, includeEscalatedOnly = false) => {
   try {
     if (!customerName) {
       throw new Error(
@@ -32,11 +32,19 @@ export const getIncidentSeverity = async (customerName) => {
       month: "short",
     });
 
+    // Build the match condition dynamically
+    const matchCondition = {
+      customer_name: customerName,
+    };
+
+    // Add escalation filter if requested
+    if (includeEscalatedOnly) {
+      matchCondition.customer_escalation = 'Yes';
+    }
+
     const pipeline = [
       {
-        $match: {
-          customer_name: customerName,
-        },
+        $match: matchCondition,
       },
       {
         $project: {
@@ -129,4 +137,9 @@ export const getIncidentSeverity = async (customerName) => {
     console.error("Error in getIncidentSeverity:", error);
     throw new Error("Error fetching incident priorities: " + error.message);
   }
+};
+
+// Export a wrapper function for escalated incidents if you want to keep the original API
+export const getIncidentSeverityEscalation = async (customerName) => {
+  return getIncidentSeverity(customerName, true);
 };

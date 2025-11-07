@@ -1,6 +1,6 @@
 import Incident from "../models/incident.model.js";
 
-export const getIncidentsDetectionSource = async (month, customerName) => {
+export const getIncidentsDetectionSource = async (month, customerName, includeEscalatedOnly = false) => {
   try {
     if (!month || !customerName) {
       throw new Error(
@@ -9,6 +9,18 @@ export const getIncidentsDetectionSource = async (month, customerName) => {
     }
 
     const collection = Incident.collection;
+    
+    // Build the match condition dynamically
+    const matchCondition = {
+      month: month,
+      customer_name: customerName,
+    };
+
+    // Add escalation filter if requested
+    if (includeEscalatedOnly) {
+      matchCondition.customer_escalation = 'Yes';
+    }
+
     const pipeline = [
       {
         $addFields: {
@@ -21,10 +33,7 @@ export const getIncidentsDetectionSource = async (month, customerName) => {
         },
       },
       {
-        $match: {
-          month: month,
-          customer_name: customerName,
-        },
+        $match: matchCondition,
       },
       {
         $group: {
@@ -55,8 +64,6 @@ export const getIncidentsDetectionSource = async (month, customerName) => {
         incidentType = "Entra ID";
       }
       
-  
-      
       const priority = item._id.priority || "Unknown";
       
       if (!transformedData[incidentType]) {
@@ -84,4 +91,9 @@ export const getIncidentsDetectionSource = async (month, customerName) => {
       "Error fetching incident detection source data: " + error.message
     );
   }
+};
+
+// Export a wrapper function for escalated incidents
+export const getIncidentsDetectionSourceEscalation = async (month, customerName) => {
+  return getIncidentsDetectionSource(month, customerName, true);
 };

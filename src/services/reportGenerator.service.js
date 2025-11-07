@@ -125,9 +125,10 @@ async function generateMonthlyReport(month = null, year = null) {
     logger.info(
       "🔍 Fetching incident severity data for customer: centralmotorwheel-thailand"
     );
-    const incidentSeverityResponse = await incidentService.getIncidentSeverity(
-      "centralmotorwheel-thailand"
-    );
+    const incidentSeverityResponse =
+      await incidentService.getIncidentSeverityEscalation(
+        "centralmotorwheel-thailand"
+      );
 
     // Fetch real incident detection source data for current month
     const currentMonth = now.toISOString().slice(0, 7); // Format: YYYY-MM
@@ -135,7 +136,7 @@ async function generateMonthlyReport(month = null, year = null) {
       `🔍 Fetching incident detection source data for customer: centralmotorwheel-thailand, month: ${currentMonth}`
     );
     const incidentDSResponse =
-      await incidentDSService.getIncidentsDetectionSource(
+      await incidentDSService.getIncidentsDetectionSourceEscalation(
         currentMonth,
         "centralmotorwheel-thailand"
       );
@@ -147,11 +148,6 @@ async function generateMonthlyReport(month = null, year = null) {
     logger.info(
       `🔍 Fetching incident detection source data for customer: centralmotorwheel-thailand, month: ${prevMonth}`
     );
-    const prevMonthDSResponse =
-      await incidentDSService.getIncidentsDetectionSource(
-        prevMonth,
-        "centralmotorwheel-thailand"
-      );
 
     // Fetch two months ago data
     const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1)
@@ -160,18 +156,13 @@ async function generateMonthlyReport(month = null, year = null) {
     logger.info(
       `🔍 Fetching incident detection source data for customer: centralmotorwheel-thailand, month: ${twoMonthsAgo}`
     );
-    const twoMonthsAgoDSResponse =
-      await incidentDSService.getIncidentsDetectionSource(
-        twoMonthsAgo,
-        "centralmotorwheel-thailand"
-      );
 
     // Fetch incident handling status data
     logger.info(
       "🔍 Fetching incident handling status data for customer: centralmotorwheel-thailand"
     );
     const incidentHSResponse =
-      await incidentHSService.getIncidentsHandlingStatus(
+      await incidentHSService.getIncidentsHandlingStatusEscalation(
         "centralmotorwheel-thailand"
       );
 
@@ -179,7 +170,7 @@ async function generateMonthlyReport(month = null, year = null) {
     logger.info(
       `🔍 Fetching incident sub-status data for customer: centralmotorwheel-thailand, month: ${currentMonth}`
     );
-    const incidentSSResponse = await incidentSSService.getIncidentsSubStatus(
+    const incidentSSResponse = await incidentSSService.getIncidentsSubStatusEscalation(
       currentMonth,
       "centralmotorwheel-thailand"
     );
@@ -244,7 +235,7 @@ async function generateMonthlyReport(month = null, year = null) {
     // Create affiliate data for the severity table
     const incidentSeverityData = [
       {
-        affiliate: "Current Month",
+        affiliate: "centralmotorwheel-thailand",
         high:
           sortedMonths.find((m) => m.period === "Current Month")?.priorities
             .high || 0,
@@ -253,30 +244,6 @@ async function generateMonthlyReport(month = null, year = null) {
             .medium || 0,
         low:
           sortedMonths.find((m) => m.period === "Current Month")?.priorities
-            .low || 0,
-      },
-      {
-        affiliate: "Previous Month",
-        high:
-          sortedMonths.find((m) => m.period === "Previous Month")?.priorities
-            .high || 0,
-        medium:
-          sortedMonths.find((m) => m.period === "Previous Month")?.priorities
-            .medium || 0,
-        low:
-          sortedMonths.find((m) => m.period === "Previous Month")?.priorities
-            .low || 0,
-      },
-      {
-        affiliate: "Two Months Ago",
-        high:
-          sortedMonths.find((m) => m.period === "Two Months Ago")?.priorities
-            .high || 0,
-        medium:
-          sortedMonths.find((m) => m.period === "Two Months Ago")?.priorities
-            .medium || 0,
-        low:
-          sortedMonths.find((m) => m.period === "Two Months Ago")?.priorities
             .low || 0,
       },
     ];
@@ -288,7 +255,6 @@ async function generateMonthlyReport(month = null, year = null) {
 
     // In generateMonthlyReport and getReportData functions, replace the existing detection source processing code with this:
 
-    
     // Process detection source data for the chart and table
     const currentMonthSources = incidentDSResponse.detectionsource || {};
 
@@ -328,7 +294,7 @@ async function generateMonthlyReport(month = null, year = null) {
     // Create affiliate data for the detection source table (current month only)
     const incidentDetectionData = [
       {
-        affiliate: "Current Month",
+        affiliate: "centralmotorwheel-thailand",
         ...detectionChartLabels.reduce((acc, sourceName) => {
           const source = filteredSources[sourceName] || {};
           acc[sourceName] = source.Total || 0; // Use the total count
@@ -637,9 +603,10 @@ async function getReportData() {
     logger.info(
       "🔍 Fetching incident severity data for customer: centralmotorwheel-thailand"
     );
-    const incidentSeverityResponse = await incidentService.getIncidentSeverity(
-      "centralmotorwheel-thailand"
-    );
+    const incidentSeverityResponse =
+      await incidentService.getIncidentSeverityEscalation(
+        "centralmotorwheel-thailand"
+      );
 
     // Fetch real incident detection source data for current month
     const currentMonth = now.toISOString().slice(0, 7); // Format: YYYY-MM
@@ -647,7 +614,7 @@ async function getReportData() {
       `🔍 Fetching incident detection source data for customer: centralmotorwheel-thailand, month: ${currentMonth}`
     );
     const incidentDSResponse =
-      await incidentDSService.getIncidentsDetectionSource(
+      await incidentDSService.getIncidentsDetectionSourceEscalation(
         currentMonth,
         "centralmotorwheel-thailand"
       );
@@ -660,7 +627,7 @@ async function getReportData() {
       `🔍 Fetching incident detection source data for customer: centralmotorwheel-thailand, month: ${prevMonth}`
     );
     const prevMonthDSResponse =
-      await incidentDSService.getIncidentsDetectionSource(
+      await incidentDSService.getIncidentsDetectionSourceEscalation(
         prevMonth,
         "centralmotorwheel-thailand"
       );
@@ -673,7 +640,7 @@ async function getReportData() {
       `🔍 Fetching incident detection source data for customer: centralmotorwheel-thailand, month: ${twoMonthsAgo}`
     );
     const twoMonthsAgoDSResponse =
-      await incidentDSService.getIncidentsDetectionSource(
+      await incidentDSService.getIncidentsDetectionSourceEscalation(
         twoMonthsAgo,
         "centralmotorwheel-thailand"
       );
@@ -683,7 +650,7 @@ async function getReportData() {
       "🔍 Fetching incident handling status data for customer: centralmotorwheel-thailand"
     );
     const incidentHSResponse =
-      await incidentHSService.getIncidentsHandlingStatus(
+      await incidentHSService.getIncidentsHandlingStatusEscalation(
         "centralmotorwheel-thailand"
       );
 
@@ -691,7 +658,7 @@ async function getReportData() {
     logger.info(
       `🔍 Fetching incident sub-status data for customer: centralmotorwheel-thailand, month: ${currentMonth}`
     );
-    const incidentSSResponse = await incidentSSService.getIncidentsSubStatus(
+    const incidentSSResponse = await incidentSSService.getIncidentsSubStatusEscalation(
       currentMonth,
       "centralmotorwheel-thailand"
     );
