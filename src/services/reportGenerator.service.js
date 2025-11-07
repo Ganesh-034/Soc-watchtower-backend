@@ -60,17 +60,19 @@ const getHealthEscalationIncidents = async () => {
       created_at: { $regex: november2025Regex }, // ✅ UPDATED: Specific date filter
     };
 
-    const tickets = await Incident.find(filters)
-      .sort({ created_at: 1 })
-      .lean();
+    const tickets = await Incident.find(filters).sort({ created_at: 1 }).lean();
 
     const formattedTickets = tickets.map(formatTicket);
 
-    logger.info(`🎫 Fetched ${formattedTickets.length} health escalation tickets for centralmotorwheel-thailand (Nov 2025).`);
+    logger.info(
+      `🎫 Fetched ${formattedTickets.length} health escalation tickets for centralmotorwheel-thailand (Nov 2025).`
+    );
     return formattedTickets;
   } catch (error) {
     logger.error("Error in getHealthEscalationIncidents:", error);
-    throw new Error("Error fetching health escalation incidents: " + error.message);
+    throw new Error(
+      "Error fetching health escalation incidents: " + error.message
+    );
   }
 };
 
@@ -87,20 +89,21 @@ const getNonHealthEscalationIncidents = async () => {
       created_at: { $regex: november2025Regex }, // ✅ UPDATED: Specific date filter
     };
 
-    const tickets = await Incident.find(filters)
-      .sort({ created_at: 1 })
-      .lean();
+    const tickets = await Incident.find(filters).sort({ created_at: 1 }).lean();
 
     const formattedTickets = tickets.map(formatTicket);
 
-    logger.info(`🎫 Fetched ${formattedTickets.length} non-health escalation tickets for centralmotorwheel-thailand (Nov 2025).`);
+    logger.info(
+      `🎫 Fetched ${formattedTickets.length} non-health escalation tickets for centralmotorwheel-thailand (Nov 2025).`
+    );
     return formattedTickets;
   } catch (error) {
     logger.error("Error in getNonHealthEscalationIncidents:", error);
-    throw new Error("Error fetching non-health escalation incidents: " + error.message);
+    throw new Error(
+      "Error fetching non-health escalation incidents: " + error.message
+    );
   }
 };
-
 
 const __dirname = path.resolve();
 
@@ -168,7 +171,9 @@ async function generateMonthlyReport(month = null, year = null) {
       "🔍 Fetching incident handling status data for customer: centralmotorwheel-thailand"
     );
     const incidentHSResponse =
-      await incidentHSService.getIncidentsHandlingStatus("centralmotorwheel-thailand");
+      await incidentHSService.getIncidentsHandlingStatus(
+        "centralmotorwheel-thailand"
+      );
 
     // Fetch incident sub-status data for current month
     logger.info(
@@ -178,7 +183,7 @@ async function generateMonthlyReport(month = null, year = null) {
       currentMonth,
       "centralmotorwheel-thailand"
     );
-    
+
     // ... (All the existing data processing for charts remains the same)
     // Check if the severity response is valid
     if (!incidentSeverityResponse || !incidentSeverityResponse.months) {
@@ -281,34 +286,36 @@ async function generateMonthlyReport(month = null, year = null) {
       `📊 Table data: ${JSON.stringify(incidentSeverityData, null, 2)}`
     );
 
+    // In generateMonthlyReport and getReportData functions, replace the existing detection source processing code with this:
+
+    
     // Process detection source data for the chart and table
-    const currentMonthSources = incidentDSResponse.detectionsource || [];
-    const prevMonthSources = prevMonthDSResponse?.detectionsource || [];
-    const twoMonthsAgoSources = twoMonthsAgoDSResponse?.detectionsource || [];
+    const currentMonthSources = incidentDSResponse.detectionsource || {};
 
-    // Get all unique source names across all months
-    const allSourceNames = new Set();
-    [
-      ...currentMonthSources,
-      ...prevMonthSources,
-      ...twoMonthsAgoSources,
-    ].forEach((source) => {
-      // Replace empty or null values with "EntraID"
-      const sourceName = source._id || "EntraID";
-      allSourceNames.add(sourceName);
+    // Filter out health incidents for report but keep the original data for frontend
+    const filteredSources = {};
+    Object.keys(currentMonthSources).forEach((sourceName) => {
+      // Skip "Health Incident" for report
+      if (sourceName !== "Health Incident") {
+        filteredSources[sourceName] = currentMonthSources[sourceName];
+      }
     });
 
-    const detectionChartLabels = Array.from(allSourceNames);
+    // Get only incident types from filtered data (for report)
+    const detectionChartLabels = Object.keys(filteredSources);
 
-    // Create data for the chart (current month only)
-    const detectionChartData = detectionChartLabels.map((sourceName) => {
-      // Find the source in current month data
-      const source = currentMonthSources.find((s) => {
-        const sName = s._id || "EntraID";
-        return sName === sourceName;
-      });
-      return source ? source.count : 0;
-    });
+    // Create data for the chart (current month only) - we'll use grouped bar chart
+    const detectionChartData = {
+      high: detectionChartLabels.map(
+        (sourceName) => filteredSources[sourceName]?.High || 0
+      ),
+      medium: detectionChartLabels.map(
+        (sourceName) => filteredSources[sourceName]?.Medium || 0
+      ),
+      low: detectionChartLabels.map(
+        (sourceName) => filteredSources[sourceName]?.Low || 0
+      ),
+    };
 
     // Debug: Log the detection chart data
     logger.info(
@@ -318,38 +325,13 @@ async function generateMonthlyReport(month = null, year = null) {
       `📊 Detection Chart data: ${JSON.stringify(detectionChartData, null, 2)}`
     );
 
-    // Create affiliate data for the detection source table
+    // Create affiliate data for the detection source table (current month only)
     const incidentDetectionData = [
       {
         affiliate: "Current Month",
         ...detectionChartLabels.reduce((acc, sourceName) => {
-          const source = currentMonthSources.find((s) => {
-            const sName = s._id || "EntraID";
-            return sName === sourceName;
-          });
-          acc[sourceName] = source ? source.count : 0;
-          return acc;
-        }, {}),
-      },
-      {
-        affiliate: "Previous Month",
-        ...detectionChartLabels.reduce((acc, sourceName) => {
-          const source = prevMonthSources.find((s) => {
-            const sName = s._id || "EntraID";
-            return sName === sourceName;
-          });
-          acc[sourceName] = source ? source.count : 0;
-          return acc;
-        }, {}),
-      },
-      {
-        affiliate: "Two Months Ago",
-        ...detectionChartLabels.reduce((acc, sourceName) => {
-          const source = twoMonthsAgoSources.find((s) => {
-            const sName = s._id || "EntraID";
-            return sName === sourceName;
-          });
-          acc[sourceName] = source ? source.count : 0;
+          const source = filteredSources[sourceName] || {};
+          acc[sourceName] = source.Total || 0; // Use the total count
           return acc;
         }, {}),
       },
@@ -448,12 +430,12 @@ async function generateMonthlyReport(month = null, year = null) {
 
     // Process sub-status data for the chart - UPDATED to match React component
     const subStatusData = incidentSSResponse.substatus || [];
-    
+
     // Filter out null values from the substatus data
-    const filteredSubstatus = subStatusData.filter(item => item._id !== null);
-    
+    const filteredSubstatus = subStatusData.filter((item) => item._id !== null);
+
     let subStatusChartLabels, subStatusChartData, subStatusColors;
-    
+
     if (filteredSubstatus.length === 0) {
       logger.warn("Warning: Sub-status array is empty after filtering");
       subStatusChartLabels = ["No data available"];
@@ -461,7 +443,7 @@ async function generateMonthlyReport(month = null, year = null) {
       subStatusColors = ["#556ee6"]; // Default blue
     } else {
       // Format the data for the chart - exactly like the React component
-      const formattedData = filteredSubstatus.map(item => {
+      const formattedData = filteredSubstatus.map((item) => {
         const status = item._id;
         let type = "In Progress";
         let color = "#f1b44c"; // Default yellow for In Progress
@@ -478,34 +460,36 @@ async function generateMonthlyReport(month = null, year = null) {
           status,
           count: item.count,
           type,
-          color
+          color,
         };
       });
-      
+
       // Sort data to group by status type (In Progress first, then Resolved, then Closed)
       formattedData.sort((a, b) => {
-        const typeOrder = { "In Progress": 0, "Resolved": 1, "Closed": 2 };
+        const typeOrder = { "In Progress": 0, Resolved: 1, Closed: 2 };
         if (a.type === b.type) return b.count - a.count;
         return typeOrder[a.type] - typeOrder[b.type];
       });
-      
+
       // Extract categories, counts, and colors - exactly like the React component
-      subStatusChartLabels = formattedData.map(item => item.status);
-      subStatusChartData = formattedData.map(item => item.count); // Simple array of counts
-      subStatusColors = formattedData.map(item => item.color);
-      
+      subStatusChartLabels = formattedData.map((item) => item.status);
+      subStatusChartData = formattedData.map((item) => item.count); // Simple array of counts
+      subStatusColors = formattedData.map((item) => item.color);
+
       // Log the counts for each status type
       const resolvedCount = formattedData
-        .filter(item => item.type === "Resolved")
+        .filter((item) => item.type === "Resolved")
         .reduce((sum, item) => sum + item.count, 0);
       const inProgressCount = formattedData
-        .filter(item => item.type === "In Progress")
+        .filter((item) => item.type === "In Progress")
         .reduce((sum, item) => sum + item.count, 0);
       const closedCount = formattedData
-        .filter(item => item.type === "Closed")
+        .filter((item) => item.type === "Closed")
         .reduce((sum, item) => sum + item.count, 0);
-        
-      logger.info(`📊 Sub-status counts - Resolved: ${resolvedCount}, In Progress: ${inProgressCount}, Closed: ${closedCount}`);
+
+      logger.info(
+        `📊 Sub-status counts - Resolved: ${resolvedCount}, In Progress: ${inProgressCount}, Closed: ${closedCount}`
+      );
     }
 
     // Debug: Log the sub-status chart data
@@ -538,15 +522,19 @@ async function generateMonthlyReport(month = null, year = null) {
     // ========================================================================
     // START: FETCH REAL TICKET DATA
     // ========================================================================
-    logger.info("🎫 Fetching real data for incident and health ticket tables...");
-    
+    logger.info(
+      "🎫 Fetching real data for incident and health ticket tables..."
+    );
+
     // Fetch non-health escalation incidents for the "Analysis on Incident Ticket" table
     const incidentTicketsData = await getNonHealthEscalationIncidents();
-    
+
     // Fetch health escalation incidents for the "Analysis on Health Ticket" table
     const healthTicketsData = await getHealthEscalationIncidents();
-    
-    logger.info(`✅ Fetched ${incidentTicketsData.length} incident tickets and ${healthTicketsData.length} health tickets.`);
+
+    logger.info(
+      `✅ Fetched ${incidentTicketsData.length} incident tickets and ${healthTicketsData.length} health tickets.`
+    );
     // ========================================================================
     // END: FETCH REAL TICKET DATA
     // ========================================================================
@@ -695,7 +683,9 @@ async function getReportData() {
       "🔍 Fetching incident handling status data for customer: centralmotorwheel-thailand"
     );
     const incidentHSResponse =
-      await incidentHSService.getIncidentsHandlingStatus("centralmotorwheel-thailand");
+      await incidentHSService.getIncidentsHandlingStatus(
+        "centralmotorwheel-thailand"
+      );
 
     // Fetch incident sub-status data for current month
     logger.info(
@@ -993,12 +983,12 @@ async function getReportData() {
 
     // Process sub-status data for the chart - UPDATED to match React component
     const subStatusData = incidentSSResponse.substatus || [];
-    
+
     // Filter out null values from the substatus data
-    const filteredSubstatus = subStatusData.filter(item => item._id !== null);
-    
+    const filteredSubstatus = subStatusData.filter((item) => item._id !== null);
+
     let subStatusChartLabels, subStatusChartData, subStatusColors;
-    
+
     if (filteredSubstatus.length === 0) {
       logger.warn("Warning: Sub-status array is empty after filtering");
       subStatusChartLabels = ["No data available"];
@@ -1006,7 +996,7 @@ async function getReportData() {
       subStatusColors = ["#556ee6"]; // Default blue
     } else {
       // Format the data for the chart - exactly like the React component
-      const formattedData = filteredSubstatus.map(item => {
+      const formattedData = filteredSubstatus.map((item) => {
         const status = item._id;
         let type = "In Progress";
         let color = "#f1b44c"; // Default yellow for In Progress
@@ -1023,34 +1013,36 @@ async function getReportData() {
           status,
           count: item.count,
           type,
-          color
+          color,
         };
       });
-      
+
       // Sort data to group by status type (In Progress first, then Resolved, then Closed)
       formattedData.sort((a, b) => {
-        const typeOrder = { "In Progress": 0, "Resolved": 1, "Closed": 2 };
+        const typeOrder = { "In Progress": 0, Resolved: 1, Closed: 2 };
         if (a.type === b.type) return b.count - a.count;
         return typeOrder[a.type] - typeOrder[b.type];
       });
-      
+
       // Extract categories, counts, and colors - exactly like the React component
-      subStatusChartLabels = formattedData.map(item => item.status);
-      subStatusChartData = formattedData.map(item => item.count); // Simple array of counts
-      subStatusColors = formattedData.map(item => item.color);
-      
+      subStatusChartLabels = formattedData.map((item) => item.status);
+      subStatusChartData = formattedData.map((item) => item.count); // Simple array of counts
+      subStatusColors = formattedData.map((item) => item.color);
+
       // Log the counts for each status type
       const resolvedCount = formattedData
-        .filter(item => item.type === "Resolved")
+        .filter((item) => item.type === "Resolved")
         .reduce((sum, item) => sum + item.count, 0);
       const inProgressCount = formattedData
-        .filter(item => item.type === "In Progress")
+        .filter((item) => item.type === "In Progress")
         .reduce((sum, item) => sum + item.count, 0);
       const closedCount = formattedData
-        .filter(item => item.type === "Closed")
+        .filter((item) => item.type === "Closed")
         .reduce((sum, item) => sum + item.count, 0);
-        
-      logger.info(`📊 Sub-status counts - Resolved: ${resolvedCount}, In Progress: ${inProgressCount}, Closed: ${closedCount}`);
+
+      logger.info(
+        `📊 Sub-status counts - Resolved: ${resolvedCount}, In Progress: ${inProgressCount}, Closed: ${closedCount}`
+      );
     }
 
     // Debug: Log the sub-status chart data
@@ -1083,15 +1075,19 @@ async function getReportData() {
     // ========================================================================
     // START: FETCH REAL TICKET DATA
     // ========================================================================
-    logger.info("🎫 Fetching real data for incident and health ticket tables...");
-    
+    logger.info(
+      "🎫 Fetching real data for incident and health ticket tables..."
+    );
+
     // Fetch non-health escalation incidents for the "Analysis on Incident Ticket" table
     const incidentTicketsData = await getNonHealthEscalationIncidents();
-    
+
     // Fetch health escalation incidents for the "Analysis on Health Ticket" table
     const healthTicketsData = await getHealthEscalationIncidents();
-    
-    logger.info(`✅ Fetched ${incidentTicketsData.length} incident tickets and ${healthTicketsData.length} health tickets.`);
+
+    logger.info(
+      `✅ Fetched ${incidentTicketsData.length} incident tickets and ${healthTicketsData.length} health tickets.`
+    );
     // ========================================================================
     // END: FETCH REAL TICKET DATA
     // ========================================================================

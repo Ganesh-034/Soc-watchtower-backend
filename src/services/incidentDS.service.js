@@ -28,12 +28,15 @@ export const getIncidentsDetectionSource = async (month, customerName) => {
       },
       {
         $group: {
-          _id: "$incident_type",
+          _id: {
+            incident_type: "$incident_type",
+            priority: "$priority"
+          },
           count: { $sum: 1 },
         },
       },
       {
-        $sort: { count: -1 },
+        $sort: { "_id.incident_type": 1, count: -1 },
       },
     ];
 
@@ -41,8 +44,39 @@ export const getIncidentsDetectionSource = async (month, customerName) => {
       .aggregate(pipeline)
       .toArray();
 
+    // Transform the data to the expected format
+    const transformedData = {};
+    
+    detectionsourceCounts.forEach(item => {
+      let incidentType = item._id.incident_type || "Unknown";
+      
+      // Replace "Unknown" with "Entra ID"
+      if (incidentType === "Unknown") {
+        incidentType = "Entra ID";
+      }
+      
+  
+      
+      const priority = item._id.priority || "Unknown";
+      
+      if (!transformedData[incidentType]) {
+        transformedData[incidentType] = {
+          High: 0,
+          Medium: 0,
+          Low: 0,
+          Total: 0 // Add total count
+        };
+      }
+      
+      // Update priority count
+      if (priority === "High" || priority === "Medium" || priority === "Low") {
+        transformedData[incidentType][priority] = item.count;
+        transformedData[incidentType].Total += item.count;
+      }
+    });
+
     return {
-      detectionsource: detectionsourceCounts,
+      detectionsource: transformedData,
     };
   } catch (error) {
     console.error("Error in getIncidentsDetectionSource:", error);

@@ -577,7 +577,7 @@ ctx.fillText(data, barCenterX, barTopY - 6);
             {
               label: "Low",
               data: severityChartData.low,
-              backgroundColor: "#66b2ff", // Blue for Low (matching frontend)
+              backgroundColor: "#7DDA58", // Blue for Low (matching frontend)
               barPercentage: 0.6,
               categoryPercentage: 0.7
             },
@@ -624,7 +624,7 @@ ctx.fillText(data, barCenterX, barTopY - 6);
       console.log("📊 Severity chart created:", severityChart);
     }
 
-    // Incident by Detection Source Chart (Bar)
+    // Incident by Detection Source Chart (Grouped Bar) - Updated to show separate bars for each priority
     const detectionCtx = document.getElementById("detectionChart");
     if (detectionCtx && detectionChartLabels && detectionChartData) {
       new Chart(detectionCtx.getContext("2d"), {
@@ -633,9 +633,25 @@ ctx.fillText(data, barCenterX, barTopY - 6);
           labels: detectionChartLabels,
           datasets: [
             {
-              label: "Incidents",
-              data: detectionChartData,
-              backgroundColor: "rgba(85,110,230,1)", // Updated to single color as requested
+              label: "High",
+              data: detectionChartData.high,
+              backgroundColor: "#f08080", // Red for High
+              barPercentage: 0.7,
+              categoryPercentage: 0.8
+            },
+            {
+              label: "Medium",
+              data: detectionChartData.medium,
+              backgroundColor: "#ffdd57", // Yellow for Medium
+              barPercentage: 0.7,
+              categoryPercentage: 0.8
+            },
+            {
+              label: "Low",
+              data: detectionChartData.low,
+              backgroundColor: "#7DDA58", // Green for Low
+              barPercentage: 0.7,
+              categoryPercentage: 0.8
             },
           ],
         },
@@ -649,10 +665,25 @@ ctx.fillText(data, barCenterX, barTopY - 6);
             legend: {
               position: 'bottom', // ✅ ADDED: Legend at the bottom
             },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return context.dataset.label + ': ' + context.raw + ' incidents';
+                }
+              }
+            }
           },
           scales: {
+            x: {
+              stacked: false, // Changed to false for grouped bars
+            },
             y: {
+              stacked: false, // Changed to false for grouped bars
               beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Incident Count'
+              }
             },
           },
         },
@@ -667,11 +698,7 @@ ctx.fillText(data, barCenterX, barTopY - 6);
         data: {
           labels: handlingStatusChartLabels,
           datasets: [
-            {
-              label: "Open",
-              data: handlingStatusChartData.open,
-              backgroundColor: "#f08080",
-            },
+        
             {
               label: "Pending",
               data: handlingStatusChartData.pending,
@@ -699,6 +726,13 @@ ctx.fillText(data, barCenterX, barTopY - 6);
             legend: {
               position: 'bottom', // ✅ ADDED: Legend at the bottom
             },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return context.dataset.label + ': ' + context.raw + ' incidents';
+                }
+              }
+            }
           },
           scales: {
             x: {
