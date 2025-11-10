@@ -27,7 +27,7 @@ const incidentSchema = new mongoose.Schema(
     agent_name: String,
   },
   {
-    collection: "freshservice",
+    collection: "orders",
     timestamps: false,
   }
 );

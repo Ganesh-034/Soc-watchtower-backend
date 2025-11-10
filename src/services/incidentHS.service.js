@@ -1,6 +1,6 @@
 import Incident from "../models/incident.model.js";
 
-export const getIncidentsHandlingStatus = async (customerName) => {
+export const getIncidentsHandlingStatus = async (customerName, includeEscalatedOnly = false, isReport = false) => {
   try {
     if (!customerName) {
       throw new Error(
@@ -14,11 +14,23 @@ export const getIncidentsHandlingStatus = async (customerName) => {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
-    const currentMonthStart = new Date(currentYear, currentMonth, 1);
-    const previousMonthStart = new Date(currentYear, currentMonth - 1, 1);
-    const twoMonthsAgoStart = new Date(currentYear, currentMonth - 2, 1);
+    let reportMonth, reportYear;
+    
+    if (isReport) {
+      // For reports, use the previous month (the month the report is about)
+      reportMonth = currentMonth - 1;
+      reportYear = reportMonth < 0 ? currentYear - 1 : currentYear;
+    } else {
+      // For dashboard, use the current month
+      reportMonth = currentMonth;
+      reportYear = currentYear;
+    }
 
-    const currentMonthId = `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}`;
+    const currentMonthStart = new Date(reportYear, reportMonth, 1);
+    const previousMonthStart = new Date(reportYear, reportMonth - 1, 1);
+    const twoMonthsAgoStart = new Date(reportYear, reportMonth - 2, 1);
+
+    const currentMonthId = `${reportYear}-${(reportMonth + 1).toString().padStart(2, "0")}`;
     const previousMonthId = `${previousMonthStart.getFullYear()}-${(previousMonthStart.getMonth() + 1).toString().padStart(2, "0")}`;
     const twoMonthsAgoId = `${twoMonthsAgoStart.getFullYear()}-${(twoMonthsAgoStart.getMonth() + 1).toString().padStart(2, "0")}`;
 
@@ -63,12 +75,20 @@ export const getIncidentsHandlingStatus = async (customerName) => {
       5: "Closed",
     };
 
+    // Build the match condition dynamically
+    const matchCondition = {
+      customer_name: customerName,
+      status: { $in: [2, 3, 4, 5] },
+    };
+
+    // Add escalation filter if requested
+    if (includeEscalatedOnly) {
+      matchCondition.customer_escalation = 'Yes';
+    }
+
     const pipeline = [
       {
-        $match: {
-          customer_name: customerName,
-          status: { $in: [2, 3, 4, 5] },
-        },
+        $match: matchCondition,
       },
       {
         $project: {
@@ -80,6 +100,9 @@ export const getIncidentsHandlingStatus = async (customerName) => {
 
     const aggregationResults = await collection.aggregate(pipeline).toArray();
 
+    // Calculate the end date for the current month (last day of the month)
+    const currentMonthEnd = new Date(reportYear, reportMonth + 1, 0);
+
     aggregationResults.forEach((item) => {
       if (!item.created_at || typeof item.status !== "number") return;
 
@@ -89,7 +112,7 @@ export const getIncidentsHandlingStatus = async (customerName) => {
       const statusLabel = statusMap[item.status];
       if (!statusLabel) return;
 
-      if (createdDate >= currentMonthStart && createdDate <= now) {
+      if (createdDate >= currentMonthStart && createdDate <= currentMonthEnd) {
         result.months[0].statuses[statusLabel]++;
       } else if (
         createdDate >= previousMonthStart &&
@@ -111,4 +134,9 @@ export const getIncidentsHandlingStatus = async (customerName) => {
       "Error fetching incident handling status data: " + error.message
     );
   }
+};
+
+// Export a wrapper function for escalated incidents
+export const getIncidentsHandlingStatusEscalation = async (customerName, isReport = false) => {
+  return getIncidentsHandlingStatus(customerName, true, isReport);
 };
