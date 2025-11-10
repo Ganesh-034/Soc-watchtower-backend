@@ -1,6 +1,6 @@
 import Incident from "../models/incident.model.js";
 
-export const getIncidentsSubStatus = async (month, customerName) => {
+export const getIncidentsSubStatus = async (month, customerName, includeEscalatedOnly = false) => {
   try {
     if (!month || !customerName) {
       throw new Error(
@@ -9,6 +9,17 @@ export const getIncidentsSubStatus = async (month, customerName) => {
     }
 
     const collection = Incident.collection;
+    
+    // Build the match condition dynamically
+    const matchCondition = {
+      month: month,
+      customer_name: customerName,
+    };
+
+    // Add escalation filter if requested
+    if (includeEscalatedOnly) {
+      matchCondition.customer_escalation = 'Yes';
+    }
 
     const pipeline = [
       {
@@ -22,10 +33,7 @@ export const getIncidentsSubStatus = async (month, customerName) => {
         },
       },
       {
-        $match: {
-          month: month,
-          customer_name: customerName,
-        },
+        $match: matchCondition,
       },
       {
         $group: {
@@ -66,4 +74,9 @@ export const getIncidentsSubStatus = async (month, customerName) => {
       "Error fetching incident sub-status data: " + error.message
     );
   }
+};
+
+// Export a wrapper function for escalated incidents
+export const getIncidentsSubStatusEscalation = async (month, customerName) => {
+  return getIncidentsSubStatus(month, customerName, true);
 };

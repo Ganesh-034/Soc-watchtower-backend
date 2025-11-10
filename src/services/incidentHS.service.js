@@ -1,6 +1,6 @@
 import Incident from "../models/incident.model.js";
 
-export const getIncidentsHandlingStatus = async (customerName) => {
+export const getIncidentsHandlingStatus = async (customerName, includeEscalatedOnly = false) => {
   try {
     if (!customerName) {
       throw new Error(
@@ -63,12 +63,20 @@ export const getIncidentsHandlingStatus = async (customerName) => {
       5: "Closed",
     };
 
+    // Build the match condition dynamically
+    const matchCondition = {
+      customer_name: customerName,
+      status: { $in: [2, 3, 4, 5] },
+    };
+
+    // Add escalation filter if requested
+    if (includeEscalatedOnly) {
+      matchCondition.customer_escalation = 'Yes';
+    }
+
     const pipeline = [
       {
-        $match: {
-          customer_name: customerName,
-          status: { $in: [2, 3, 4, 5] },
-        },
+        $match: matchCondition,
       },
       {
         $project: {
@@ -111,4 +119,9 @@ export const getIncidentsHandlingStatus = async (customerName) => {
       "Error fetching incident handling status data: " + error.message
     );
   }
+};
+
+// Export a wrapper function for escalated incidents
+export const getIncidentsHandlingStatusEscalation = async (customerName) => {
+  return getIncidentsHandlingStatus(customerName, true);
 };

@@ -12,7 +12,7 @@ export const connectDB = async () => {
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      dbName: process.env.MONGODB_DB_NAME, // Explicitly set the database name
+      dbName: process.env.MONGODB_DB_NAME, 
     });
 
     logger.info(`MongoDB Connected: ${conn.connection.host}`);
