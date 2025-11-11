@@ -78,25 +78,25 @@
         font-size: 14px;
       }
 
-      .grid-row {
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: stretch;
-        gap: 20px;
-        margin-bottom: 25px;
-        page-break-inside: avoid;
-      }
+.grid-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 16px; /* Reduced from 24px to allow more width for charts */
+  margin-bottom: 30px;
+  page-break-inside: avoid;
+}
 
-      .grid-cell {
-        flex: 1 1 48%;
-        background: #fff;
-        border-radius: 6px;
-        padding: 10px;
-        box-sizing: border-box;
-        page-break-inside: avoid;
-        overflow: visible;
-      }
+.grid-cell {
+  flex: 1 1 68%; /* Increased from 58% to 68% for wider charts */
+  background: #fff;
+  border-radius: 6px;
+  padding: 12px;
+  box-sizing: border-box;
+  page-break-inside: avoid;
+  overflow: visible;
+}
 
       .chart-title {
         font-size: 18px;
@@ -108,7 +108,7 @@
 
       .chart-container {
         position: relative;
-        height: 300px;
+        height: 360px; /* Increased from 300px (20% increase) */
         width: 100%;
         page-break-inside: avoid;
         overflow: visible;
@@ -159,21 +159,25 @@
           background: white !important;
         }
 
-        .grid-row {
-          flex-direction: row;
-          flex-wrap: nowrap;
-        }
+@media print {
+  .grid-row {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 16px; /* Reduced from 24px to allow more width for charts */
+    margin-bottom: 18px;
+  }
 
-        .grid-cell {
-          flex: 1 1 48%;
-          width: 48%;
-          margin: 0 1%;
-          page-break-inside: avoid;
-          overflow: visible;
-        }
+  .grid-cell {
+    flex: 1 1 68%; /* Increased from 58% to 68% for wider charts */
+    width: 68%; /* Increased from 58% to 68% for wider charts */
+    margin: 0 1%;
+    page-break-inside: avoid;
+    overflow: visible;
+  }
+}
 
         .chart-container {
-          height: 250px;
+          height: 300px; /* Increased from 250px (20% increase) */
           overflow: visible;
         }
 
@@ -238,10 +242,6 @@
 
         .chart-title {
           page-break-after: avoid;
-        }
-
-        .grid-row {
-          margin-bottom: 15px;
         }
 
         .table-container {
@@ -354,7 +354,7 @@
                   // ✅ ENSURE WE ALWAYS HAVE DETECTION SOURCES FOR THE TABLE
                   const tableDetectionSources = (detectionSources && detectionSources.length > 0) 
                     ? detectionSources 
-                    : ['Active Directory', 'MDE', 'Entra ID', 'Firewall'];
+                    : ['Active Directory', 'MDE', 'Entra ID', 'Firewall', 'O365'];
                   %>
                   <% tableDetectionSources.forEach(function(source) { %>
                   <th><%= source %></th>
@@ -532,7 +532,7 @@
 
     <!-- ✅ NEW: Default detection sources for when no data is available -->
     <script type="application/json" id="defaultDetectionSources">
-      <%- JSON.stringify(['Active Directory', 'MDE', 'Entra ID', 'Firewall']) %>
+      <%- JSON.stringify(['Active Directory', 'MDE', 'Entra ID', 'Firewall','O365']) %>
     </script>
 
     <!-- ✅ NEW: Default sub-status categories for when no data is available -->
@@ -880,7 +880,7 @@
           
           // If no data, use default sources with zero values
           if (!labels || !labels.length || !data || !data.high) {
-            labels = defaultDetectionSources || ['Active Directory', 'MDE', 'Entra ID', 'Firewall'];
+            labels = defaultDetectionSources || ['Active Directory', 'MDE', 'Entra ID', 'Firewall','O365'];
             data = {
               high: new Array(labels.length).fill(0),
               medium: new Array(labels.length).fill(0),
@@ -1054,54 +1054,44 @@
           });
         }
 
-        // ✅ FIXED: Incident by Sub Status Chart - Using default styling like other charts
-       // ✅ FIXED: Incident by Sub Status Chart - No overlapping labels
-const subStatusCtx = document.getElementById("subStatusChart");
+       const subStatusCtx = document.getElementById("subStatusChart");
 
 if (subStatusCtx) {
-  // Define all possible substatus categories with their exact colors
   const allSubStatuses = [
-    { label: "SOC Investigating", color: "#66b2ff" },
-    { label: "Tuning", color: "#ffdd57" },
-    { label: "Awaiting Customer Response", color: "#e6ad57" },
-    { label: "False Positive", color: "#70db70" },
-    { label: "True Positive", color: "#f08080" }
+    { label: "SOC Investigating", color: "#66b2ff", statusType: "In Progress" },
+    { label: "Tuning", color: "#ffdd57", statusType: "In Progress" },
+    { label: "Awaiting Customer Response", color: "#e6ad57", statusType: "In Progress" },
+    { label: "False Positive", color: "#70db70", statusType: "Resolved" },
+    { label: "True Positive", color: "#f08080", statusType: "Resolved" }
   ];
 
-  // Get the actual labels from data
   let labels = subStatusChartLabels;
   let data = subStatusChartData;
 
-  // If no data, use default categories with zero values
   if (!labels || !labels.length || !data || !data.length) {
     labels = defaultSubStatusCategories || [
-      'SOC Investigating',
-      'Tuning',
-      'Awaiting Customer Response',
-      'False Positive',
-      'True Positive'
+      "SOC Investigating",
+      "Tuning",
+      "Awaiting Customer Response",
+      "False Positive",
+      "True Positive"
     ];
     data = new Array(labels.length).fill(0);
   }
 
-  // Match each label to its defined color
   const colors = labels.map(label => {
     const status = allSubStatuses.find(s => s.label === label);
     return status ? status.color : "#556ee6";
   });
 
-  console.log("📊 Creating sub-status chart with labels:", labels);
-  console.log("📊 Creating sub-status chart with data:", data);
-  console.log("📊 Creating sub-status chart with colors:", colors);
-
-  const subStatusChart = new Chart(subStatusCtx.getContext("2d"), {
+ const subStatusChart = new Chart(subStatusCtx.getContext("2d"), {
     type: "bar",
     data: {
-      labels: labels, // ✅ Keep real x-axis labels
+      labels,
       datasets: [
         {
           label: "Incidents",
-          data: data,
+          data,
           backgroundColor: colors,
           barPercentage: 0.6,
           categoryPercentage: 0.7
@@ -1112,98 +1102,84 @@ if (subStatusCtx) {
       responsive: true,
       maintainAspectRatio: false,
       animation: { duration: 0 },
-      layout: { padding: { top: 20 } },
       plugins: {
         datalabels: { display: false },
-
-        // ✅ Custom legend that matches each color/label
-       legend: {
-  display: true,
-  position: 'bottom',
-  labels: {
-    padding: 15,
-    generateLabels: function(chart) {
-      const data = chart.data;
-      if (data.labels.length && data.datasets.length) {
-        return data.labels.map((label, i) => ({
-          text: label,
-          fillStyle: data.datasets[0].backgroundColor[i],
-          strokeStyle: data.datasets[0].backgroundColor[i],
-          lineWidth: 0,
-           fontColor: '#666666' // ✅ apply text color
-        }));
-      }
-      return [];
-    }
-  }
-}, tooltip: {
-          callbacks: {
-            label: function(context) {
-              return context.label + ": " + context.raw + " incidents";
+        legend: {
+          display: true,
+          position: "bottom",
+          width: 500, // Allow legend to take more width
+          marginTop:10, 
+          labels: {
+            padding: 10, // Increased padding for more space
+            generateLabels: chart => {
+              const data = chart.data;
+              if (data.labels.length && data.datasets.length) {
+                return data.labels.map((label, i) => ({
+                  text: `${allSubStatuses.find(s => s.label === label)?.statusType || ""} ${label}`,
+                  fillStyle: data.datasets[0].backgroundColor[i],
+                  strokeStyle: data.datasets[0].backgroundColor[i],
+                  lineWidth: 0,
+                  fontColor: "#666666"
+                }));
+              }
+              return [];
             }
           }
         },
-
-        // Draw value labels above bars
-        afterDatasetsDraw: function(chart) {
+        tooltip: {
+          callbacks: {
+            label: context => {
+              const status = allSubStatuses.find(s => s.label === context.label);
+              const statusType = status ? status.statusType : "";
+              return `${statusType} ${context.label}: ${context.raw} incidents`;
+            }
+          }
+        },
+        afterDatasetsDraw(chart) {
           const ctx = chart.ctx;
           ctx.save();
-
-          chart.data.datasets.forEach(function(dataset) {
+          chart.data.datasets.forEach(dataset => {
             const meta = chart.getDatasetMeta(0);
             if (!meta.hidden) {
-              meta.data.forEach(function(element, index) {
+              meta.data.forEach((element, index) => {
                 const value = dataset.data[index];
                 if (value > 0) {
-                  ctx.fillStyle = '#304758';
+                  ctx.fillStyle = "#304758";
                   ctx.font = '500 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
-                  ctx.textAlign = 'center';
-                  ctx.textBaseline = 'bottom';
-
-                  const barTopY = element.y;
-                  const barCenterX = element.x;
-
-                  ctx.fillText(value, barCenterX, barTopY - 6);
+                  ctx.textAlign = "center";
+                  ctx.textBaseline = "bottom";
+                  ctx.fillText(value, element.x, element.y - 6);
                 }
               });
             }
           });
-
           ctx.restore();
         }
       },
-
       scales: {
         y: {
           beginAtZero: true,
-          title: { display: true, text: 'Incident Count' },
+          title: { display: true, text: "Incident Count" },
           ticks: {
             padding: 10,
             stepSize: 1,
-            callback: function(value) {
+            callback(value) {
               if (Math.floor(value) === value) return value;
-            }
-          },
-          afterBuildTicks: function(scale) {
-            if (scale.ticks.length > 0) {
-              const maxTick = Math.max(...scale.ticks.map(t => t.value));
-              scale.ticks.push({ value: maxTick + 1, label: '' });
             }
           }
         },
         x: {
           ticks: {
-            callback: function(value, index, values) {
+            callback(value) {
               const label = this.getLabelForValue(value);
               if (label.length > 12) {
-                const words = label.split(' ');
+                const words = label.split(" ");
                 let lines = [];
                 let currentLine = words[0];
-
                 for (let i = 1; i < words.length; i++) {
                   const word = words[i];
-                  if ((currentLine + ' ' + word).length <= 12) {
-                    currentLine += ' ' + word;
+                  if ((currentLine + " " + word).length <= 12) {
+                    currentLine += " " + word;
                   } else {
                     lines.push(currentLine);
                     currentLine = word;
@@ -1217,8 +1193,90 @@ if (subStatusCtx) {
           }
         }
       }
-    }
+    },
+
+    // ✅ Plugin for group labels + dividers
+    plugins: [
+      {
+        id: "groupLabelsWithDividers",
+        afterDraw(chart) {
+          const { ctx, chartArea, scales } = chart;
+          const xAxis = scales.x;
+          const bottomY = chartArea.bottom;
+
+          const groups = [];
+          const inProgressIndices = labels
+            .map((label, i) => ({ label, i }))
+            .filter(item => allSubStatuses.find(s => s.label === item.label)?.statusType === "In Progress")
+            .map(item => item.i);
+
+          const resolvedIndices = labels
+            .map((label, i) => ({ label, i }))
+            .filter(item => allSubStatuses.find(s => s.label === item.label)?.statusType === "Resolved")
+            .map(item => item.i);
+
+          if (inProgressIndices.length)
+            groups.push({
+              label: "In Progress",
+              start: inProgressIndices[0],
+              end: inProgressIndices[inProgressIndices.length - 1]
+            });
+
+          if (resolvedIndices.length)
+            groups.push({
+              label: "Resolved",
+              start: resolvedIndices[0],
+              end: resolvedIndices[resolvedIndices.length - 1]
+            });
+
+          ctx.save();
+          ctx.font = '12px';
+          ctx.fillStyle = "#666666";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "top";
+
+          const labelOffsetY = 70; // ⬆️ Moved further down (from 50 to 70)
+          const lineTop = bottomY + 10;
+          const lineBottom = bottomY + 68; // ⬆️ Taller lines
+
+          groups.forEach((g, idx) => {
+            const barWidth = xAxis.width / labels.length;
+            const startX = xAxis.getPixelForValue(g.start) - barWidth / 2;
+            const endX = xAxis.getPixelForValue(g.end) + barWidth / 2;
+            const midX = (startX + endX) / 2;
+
+            // Draw left divider
+            ctx.strokeStyle = "#666666";
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            ctx.moveTo(startX, lineTop);
+            ctx.lineTo(startX, lineBottom);
+            ctx.stroke();
+
+            // Draw right divider
+            ctx.beginPath();
+            ctx.moveTo(endX, lineTop);
+            ctx.lineTo(endX, lineBottom);
+            ctx.stroke();
+
+            // Draw bottom label
+            ctx.fillText(g.label, midX, bottomY + labelOffsetY);
+          });
+
+          // Outer border lines (start & end of x-axis)
+          ctx.beginPath();
+          ctx.moveTo(chartArea.left, lineTop);
+          ctx.lineTo(chartArea.left, lineBottom);
+          ctx.moveTo(chartArea.right, lineTop);
+          ctx.lineTo(chartArea.right, lineBottom);
+          ctx.stroke();
+
+          ctx.restore();
+        }
+      }
+    ]
   });
+
 }
 }
 
