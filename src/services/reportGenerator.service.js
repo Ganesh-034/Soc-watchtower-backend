@@ -408,7 +408,7 @@ async function generateMonthlyReportForCustomer(
       `📊 Handling Status Table data: ${JSON.stringify(incidentHandlingStatusData, null, 2)}`
     );
 
-    // Process sub-status data for the chart - UPDATED to match React component
+    // Process sub-status data for the chart - UPDATED to match requirements
     const subStatusData = incidentSSResponse.substatus || [];
 
     // Filter out null values from the substatus data
@@ -422,53 +422,67 @@ async function generateMonthlyReportForCustomer(
       subStatusChartData = [0]; // Simple array
       subStatusColors = ["#556ee6"]; // Default blue
     } else {
-      // Format the data for the chart - exactly like the React component
+      // Define the color mapping according to requirements
+      const colorMap = {
+        "SOC Investigating": "#0066ff", // blue
+        "Tuning": "#ffcc00", // yellow
+        "Awaiting Customer Response": "#ff8c00", // orange
+        "False Positive": "#00cc00", // green
+        "True Positive": "#ff0000", // red
+      };
+      
+      // Format the data for the chart
       const formattedData = filteredSubstatus.map((item) => {
         const status = item._id;
-        let type = "In Progress";
-        let color = "#f1b44c"; // Default yellow for In Progress
-
-        if (status === "True Positive") {
-          type = "Resolved";
-          color = "#70db70"; // Green for Resolved
-        } else if (status === "False Positive") {
-          type = "Closed";
-          color = "#66b2ff"; // Blue for Closed
-        }
-
+        // Use the color from our mapping, or a default color if not found
+        const color = colorMap[status] || "#556ee6"; // Default blue
+        
         return {
           status,
           count: item.count,
-          type,
           color,
         };
       });
 
-      // Sort data to group by status type (In Progress first, then Resolved, then Closed)
+      // Sort data to match the desired order
+      const desiredOrder = [
+        "SOC Investigating",
+        "Tuning", 
+        "Awaiting Customer Response",
+        "False Positive",
+        "True Positive"
+      ];
+      
       formattedData.sort((a, b) => {
-        const typeOrder = { "In Progress": 0, Resolved: 1, Closed: 2 };
-        if (a.type === b.type) return b.count - a.count;
-        return typeOrder[a.type] - typeOrder[b.type];
+        const aIndex = desiredOrder.indexOf(a.status);
+        const bIndex = desiredOrder.indexOf(b.status);
+        
+        // If both statuses are in our desired order, sort by that order
+        if (aIndex !== -1 && bIndex !== -1) {
+          return aIndex - bIndex;
+        }
+        
+        // If only one is in our desired order, prioritize it
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+        
+        // If neither is in our desired order, sort alphabetically
+        return a.status.localeCompare(b.status);
       });
 
-      // Extract categories, counts, and colors - exactly like the React component
+      // Extract categories, counts, and colors
       subStatusChartLabels = formattedData.map((item) => item.status);
       subStatusChartData = formattedData.map((item) => item.count); // Simple array of counts
       subStatusColors = formattedData.map((item) => item.color);
 
       // Log the counts for each status type
-      const resolvedCount = formattedData
-        .filter((item) => item.type === "Resolved")
-        .reduce((sum, item) => sum + item.count, 0);
-      const inProgressCount = formattedData
-        .filter((item) => item.type === "In Progress")
-        .reduce((sum, item) => sum + item.count, 0);
-      const closedCount = formattedData
-        .filter((item) => item.type === "Closed")
-        .reduce((sum, item) => sum + item.count, 0);
-
+      const countsByStatus = {};
+      formattedData.forEach(item => {
+        countsByStatus[item.status] = item.count;
+      });
+      
       logger.info(
-        `📊 Sub-status counts - Resolved: ${resolvedCount}, In Progress: ${inProgressCount}, Closed: ${closedCount}`
+        `📊 Sub-status counts: ${JSON.stringify(countsByStatus)}`
       );
     }
 
@@ -527,6 +541,15 @@ async function generateMonthlyReportForCustomer(
     // END: FETCH REAL TICKET DATA
     // ========================================================================
 
+    // Define the legend data for substatus chart
+    const subStatusLegend = [
+      { label: "SOC Investigating", color: "#0066ff" },
+      { label: "Tuning", color: "#ffcc00" },
+      { label: "Awaiting Customer Response", color: "#ff8c00" },
+      { label: "False Positive", color: "#00cc00" },
+      { label: "True Positive", color: "#ff0000" }
+    ];
+
     // Mock data for the rest of the report (you can replace these with real data later)
     const data = {
       reportMonth,
@@ -559,6 +582,7 @@ async function generateMonthlyReportForCustomer(
       subStatusChartLabels,
       subStatusChartData,
       subStatusColors, // Add colors for sub-status chart
+      subStatusLegend, // Add legend data for sub-status chart
       incidentSubStatusData,
 
       // ✅ UPDATED: Real Incident Tickets Data
@@ -1066,7 +1090,7 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
       `📊 Handling Status Table data: ${JSON.stringify(incidentHandlingStatusData, null, 2)}`
     );
 
-    // Process sub-status data for the chart - UPDATED to match React component
+    // Process sub-status data for the chart - UPDATED to match requirements
     const subStatusData = incidentSSResponse.substatus || [];
 
     // Filter out null values from the substatus data
@@ -1080,53 +1104,67 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
       subStatusChartData = [0]; // Simple array
       subStatusColors = ["#556ee6"]; // Default blue
     } else {
-      // Format the data for the chart - exactly like the React component
+      // Define the color mapping according to requirements
+      const colorMap = {
+        "SOC Investigating": "#0066ff", // blue
+        "Tuning": "#ffcc00", // yellow
+        "Awaiting Customer Response": "#ff8c00", // orange
+        "False Positive": "#00cc00", // green
+        "True Positive": "#ff0000", // red
+      };
+      
+      // Format the data for the chart
       const formattedData = filteredSubstatus.map((item) => {
         const status = item._id;
-        let type = "In Progress";
-        let color = "#f1b44c"; // Default yellow for In Progress
-
-        if (status === "True Positive") {
-          type = "Resolved";
-          color = "#70db70"; // Green for Resolved
-        } else if (status === "False Positive") {
-          type = "Closed";
-          color = "#66b2ff"; // Blue for Closed
-        }
-
+        // Use the color from our mapping, or a default color if not found
+        const color = colorMap[status] || "#556ee6"; // Default blue
+        
         return {
           status,
           count: item.count,
-          type,
           color,
         };
       });
 
-      // Sort data to group by status type (In Progress first, then Resolved, then Closed)
+      // Sort data to match the desired order
+      const desiredOrder = [
+        "SOC Investigating",
+        "Tuning", 
+        "Awaiting Customer Response",
+        "False Positive",
+        "True Positive"
+      ];
+      
       formattedData.sort((a, b) => {
-        const typeOrder = { "In Progress": 0, Resolved: 1, Closed: 2 };
-        if (a.type === b.type) return b.count - a.count;
-        return typeOrder[a.type] - typeOrder[b.type];
+        const aIndex = desiredOrder.indexOf(a.status);
+        const bIndex = desiredOrder.indexOf(b.status);
+        
+        // If both statuses are in our desired order, sort by that order
+        if (aIndex !== -1 && bIndex !== -1) {
+          return aIndex - bIndex;
+        }
+        
+        // If only one is in our desired order, prioritize it
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+        
+        // If neither is in our desired order, sort alphabetically
+        return a.status.localeCompare(b.status);
       });
 
-      // Extract categories, counts, and colors - exactly like the React component
+      // Extract categories, counts, and colors
       subStatusChartLabels = formattedData.map((item) => item.status);
       subStatusChartData = formattedData.map((item) => item.count); // Simple array of counts
       subStatusColors = formattedData.map((item) => item.color);
 
       // Log the counts for each status type
-      const resolvedCount = formattedData
-        .filter((item) => item.type === "Resolved")
-        .reduce((sum, item) => sum + item.count, 0);
-      const inProgressCount = formattedData
-        .filter((item) => item.type === "In Progress")
-        .reduce((sum, item) => sum + item.count, 0);
-      const closedCount = formattedData
-        .filter((item) => item.type === "Closed")
-        .reduce((sum, item) => sum + item.count, 0);
-
+      const countsByStatus = {};
+      formattedData.forEach(item => {
+        countsByStatus[item.status] = item.count;
+      });
+      
       logger.info(
-        `📊 Sub-status counts - Resolved: ${resolvedCount}, In Progress: ${inProgressCount}, Closed: ${closedCount}`
+        `📊 Sub-status counts: ${JSON.stringify(countsByStatus)}`
       );
     }
 
@@ -1177,6 +1215,15 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
     // END: FETCH REAL TICKET DATA
     // ========================================================================
 
+    // Define the legend data for substatus chart
+    const subStatusLegend = [
+      { label: "SOC Investigating", color: "#0066ff" },
+      { label: "Tuning", color: "#ffcc00" },
+      { label: "Awaiting Customer Response", color: "#ff8c00" },
+      { label: "False Positive", color: "#00cc00" },
+      { label: "True Positive", color: "#ff0000" }
+    ];
+
     // Return the data object
     return {
       reportMonth,
@@ -1209,6 +1256,7 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
       subStatusChartLabels,
       subStatusChartData,
       subStatusColors, // Add colors for sub-status chart
+      subStatusLegend, // Add legend data for sub-status chart
       incidentSubStatusData,
 
       // ✅ UPDATED: Real Incident Tickets Data
