@@ -1,6 +1,6 @@
 import Incident from "../models/incident.model.js";
 
-export const getIncidentSeverity = async (customerName, includeEscalatedOnly = false) => {
+export const getIncidentSeverity = async (customerName, includeEscalatedOnly = false, isReport = false) => {
   try {
     if (!customerName) {
       throw new Error(
@@ -14,11 +14,23 @@ export const getIncidentSeverity = async (customerName, includeEscalatedOnly = f
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
-    const currentMonthStart = new Date(currentYear, currentMonth, 1);
-    const previousMonthStart = new Date(currentYear, currentMonth - 1, 1);
-    const twoMonthsAgoStart = new Date(currentYear, currentMonth - 2, 1);
+    let reportMonth, reportYear;
+    
+    if (isReport) {
+      // For reports, use the previous month (the month the report is about)
+      reportMonth = currentMonth - 1;
+      reportYear = reportMonth < 0 ? currentYear - 1 : currentYear;
+    } else {
+      // For dashboard, use the current month
+      reportMonth = currentMonth;
+      reportYear = currentYear;
+    }
 
-    const currentMonthId = `${currentYear}-${(currentMonth + 1).toString().padStart(2, "0")}`;
+    const currentMonthStart = new Date(reportYear, reportMonth, 1);
+    const previousMonthStart = new Date(reportYear, reportMonth - 1, 1);
+    const twoMonthsAgoStart = new Date(reportYear, reportMonth - 2, 1);
+
+    const currentMonthId = `${reportYear}-${(reportMonth + 1).toString().padStart(2, "0")}`;
     const previousMonthId = `${previousMonthStart.getFullYear()}-${(previousMonthStart.getMonth() + 1).toString().padStart(2, "0")}`;
     const twoMonthsAgoId = `${twoMonthsAgoStart.getFullYear()}-${(twoMonthsAgoStart.getMonth() + 1).toString().padStart(2, "0")}`;
 
@@ -81,6 +93,9 @@ export const getIncidentSeverity = async (customerName, includeEscalatedOnly = f
       total: { low: 0, medium: 0, high: 0 },
     };
 
+    // Calculate the end date for the current month (last day of the month)
+    const currentMonthEnd = new Date(reportYear, reportMonth + 1, 0);
+
     aggregationResults.forEach((item) => {
       if (!item.created_at || !item.priority) return;
 
@@ -114,7 +129,7 @@ export const getIncidentSeverity = async (customerName, includeEscalatedOnly = f
         return;
       }
 
-      if (createdDate >= currentMonthStart && createdDate <= now) {
+      if (createdDate >= currentMonthStart && createdDate <= currentMonthEnd) {
         result.months[0].priorities[priorityKey]++;
         result.total[priorityKey]++;
       } else if (
@@ -140,6 +155,7 @@ export const getIncidentSeverity = async (customerName, includeEscalatedOnly = f
 };
 
 // Export a wrapper function for escalated incidents if you want to keep the original API
-export const getIncidentSeverityEscalation = async (customerName) => {
-  return getIncidentSeverity(customerName, true);
+export const getIncidentSeverityEscalation = async (customerName, isReport = false) => {
+  return getIncidentSeverity(customerName, true, isReport);
 };
+

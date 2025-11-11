@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TTS-GSOC Monthly Report</title>
+    <title><%= customerDisplayName %> Monthly Report</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -12,19 +12,19 @@
     <style>
       body {
         font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #ffffff; /* ✅ pure white background */
+        background-color: #ffffff;
         padding: 20px;
         color: #333;
       }
 
       .report-container {
         width: 100%;
-        max-width: 1800px; /* ✅ Wide layout for landscape */
+        max-width: 1800px;
         margin: 0 auto;
         background-color: white;
         padding: 30px;
         border-radius: 8px;
-        box-shadow: none; /* ✅ Removed gray shadow border */
+        box-shadow: none;
         overflow: visible;
       }
 
@@ -57,7 +57,6 @@
         page-break-inside: avoid;
       }
 
-      /* New style for date range and summary */
       .date-range-summary {
         background-color: #f0f7ff;
         border-left: 4px solid #5c9eff;
@@ -79,7 +78,6 @@
         font-size: 14px;
       }
 
-      /* ✅ Two-chart layout, side-by-side, no clipping */
       .grid-row {
         display: flex;
         flex-direction: row;
@@ -120,7 +118,6 @@
         margin-top: 20px;
         margin-bottom: 30px;
         overflow-x: auto;
-        page-break-inside: avoid;
       }
 
       .table {
@@ -134,7 +131,6 @@
         border: 1px solid #ddd;
         padding: 8px 10px;
         text-align: center;
-        /* Changed from nowrap to allow word wrapping */
         white-space: normal;
         word-wrap: break-word;
         max-width: 200px;
@@ -145,14 +141,6 @@
         color: white;
       }
 
-      .footer {
-        margin-top: 40px;
-        text-align: center;
-        font-size: 12px;
-        color: #777;
-      }
-
-      /* ✅ Print rules (A4 Landscape, no cutoff, no gray border) */
       @media print {
         html,
         body {
@@ -166,7 +154,7 @@
         .report-container {
           box-shadow: none !important;
           margin: 0;
-          padding: 15mm; /* Reduced padding to fit more content */
+          padding: 15mm;
           overflow: visible;
           background: white !important;
         }
@@ -185,44 +173,96 @@
         }
 
         .chart-container {
-          height: 250px; /* Slightly reduced height */
+          height: 250px;
           overflow: visible;
         }
 
-        .summary-box,
-        .table-container,
-        .date-range-summary {
-          page-break-inside: avoid;
-        }
-
-        /* Table adjustments for print */
         .table {
-          font-size: 12px; /* Slightly smaller font for tables */
+          font-size: 11px;
+          table-layout: fixed;
         }
 
         .table th,
         .table td {
-          padding: 6px 8px; /* Reduced padding */
+          padding: 4px 6px;
           white-space: normal;
           word-wrap: break-word;
-          max-width: 150px; /* Adjusted max width for print */
+          max-width: 150px;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
-        /* Ensure section titles don't get separated from their content */
+        .table thead {
+          display: table-header-group;
+        }
+
+        .table tfoot {
+          display: table-footer-group;
+        }
+
+        .table tr {
+          page-break-inside: avoid;
+          page-break-after: auto;
+        }
+
+        .table td {
+          page-break-inside: avoid;
+          vertical-align: top;
+        }
+
         .section-title {
           page-break-after: avoid;
           page-break-inside: avoid;
+          margin-top: 20px;
+          margin-bottom: 10px;
         }
 
-        /* Page break handling */
+        .summary-box,
+        .date-range-summary {
+          page-break-inside: avoid;
+        }
+
+        .table-container {
+          page-break-inside: auto;
+          orphans: 4;
+          widows: 4;
+        }
+
         .page-break {
           page-break-before: always;
         }
 
-        /* Ensure chart titles stay with their charts */
+        .no-page-break {
+          page-break-inside: avoid;
+        }
+
         .chart-title {
           page-break-after: avoid;
         }
+
+        .grid-row {
+          margin-bottom: 15px;
+        }
+
+        .table-container {
+          margin-top: 10px;
+          margin-bottom: 15px;
+        }
+      }
+
+      .footer {
+        margin-top: 40px;
+        text-align: center;
+        font-size: 12px;
+        color: #777;
+      }
+
+      .table-page-break {
+        page-break-after: always;
+      }
+
+      .no-break-after {
+        page-break-after: auto;
       }
     </style>
   </head>
@@ -230,7 +270,7 @@
     <div class="report-container">
       <!-- 1st row: Header -->
       <div class="header-title">
-        TTS-GSOC - Monthly Report of <%= reportMonth %>
+        <%= customerDisplayName %> - Monthly Report of <%= reportMonth %>
       </div>
 
       <!-- 2nd row: Executive Summary Title -->
@@ -239,14 +279,14 @@
       <!-- 3rd row: Executive Summary Box -->
       <div class="summary-box">
         <p>
-          This executive summary covers the security operations for <%=
+          This executive summary covers security operations for <%=
           reportMonth %>. The Global Security Operations Center has been
           actively monitoring and responding to security incidents across all
           affiliates. This month saw a total of 245 incidents, with 12 high
           severity incidents that required immediate attention. The majority of
           incidents were detected through our automated monitoring systems, with
-          a 15% increase in detection rate compared to the previous month. Our
-          team has successfully resolved 92% of all incidents within the SLA
+          a 15% increase in detection rate compared to previous month. Our
+          team has successfully resolved 92% of all incidents within SLA
           timeframe.
         </p>
       </div>
@@ -310,16 +350,32 @@
               <thead>
                 <tr>
                   <th>Affiliate</th>
-                  <% detectionSources.forEach(function(source) { %>
+                  <% 
+                  // ✅ ENSURE WE ALWAYS HAVE DETECTION SOURCES FOR THE TABLE
+                  const tableDetectionSources = (detectionSources && detectionSources.length > 0) 
+                    ? detectionSources 
+                    : ['Active Directory', 'MDE', 'Entra ID', 'Firewall'];
+                  %>
+                  <% tableDetectionSources.forEach(function(source) { %>
                   <th><%= source %></th>
                   <% }); %>
                 </tr>
               </thead>
               <tbody>
-                <% incidentDetectionData.forEach(function(item) { %>
+                <% 
+                // ✅ ENSURE TABLE DATA HAS ALL SOURCES WITH DEFAULT VALUES
+                const tableDetectionData = incidentDetectionData.map(function(item) {
+                  const newItem = { affiliate: item.affiliate };
+                  tableDetectionSources.forEach(function(source) {
+                    newItem[source] = item[source] || 0;
+                  });
+                  return newItem;
+                });
+                %>
+                <% tableDetectionData.forEach(function(item) { %>
                 <tr>
                   <td><%= item.affiliate %></td>
-                  <% detectionSources.forEach(function(source) { %>
+                  <% tableDetectionSources.forEach(function(source) { %>
                   <td><%= item[source] || 0 %></td>
                   <% }); %>
                 </tr>
@@ -362,13 +418,14 @@
 
       <!-- New: Date Range and Summary for Incident Tickets -->
       <div class="date-range-summary">
-        <div class="date-range">1 November 25-30 November 25</div>
+        <div class="date-range" id="incidentDateRange"></div>
         <div class="date-summary">During this period, our team handled <%- incidentTickets.length %> incident tickets with customer escalation.</div>
       </div>
-<% if (incidentTickets && incidentTickets.length > 0) { %>
+
+      <% if (incidentTickets && incidentTickets.length > 0) { %>
       <!-- 11th row: Incident Ticket Table -->
-      <div class="table-container">
-        <table class="table table-striped table-bordered">
+      <div class="table-container" id="incidentTableContainer">
+        <table class="table table-striped table-bordered" id="incidentTable">
           <thead>
             <tr>
               <th>Ticket ID</th>
@@ -397,21 +454,19 @@
       </div>
       <% } %>
 
-            <!-- 12th row: Analysis on Health Ticket Title -->
+      <!-- 12th row: Analysis on Health Ticket Title -->
       <div class="section-title">Analysis on Health Ticket</div>
 
       <!-- New: Date Range and Summary for Health Tickets -->
       <div class="date-range-summary">
-        <div class="date-range">1 November 25-30 November 25</div>
+        <div class="date-range" id="healthDateRange"></div>
         <div class="date-summary">System health monitoring identified <%- healthTickets.length %> health incidents with customer escalation.</div>
       </div>
 
-      <!-- ✅ UPDATED: Only show Health Ticket section if there are health tickets -->
       <% if (healthTickets && healthTickets.length > 0) { %>
-
       <!-- 13th row: Health Ticket Table -->
-      <div class="table-container">
-        <table class="table table-striped table-bordered">
+      <div class="table-container" id="healthTableContainer">
+        <table class="table table-striped table-bordered" id="healthTable">
           <thead>
             <tr>
               <th>Ticket ID</th>
@@ -442,7 +497,7 @@
 
       <!-- Footer -->
       <div class="footer">
-        Generated by SOC-WatchTower
+        © 2025 SOC-WatchTower. All Rights Reserved.
       </div>
     </div>
 
@@ -459,7 +514,6 @@
     <script type="application/json" id="detectionChartData">
       <%- JSON.stringify(detectionChartData) %>
     </script>
-    <!-- Fixed variable names to match what's used in the JavaScript -->
     <script type="application/json" id="handlingStatusChartLabels">
       <%- JSON.stringify(handlingStatusChartLabels) %>
     </script>
@@ -472,445 +526,725 @@
     <script type="application/json" id="subStatusChartData">
       <%- JSON.stringify(subStatusChartData) %>
     </script>
-    <!-- Add colors for sub-status chart -->
     <script type="application/json" id="subStatusColors">
       <%- JSON.stringify(subStatusColors) %>
     </script>
 
-<script>
-  // Function to safely parse JSON from script tags
-  function getChartData(elementId) {
-    try {
-      const element = document.getElementById(elementId);
-      if (element) {
-        const data = JSON.parse(element.textContent);
-        console.log(`📊 ${elementId} data:`, data);
-        return data;
+    <!-- ✅ NEW: Default detection sources for when no data is available -->
+    <script type="application/json" id="defaultDetectionSources">
+      <%- JSON.stringify(['Active Directory', 'MDE', 'Entra ID', 'Firewall']) %>
+    </script>
+
+    <!-- ✅ NEW: Default sub-status categories for when no data is available -->
+    <script type="application/json" id="defaultSubStatusCategories">
+      <%- JSON.stringify(['SOC Investigating', 'Tuning', 'Awaiting Customer Response', 'False Positive', 'True Positive']) %>
+    </script>
+
+    <script>
+      // ✅ PRODUCTION-READY TABLE PAGINATION HELPER
+      class TablePaginationHelper {
+        constructor() {
+          this.estimatedRowHeight = 25; // Estimated height of each row in mm
+          this.pageHeight = 297; // A4 height in mm
+          this.margins = 30; // Total margins in mm
+          this.availableHeight = this.pageHeight - this.margins;
+          this.minRowsOnPage = 5; // Minimum rows to keep with section header
+        }
+
+        // ✅ OPTIMIZE TABLE FOR PRINT
+        optimizeTableForPrint(tableId, containerId) {
+          const table = document.getElementById(tableId);
+          const container = document.getElementById(containerId);
+          
+          if (!table || !container) return;
+
+          const tbody = table.querySelector('tbody');
+          const rows = Array.from(tbody.querySelectorAll('tr'));
+          
+          if (rows.length <= 20) return; // Only process tables with more than 20 rows
+
+          // ✅ CREATE CLONE FOR MEASUREMENT
+          const clone = table.cloneNode(true);
+          clone.style.position = 'absolute';
+          clone.style.left = '-9999px';
+          clone.style.width = table.offsetWidth + 'px';
+          document.body.appendChild(clone);
+
+          // ✅ MEASURE ACTUAL ROW HEIGHT
+          const firstRow = clone.querySelector('tbody tr');
+          const actualRowHeight = firstRow ? firstRow.offsetHeight / 3.78 : this.estimatedRowHeight; // Convert px to mm
+
+          // ✅ CALCULATE OPTIMAL ROWS PER PAGE
+          const headerHeight = 15; // Estimated header height in mm
+          const footerHeight = 10; // Estimated footer height in mm
+          const availableForRows = this.availableHeight - headerHeight - footerHeight;
+          const maxRowsPerPage = Math.floor(availableForRows / actualRowHeight);
+
+          // ✅ CLEAN UP CLONE
+          document.body.removeChild(clone);
+
+          // ✅ SPLIT TABLE IF NEEDED
+          if (rows.length > maxRowsPerPage) {
+            this.splitTable(table, container, rows, maxRowsPerPage);
+          }
+        }
+
+        // ✅ SPLIT TABLE INTO MULTIPLE SECTIONS
+        splitTable(originalTable, container, rows, maxRowsPerPage) {
+          const thead = originalTable.querySelector('thead').cloneNode(true);
+          const fragment = document.createDocumentFragment();
+          let currentTable = null;
+          let currentTbody = null;
+          let rowCount = 0;
+
+          // ✅ CREATE NEW TABLE FOR EACH PAGE
+          const createNewTable = () => {
+            currentTable = originalTable.cloneNode(false);
+            currentTable.appendChild(thead.cloneNode(true));
+            currentTbody = document.createElement('tbody');
+            currentTable.appendChild(currentTbody);
+            
+            const newContainer = document.createElement('div');
+            newContainer.className = 'table-container';
+            newContainer.appendChild(currentTable);
+            fragment.appendChild(newContainer);
+            
+            rowCount = 0;
+          };
+
+          // ✅ PROCESS ROWS
+          rows.forEach((row, index) => {
+            if (rowCount === 0) {
+              createNewTable();
+            }
+            
+            currentTbody.appendChild(row.cloneNode(true));
+            rowCount++;
+
+            // ✅ CHECK IF WE NEED A NEW PAGE
+            if (rowCount >= maxRowsPerPage && index < rows.length - 1) {
+              // Add page break after this table
+              const currentContainer = fragment.lastElementChild;
+              currentContainer.classList.add('table-page-break');
+            }
+          });
+
+          // ✅ REMOVE LAST PAGE BREAK
+          if (fragment.lastElementChild) {
+            fragment.lastElementChild.classList.add('no-break-after');
+          }
+
+          // ✅ REPLACE ORIGINAL TABLE
+          container.innerHTML = '';
+          container.appendChild(fragment);
+        }
+
+        // ✅ OPTIMIZE ALL TABLES
+        optimizeAllTables() {
+          // Only run in print mode or when preparing for print
+          if (window.matchMedia) {
+            const mediaQueryList = window.matchMedia('print');
+            if (mediaQueryList.matches) {
+              this.processTables();
+            } else {
+              // Listen for print dialog
+              mediaQueryList.addListener((mql) => {
+                if (mql.matches) {
+                  this.processTables();
+                }
+              });
+            }
+          }
+        }
+
+        // ✅ PROCESS TABLES WITH DELAY
+        processTables() {
+          setTimeout(() => {
+            if (document.getElementById('incidentTable')) {
+              this.optimizeTableForPrint('incidentTable', 'incidentTableContainer');
+            }
+            if (document.getElementById('healthTable')) {
+              this.optimizeTableForPrint('healthTable', 'healthTableContainer');
+            }
+          }, 100);
+        }
       }
-      return null;
-    } catch (error) {
-      console.error("Error parsing chart data:", error);
-      return null;
-    }
-  }
 
-  // Get data from hidden script tags
-  const severityChartLabels = getChartData("severityChartLabels");
-  const severityChartData = getChartData("severityChartData");
-  const detectionChartLabels = getChartData("detectionChartLabels");
-  const detectionChartData = getChartData("detectionChartData");
-  // Fixed variable names to match the script tag IDs
-  const handlingStatusChartLabels = getChartData("handlingStatusChartLabels");
-  const handlingStatusChartData = getChartData("handlingStatusChartData");
-  const subStatusChartLabels = getChartData("subStatusChartLabels");
-  const subStatusChartData = getChartData("subStatusChartData");
-  const subStatusColors = getChartData("subStatusColors");
+      // ✅ INITIALIZE PAGINATION HELPER
+      const tableHelper = new TablePaginationHelper();
 
-  // Function to create charts
-  function createCharts() {
-    // Only create charts if data is available
-    if (!severityChartLabels || !severityChartData) {
-      console.error("Missing severity chart data");
-      return;
-    }
+      // Function to safely parse JSON from script tags
+      function getChartData(elementId) {
+        try {
+          const element = document.getElementById(elementId);
+          if (element) {
+            const data = JSON.parse(element.textContent);
+            console.log(`📊 ${elementId} data:`, data);
+            return data;
+          }
+          return null;
+        } catch (error) {
+          console.error("Error parsing chart data:", error);
+          return null;
+        }
+      }
 
-    console.log("📊 Creating severity chart with labels:", severityChartLabels);
-    console.log("📊 Creating severity chart with data:", severityChartData);
+      // Get data from hidden script tags
+      const severityChartLabels = getChartData("severityChartLabels");
+      const severityChartData = getChartData("severityChartData");
+      const detectionChartLabels = getChartData("detectionChartLabels");
+      const detectionChartData = getChartData("detectionChartData");
+      const handlingStatusChartLabels = getChartData("handlingStatusChartLabels");
+      const handlingStatusChartData = getChartData("handlingStatusChartData");
+      const subStatusChartLabels = getChartData("subStatusChartLabels");
+      const subStatusChartData = getChartData("subStatusChartData");
+      const subStatusColors = getChartData("subStatusColors");
+      const defaultDetectionSources = getChartData("defaultDetectionSources");
+      const defaultSubStatusCategories = getChartData("defaultSubStatusCategories");
 
-    // Custom plugin to draw data labels
-    const dataLabelsPlugin = {
-      id: 'dataLabels',
-      afterDatasetsDraw: function(chart) {
-        const ctx = chart.ctx;
-        ctx.save();
+      // ✅ NEW: Function to calculate and display dynamic date ranges
+      function updateDateRanges() {
+        const reportMonthText = "<%= reportMonth %>";
+        const dateParts = reportMonthText.split(' ');
+        const monthName = dateParts[0];
+        const year = parseInt(dateParts[1]);
         
-        chart.data.datasets.forEach(function(dataset, i) {
-          const meta = chart.getDatasetMeta(i);
-          if (!meta.hidden) {
-            meta.data.forEach(function(element, index) {
-              // Draw the data value on top of each bar
-              const data = dataset.data[index];
-                ctx.fillStyle = '#304758';
-                ctx.font = '500 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'bottom';
-                
-            const barTopY = element.y; // top of the bar
-const barCenterX = element.x; // center X position
+        const monthNames = ["January", "February", "March", "April", "May", "June",
+                            "July", "August", "September", "October", "November", "December"];
+        const month = monthNames.indexOf(monthName) + 1;
+        
+        const firstDay = new Date(year, month - 1, 1);
+        const lastDay = new Date(year, month, 0);
+        
+        const formatDate = (date) => {
+          const day = date.getDate();
+          const monthName = monthNames[date.getMonth()];
+          const shortYear = date.getFullYear().toString().slice(-2);
+          return `${day} ${monthName} ${shortYear}`;
+        };
+        
+        const dateRange = `${formatDate(firstDay)} - ${formatDate(lastDay)}`;
+        
+        const incidentDateRange = document.getElementById("incidentDateRange");
+        const healthDateRange = document.getElementById("healthDateRange");
+        
+        if (incidentDateRange) {
+          incidentDateRange.textContent = dateRange;
+        }
+        
+        if (healthDateRange) {
+          healthDateRange.textContent = dateRange;
+        }
+      }
 
-ctx.fillStyle = '#304758';
-ctx.font = '500 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
-ctx.textAlign = 'center';
-ctx.textBaseline = 'bottom';
+      // Function to create charts
+      function createCharts() {
+        if (!severityChartLabels || !severityChartData) {
+          console.error("Missing severity chart data");
+          return;
+        }
 
-// Always show the value, even for 0
-ctx.fillText(data, barCenterX, barTopY - 6);
+        console.log("📊 Creating severity chart with labels:", severityChartLabels);
+        console.log("📊 Creating severity chart with data:", severityChartData);
 
+        // Custom plugin to draw data labels
+        const dataLabelsPlugin = {
+          id: 'dataLabels',
+          afterDatasetsDraw: function(chart) {
+            const ctx = chart.ctx;
+            ctx.save();
+            
+            chart.data.datasets.forEach(function(dataset, i) {
+              const meta = chart.getDatasetMeta(i);
+              if (!meta.hidden) {
+                meta.data.forEach(function(element, index) {
+                  const data = dataset.data[index];
+                  ctx.fillStyle = '#304758';
+                  ctx.font = '500 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'bottom';
+                  
+                  const barTopY = element.y;
+                  const barCenterX = element.x;
+
+                  ctx.fillStyle = '#304758';
+                  ctx.font = '500 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'bottom';
+
+                  ctx.fillText(data, barCenterX, barTopY - 6);
+                });
+              }
             });
+            
+            ctx.restore();
           }
-        });
-        
-        ctx.restore();
-      }
-    };
+        };
 
-    // Register the plugin
-    Chart.register(dataLabelsPlugin);
+        Chart.register(dataLabelsPlugin);
 
-    // Incident by Severity Chart (Bar) - Updated to match frontend styling
-    const severityCtx = document.getElementById("severityChart");
-    if (severityCtx) {
-      const severityChart = new Chart(severityCtx.getContext("2d"), {
-        type: "bar",
-        data: {
-          labels: severityChartLabels,
-          datasets: [
-            {
-              label: "High",
-              data: severityChartData.high,
-              backgroundColor: "#f08080", // Red for High (matching frontend)
-              barPercentage: 0.6,
-              categoryPercentage: 0.7
+        // Incident by Severity Chart
+        const severityCtx = document.getElementById("severityChart");
+        if (severityCtx) {
+          const severityChart = new Chart(severityCtx.getContext("2d"), {
+            type: "bar",
+            data: {
+              labels: severityChartLabels,
+              datasets: [
+                {
+                  label: "High",
+                  data: severityChartData.high,
+                  backgroundColor: "#f08080",
+                  barPercentage: 0.6,
+                  categoryPercentage: 0.7
+                },
+                {
+                  label: "Medium",
+                  data: severityChartData.medium,
+                  backgroundColor: "#ffdd57",
+                  barPercentage: 0.6,
+                  categoryPercentage: 0.7
+                },
+                {
+                  label: "Low",
+                  data: severityChartData.low,
+                  backgroundColor: "#7DDA58",
+                  barPercentage: 0.6,
+                  categoryPercentage: 0.7
+                },
+              ],
             },
-            {
-              label: "Medium",
-              data: severityChartData.medium,
-              backgroundColor: "#ffdd57", // Yellow for Medium (matching frontend)
-              barPercentage: 0.6,
-              categoryPercentage: 0.7
-            },
-            {
-              label: "Low",
-              data: severityChartData.low,
-              backgroundColor: "#7DDA58", // Blue for Low (matching frontend)
-              barPercentage: 0.6,
-              categoryPercentage: 0.7
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: {
-            duration: 0 // Disable animation for PDF generation
-          },
-          layout: {
-            padding: {
-              top: 20 // Add padding at the top of the chart
-            }
-          },
-          plugins: {
-            legend: {
-              position: 'bottom', // Legend is already at the bottom
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return context.dataset.label + ': ' + context.raw + ' incidents';
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              stacked: false,
-            },
-            y: {
-              stacked: false,
-              beginAtZero: true,
-              title: {
-                display: true,
-                text: 'Incident Count'
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              animation: {
+                duration: 0
               },
-              ticks: {
-                padding: 10
+              layout: {
+                padding: {
+                  top: 20
+                }
               },
-              afterBuildTicks: function(scale) {
-                if (scale.ticks.length > 0) {
-                  const maxTick = Math.max(...scale.ticks.map(t => t.value));
-                  scale.ticks.push({value: maxTick + 1, label: ''});
-                }
-              }
-            }
-          }
-        },
-      });
-      
-      console.log("📊 Severity chart created:", severityChart);
-    }
-
-    // Incident by Detection Source Chart (Grouped Bar) - Updated to show separate bars for each priority
-    const detectionCtx = document.getElementById("detectionChart");
-    if (detectionCtx && detectionChartLabels && detectionChartData) {
-      new Chart(detectionCtx.getContext("2d"), {
-        type: "bar",
-        data: {
-          labels: detectionChartLabels,
-          datasets: [
-            {
-              label: "High",
-              data: detectionChartData.high,
-              backgroundColor: "#f08080", // Red for High
-              barPercentage: 0.7,
-              categoryPercentage: 0.8
-            },
-            {
-              label: "Medium",
-              data: detectionChartData.medium,
-              backgroundColor: "#ffdd57", // Yellow for Medium
-              barPercentage: 0.7,
-              categoryPercentage: 0.8
-            },
-            {
-              label: "Low",
-              data: detectionChartData.low,
-              backgroundColor: "#7DDA58", // Green for Low
-              barPercentage: 0.7,
-              categoryPercentage: 0.8
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: {
-            duration: 0 // Disable animation for PDF generation
-          },
-          layout: {
-            padding: {
-              top: 20
-            }
-          },
-          plugins: {
-            legend: {
-              position: 'bottom', // ✅ ADDED: Legend at the bottom
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return context.dataset.label + ': ' + context.raw + ' incidents';
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              stacked: false, // Changed to false for grouped bars
-            },
-            y: {
-              stacked: false, // Changed to false for grouped bars
-              beginAtZero: true,
-              title: {
-                display: true,
-                text: 'Incident Count'
-              },
-              ticks: {
-                padding: 10
-              },
-              afterBuildTicks: function(scale) {
-                if (scale.ticks.length > 0) {
-                  const maxTick = Math.max(...scale.ticks.map(t => t.value));
-                  scale.ticks.push({value: maxTick + 1, label: ''});
-                }
-              }
-            },
-          },
-        },
-      });
-    }
-    
-    // Incident by Handling Status Chart (Bar)
-    const handlingStatusCtx = document.getElementById("handlingStatusChart");
-    if (handlingStatusCtx && handlingStatusChartLabels && handlingStatusChartData) {
-      new Chart(handlingStatusCtx.getContext("2d"), {
-        type: "bar",
-        data: {
-          labels: handlingStatusChartLabels,
-          datasets: [
-        
-            {
-              label: "Pending",
-              data: handlingStatusChartData.pending,
-              backgroundColor: "#ffdd57",
-            },
-            {
-              label: "Resolved",
-              data: handlingStatusChartData.resolved,
-              backgroundColor: "#70db70",
-            },
-            {
-              label: "Closed",
-              data: handlingStatusChartData.closed,
-              backgroundColor: "#66b2ff",
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: {
-            duration: 0 // Disable animation for PDF generation
-          },
-          layout: {
-            padding: {
-              top: 20
-            }
-          },
-          plugins: {
-            legend: {
-              position: 'bottom', // ✅ ADDED: Legend at the bottom
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return context.dataset.label + ': ' + context.raw + ' incidents';
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              stacked: false,
-            },
-            y: {
-              stacked: false,
-              beginAtZero: true,
-              ticks: {
-                padding: 10
-              },
-              afterBuildTicks: function(scale) {
-                if (scale.ticks.length > 0) {
-                  const maxTick = Math.max(...scale.ticks.map(t => t.value));
-                  scale.ticks.push({value: maxTick + 1, label: ''});
-                }
-              }
-            },
-          },
-        },
-      });
-    }
-
-    // ========================================================================
-    // START: UPDATED SUB-STATUS CHART CREATION
-    // ========================================================================
-    // Incident by Sub Status Chart (Bar) - Updated to match frontend implementation
-    const subStatusCtx = document.getElementById("subStatusChart");
-    if (subStatusCtx && subStatusChartLabels && subStatusChartData) {
-      console.log("📊 Creating sub-status chart with labels:", subStatusChartLabels);
-      console.log("📊 Creating sub-status chart with data:", subStatusChartData);
-      console.log("📊 Creating sub-status chart with colors:", subStatusColors);
-      
-      // Create multiple datasets to match the style of other charts
-      const datasets = [];
-      subStatusChartLabels.forEach((label, index) => {
-        // Create a dataset for each sub-status with zeros for all other values
-        const data = new Array(subStatusChartLabels.length).fill(0);
-        data[index] = subStatusChartData[index];
-        
-        datasets.push({
-          label: label,
-          data: data,
-          backgroundColor: subStatusColors[index],
-          barPercentage: 0.6,
-          categoryPercentage: 0.7
-        });
-      });
-      
-      const subStatusChart = new Chart(subStatusCtx.getContext("2d"), {
-        type: "bar",
-        data: {
-          labels: subStatusChartLabels,
-          datasets: datasets,
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: {
-            duration: 0
-          },
-          layout: {
-            padding: {
-              top: 20
-            }
-          },
-          plugins: {
-            legend: {
-              position: 'bottom', // Standard legend position like other charts
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  if (context.raw > 0) {
-                    return context.dataset.label + ": " + context.raw + " incidents";
+              plugins: {
+                legend: {
+                  position: 'bottom',
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      return context.dataset.label + ': ' + context.raw + ' incidents';
+                    }
                   }
-                  return null;
                 }
-              }
-            }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              title: {
-                display: true,
-                text: 'Count'
               },
-              ticks: {
-                padding: 10
-              },
-              afterBuildTicks: function(scale) {
-                if (scale.ticks.length > 0) {
-                  const maxTick = Math.max(...scale.ticks.map(t => t.value));
-                  scale.ticks.push({value: maxTick + 1, label: ''});
-                }
-              }
-            },
-            x: {
-              ticks: {
-                // Handle long labels by breaking them at spaces
-                callback: function(value, index, values) {
-                  const label = this.getLabelForValue(value);
-                  if (label.length > 12) {
-                    const words = label.split(' ');
-                    let lines = [];
-                    let currentLine = words[0];
-                    
-                    for (let i = 1; i < words.length; i++) {
-                      const word = words[i];
-                      if ((currentLine + ' ' + word).length <= 12) {
-                        currentLine += ' ' + word;
-                      } else {
-                        lines.push(currentLine);
-                        currentLine = word;
+              scales: {
+                x: {
+                  stacked: false,
+                },
+                y: {
+                  stacked: false,
+                  beginAtZero: true,
+                  title: {
+                    display: true,
+                    text: 'Incident Count'
+                  },
+                  ticks: {
+                    padding: 10,
+                    stepSize: 1,
+                    callback: function(value) {
+                      if (Math.floor(value) === value) {
+                        return value;
                       }
                     }
-                    
-                    if (currentLine) {
-                      lines.push(currentLine);
+                  },
+                  afterBuildTicks: function(scale) {
+                    if (scale.ticks.length > 0) {
+                      const maxTick = Math.max(...scale.ticks.map(t => t.value));
+                      scale.ticks.push({value: maxTick + 1, label: ''});
                     }
-                    
-                    return lines;
                   }
-                  return label;
                 }
               }
+            },
+          });
+          
+          console.log("📊 Severity chart created:", severityChart);
+        }
+
+        // ✅ FIXED: Incident by Detection Source Chart
+        const detectionCtx = document.getElementById("detectionChart");
+        if (detectionCtx) {
+          // ✅ ENSURE WE HAVE DEFAULT DATA WHEN NO DATA IS AVAILABLE
+          let labels = detectionChartLabels;
+          let data = detectionChartData;
+          
+          // If no data, use default sources with zero values
+          if (!labels || !labels.length || !data || !data.high) {
+            labels = defaultDetectionSources || ['Active Directory', 'MDE', 'Entra ID', 'Firewall'];
+            data = {
+              high: new Array(labels.length).fill(0),
+              medium: new Array(labels.length).fill(0),
+              low: new Array(labels.length).fill(0)
+            };
+          }
+          
+          console.log("📊 Creating detection chart with labels:", labels);
+          console.log("📊 Creating detection chart with data:", data);
+          
+          new Chart(detectionCtx.getContext("2d"), {
+            type: "bar",
+            data: {
+              labels: labels,
+              datasets: [
+                {
+                  label: "High",
+                  data: data.high,
+                  backgroundColor: "#f08080",
+                  barPercentage: 0.7,
+                  categoryPercentage: 0.8
+                },
+                {
+                  label: "Medium",
+                  data: data.medium,
+                  backgroundColor: "#ffdd57",
+                  barPercentage: 0.7,
+                  categoryPercentage: 0.8
+                },
+                {
+                  label: "Low",
+                  data: data.low,
+                  backgroundColor: "#7DDA58",
+                  barPercentage: 0.7,
+                  categoryPercentage: 0.8
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              animation: {
+                duration: 0
+              },
+              layout: {
+                padding: {
+                  top: 20
+                }
+              },
+              plugins: {
+                legend: {
+                  position: 'bottom',
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      return context.dataset.label + ': ' + context.raw + ' incidents';
+                    }
+                  }
+                }
+              },
+              scales: {
+                x: {
+                  stacked: false,
+                },
+                y: {
+                  stacked: false,
+                  beginAtZero: true,
+                  title: {
+                    display: true,
+                    text: 'Incident Count'
+                  },
+                  ticks: {
+                    padding: 10,
+                    stepSize: 1,
+                    callback: function(value) {
+                      if (Math.floor(value) === value) {
+                        return value;
+                      }
+                    }
+                  },
+                  afterBuildTicks: function(scale) {
+                    if (scale.ticks.length > 0) {
+                      const maxTick = Math.max(...scale.ticks.map(t => t.value));
+                      scale.ticks.push({value: maxTick + 1, label: ''});
+                    }
+                  }
+                },
+              },
+            },
+          });
+        }
+        
+        // Incident by Handling Status Chart
+        const handlingStatusCtx = document.getElementById("handlingStatusChart");
+        if (handlingStatusCtx && handlingStatusChartLabels && handlingStatusChartData) {
+          new Chart(handlingStatusCtx.getContext("2d"), {
+            type: "bar",
+            data: {
+              labels: handlingStatusChartLabels,
+              datasets: [
+                {
+                  label: "Pending",
+                  data: handlingStatusChartData.pending,
+                  backgroundColor: "#ffdd57",
+                },
+                {
+                  label: "Resolved",
+                  data: handlingStatusChartData.resolved,
+                  backgroundColor: "#70db70",
+                },
+                {
+                  label: "Closed",
+                  data: handlingStatusChartData.closed,
+                  backgroundColor: "#66b2ff",
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              animation: {
+                duration: 0
+              },
+              layout: {
+                padding: {
+                  top: 20
+                }
+              },
+              plugins: {
+                legend: {
+                  position: 'bottom',
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      return context.dataset.label + ': ' + context.raw + ' incidents';
+                    }
+                  }
+                }
+              },
+              scales: {
+                x: {
+                  stacked: false,
+                },
+                y: {
+                  stacked: false,
+                  beginAtZero: true,
+                  title: {
+                    display: true,
+                    text: 'Incident Count'
+                  },
+                  ticks: {
+                    padding: 10,
+                    stepSize: 1,
+                    callback: function(value) {
+                      if (Math.floor(value) === value) {
+                        return value;
+                      }
+                    }
+                  },
+                  afterBuildTicks: function(scale) {
+                    if (scale.ticks.length > 0) {
+                      const maxTick = Math.max(...scale.ticks.map(t => t.value));
+                      scale.ticks.push({value: maxTick + 1, label: ''});
+                    }
+                  }
+                },
+              },
+            },
+          });
+        }
+
+        // ✅ FIXED: Incident by Sub Status Chart - Using default styling like other charts
+       // ✅ FIXED: Incident by Sub Status Chart - No overlapping labels
+const subStatusCtx = document.getElementById("subStatusChart");
+
+if (subStatusCtx) {
+  // Define all possible substatus categories with their exact colors
+  const allSubStatuses = [
+    { label: "SOC Investigating", color: "#66b2ff" },
+    { label: "Tuning", color: "#ffdd57" },
+    { label: "Awaiting Customer Response", color: "#e6ad57" },
+    { label: "False Positive", color: "#70db70" },
+    { label: "True Positive", color: "#f08080" }
+  ];
+
+  // Get the actual labels from data
+  let labels = subStatusChartLabels;
+  let data = subStatusChartData;
+
+  // If no data, use default categories with zero values
+  if (!labels || !labels.length || !data || !data.length) {
+    labels = defaultSubStatusCategories || [
+      'SOC Investigating',
+      'Tuning',
+      'Awaiting Customer Response',
+      'False Positive',
+      'True Positive'
+    ];
+    data = new Array(labels.length).fill(0);
+  }
+
+  // Match each label to its defined color
+  const colors = labels.map(label => {
+    const status = allSubStatuses.find(s => s.label === label);
+    return status ? status.color : "#556ee6";
+  });
+
+  console.log("📊 Creating sub-status chart with labels:", labels);
+  console.log("📊 Creating sub-status chart with data:", data);
+  console.log("📊 Creating sub-status chart with colors:", colors);
+
+  const subStatusChart = new Chart(subStatusCtx.getContext("2d"), {
+    type: "bar",
+    data: {
+      labels: labels, // ✅ Keep real x-axis labels
+      datasets: [
+        {
+          label: "Incidents",
+          data: data,
+          backgroundColor: colors,
+          barPercentage: 0.6,
+          categoryPercentage: 0.7
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 0 },
+      layout: { padding: { top: 20 } },
+      plugins: {
+        datalabels: { display: false },
+
+        // ✅ Custom legend that matches each color/label
+       legend: {
+  display: true,
+  position: 'bottom',
+  labels: {
+    padding: 15,
+    generateLabels: function(chart) {
+      const data = chart.data;
+      if (data.labels.length && data.datasets.length) {
+        return data.labels.map((label, i) => ({
+          text: label,
+          fillStyle: data.datasets[0].backgroundColor[i],
+          strokeStyle: data.datasets[0].backgroundColor[i],
+          lineWidth: 0,
+           fontColor: '#666666' // ✅ apply text color
+        }));
+      }
+      return [];
+    }
+  }
+}, tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.label + ": " + context.raw + " incidents";
             }
           }
         },
-      });
 
+        // Draw value labels above bars
+        afterDatasetsDraw: function(chart) {
+          const ctx = chart.ctx;
+          ctx.save();
+
+          chart.data.datasets.forEach(function(dataset) {
+            const meta = chart.getDatasetMeta(0);
+            if (!meta.hidden) {
+              meta.data.forEach(function(element, index) {
+                const value = dataset.data[index];
+                if (value > 0) {
+                  ctx.fillStyle = '#304758';
+                  ctx.font = '500 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'bottom';
+
+                  const barTopY = element.y;
+                  const barCenterX = element.x;
+
+                  ctx.fillText(value, barCenterX, barTopY - 6);
+                }
+              });
+            }
+          });
+
+          ctx.restore();
+        }
+      },
+
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Incident Count' },
+          ticks: {
+            padding: 10,
+            stepSize: 1,
+            callback: function(value) {
+              if (Math.floor(value) === value) return value;
+            }
+          },
+          afterBuildTicks: function(scale) {
+            if (scale.ticks.length > 0) {
+              const maxTick = Math.max(...scale.ticks.map(t => t.value));
+              scale.ticks.push({ value: maxTick + 1, label: '' });
+            }
+          }
+        },
+        x: {
+          ticks: {
+            callback: function(value, index, values) {
+              const label = this.getLabelForValue(value);
+              if (label.length > 12) {
+                const words = label.split(' ');
+                let lines = [];
+                let currentLine = words[0];
+
+                for (let i = 1; i < words.length; i++) {
+                  const word = words[i];
+                  if ((currentLine + ' ' + word).length <= 12) {
+                    currentLine += ' ' + word;
+                  } else {
+                    lines.push(currentLine);
+                    currentLine = word;
+                  }
+                }
+                if (currentLine) lines.push(currentLine);
+                return lines;
+              }
+              return label;
+            }
+          }
+        }
+      }
     }
-    // ========================================================================
-    // END: UPDATED SUB-STATUS CHART CREATION
-    // ========================================================================
-  }
+  });
+}
+}
 
-  // Create charts when DOM is loaded
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", createCharts);
-  } else {
-    createCharts();
-  }
-</script>
+      // ✅ PRODUCTION-READY INITIALIZATION
+      function initializePage() {
+        updateDateRanges();
+        createCharts();
+        
+        // ✅ OPTIMIZE TABLES FOR PRINT
+        // Add a small delay to ensure DOM is fully rendered
+        setTimeout(() => {
+          tableHelper.optimizeAllTables();
+        }, 500);
+        
+        // ✅ ALSO OPTIMIZE WHEN PRINT DIALOG IS OPENED
+        window.addEventListener('beforeprint', () => {
+          tableHelper.processTables();
+        });
+      }
+
+      // Initialize page when DOM is loaded
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initializePage);
+      } else {
+        initializePage();
+      }
+    </script>
   </body>
 </html>

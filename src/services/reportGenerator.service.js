@@ -10,6 +10,13 @@ import * as incidentSSService from "./incidentSS.service.js";
 import logger from "../config/logger.js";
 import Incident from "../models/incident.model.js"; // Import the Incident model
 
+// Customer configuration
+const customers = {
+  "toyotatsushoapacsoc": "Toyota Tsusho Asia Pacific",
+  "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
+  "taiho-thailand": "Taiho Thailand"
+};
+
 // Helper function to format ticket data (moved from controller for reuse)
 const formatTicket = (ticket) => ({
   id: ticket._id || "NA",
@@ -48,16 +55,16 @@ function mapStatus(statusCode) {
 }
 
 // ✅ UPDATED: Function to get Health Escalation Incidents
-const getHealthEscalationIncidents = async () => {
+const getHealthEscalationIncidents = async (customerName, month, year) => {
   try {
-    // Regex for November 2025
-    const november2025Regex = /^2025-11/;
+    // Create regex for the specified month and year
+    const dateRegex = new RegExp(`^${year}-${String(month).padStart(2, '0')}`);
 
     const filters = {
-      customer_name: "centralmotorwheel-thailand", // ✅ ADDED: Customer name filter
+      customer_name: customerName, // ✅ UPDATED: Use parameter instead of hardcoded value
       incident_type: "Health Incident",
       customer_escalation: { $regex: /^yes$/i },
-      created_at: { $regex: november2025Regex }, // ✅ UPDATED: Specific date filter
+      created_at: { $regex: dateRegex }, // ✅ UPDATED: Use dynamic date filter
     };
 
     const tickets = await Incident.find(filters).sort({ created_at: 1 }).lean();
@@ -65,7 +72,7 @@ const getHealthEscalationIncidents = async () => {
     const formattedTickets = tickets.map(formatTicket);
 
     logger.info(
-      `🎫 Fetched ${formattedTickets.length} health escalation tickets for centralmotorwheel-thailand (Nov 2025).`
+      `🎫 Fetched ${formattedTickets.length} health escalation tickets for ${customerName} (${month}/${year}).`
     );
     return formattedTickets;
   } catch (error) {
@@ -77,16 +84,16 @@ const getHealthEscalationIncidents = async () => {
 };
 
 // ✅ UPDATED: Function to get Non-Health Escalation Incidents
-const getNonHealthEscalationIncidents = async () => {
+const getNonHealthEscalationIncidents = async (customerName, month, year) => {
   try {
-    // Regex for November 2025
-    const november2025Regex = /^2025-11/;
+    // Create regex for the specified month and year
+    const dateRegex = new RegExp(`^${year}-${String(month).padStart(2, '0')}`);
 
     const filters = {
-      customer_name: "centralmotorwheel-thailand", // ✅ ADDED: Customer name filter
+      customer_name: customerName, // ✅ UPDATED: Use parameter instead of hardcoded value
       incident_type: { $ne: "Health Incident" },
       customer_escalation: { $regex: /^yes$/i },
-      created_at: { $regex: november2025Regex }, // ✅ UPDATED: Specific date filter
+      created_at: { $regex: dateRegex }, // ✅ UPDATED: Use dynamic date filter
     };
 
     const tickets = await Incident.find(filters).sort({ created_at: 1 }).lean();
@@ -94,7 +101,7 @@ const getNonHealthEscalationIncidents = async () => {
     const formattedTickets = tickets.map(formatTicket);
 
     logger.info(
-      `🎫 Fetched ${formattedTickets.length} non-health escalation tickets for centralmotorwheel-thailand (Nov 2025).`
+      `🎫 Fetched ${formattedTickets.length} non-health escalation tickets for ${customerName} (${month}/${year}).`
     );
     return formattedTickets;
   } catch (error) {
@@ -107,72 +114,79 @@ const getNonHealthEscalationIncidents = async () => {
 
 const __dirname = path.resolve();
 
-// Function to generate report PDF
-async function generateMonthlyReport(month = null, year = null) {
-  logger.info("📅 Starting monthly report generation...");
+// Function to generate report PDF for a specific customer and month
+async function generateMonthlyReportForCustomer(
+  customerKey,
+  customerDisplayName,
+  month = null,
+  year = null
+) {
+  logger.info(`📅 Starting monthly report generation for ${customerDisplayName} (${month}/${year})...`);
 
   // If month and year are provided, use them, otherwise use current month/year
-  const now = month && year ? new Date(`${month} 1, ${year}`) : new Date();
-  const reportMonth = now.toLocaleString("default", {
+  const reportDate = month && year ? new Date(`${month} 1, ${year}`) : new Date();
+  const reportMonth = reportDate.toLocaleString("default", {
     month: "long",
     year: "numeric",
   });
-  const reportFileName = `TTS-GSOC_Monthly_Report_${month || now.toLocaleString("default", { month: "short" })}_${year || now.getFullYear()}.pdf`;
+  const reportFileName = `${customerKey}_Monthly_Report_${reportDate.toLocaleString("default", { month: "short" })}_${reportDate.getFullYear()}.pdf`;
 
   try {
-    // ... (All the existing data fetching for charts remains the same)
+    // Format month for API calls
+    const formattedMonth = `${reportDate.getFullYear()}-${String(reportDate.getMonth() + 1).padStart(2, '0')}`;
+
+    // ... (All the existing data fetching for charts remains the same but with customerKey)
     // Fetch real incident severity data
     logger.info(
-      "🔍 Fetching incident severity data for customer: centralmotorwheel-thailand"
+      `🔍 Fetching incident severity data for customer: ${customerKey}`
     );
     const incidentSeverityResponse =
       await incidentService.getIncidentSeverityEscalation(
-        "centralmotorwheel-thailand"
+        customerKey, true
       );
 
-    // Fetch real incident detection source data for current month
-    const currentMonth = now.toISOString().slice(0, 7); // Format: YYYY-MM
+    // Fetch real incident detection source data for specified month
     logger.info(
-      `🔍 Fetching incident detection source data for customer: centralmotorwheel-thailand, month: ${currentMonth}`
+      `🔍 Fetching incident detection source data for customer: ${customerKey}, month: ${formattedMonth}`
     );
     const incidentDSResponse =
       await incidentDSService.getIncidentsDetectionSourceEscalation(
-        currentMonth,
-        "centralmotorwheel-thailand"
+        formattedMonth,
+        customerKey
       );
 
     // Fetch previous month data
-    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const prevMonth = new Date(reportDate.getFullYear(), reportDate.getMonth() - 1, 1)
       .toISOString()
       .slice(0, 7);
     logger.info(
-      `🔍 Fetching incident detection source data for customer: centralmotorwheel-thailand, month: ${prevMonth}`
+      `🔍 Fetching incident detection source data for customer: ${customerKey}, month: ${prevMonth}`
     );
 
     // Fetch two months ago data
-    const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1)
+    const twoMonthsAgo = new Date(reportDate.getFullYear(), reportDate.getMonth() - 2, 1)
       .toISOString()
       .slice(0, 7);
     logger.info(
-      `🔍 Fetching incident detection source data for customer: centralmotorwheel-thailand, month: ${twoMonthsAgo}`
+      `🔍 Fetching incident detection source data for customer: ${customerKey}, month: ${twoMonthsAgo}`
     );
 
     // Fetch incident handling status data
     logger.info(
-      "🔍 Fetching incident handling status data for customer: centralmotorwheel-thailand"
+      `🔍 Fetching incident handling status data for customer: ${customerKey}`
     );
     const incidentHSResponse =
       await incidentHSService.getIncidentsHandlingStatusEscalation(
-        "centralmotorwheel-thailand"
+        customerKey, true
       );
 
-    // Fetch incident sub-status data for current month
+    // Fetch incident sub-status data for specified month
     logger.info(
-      `🔍 Fetching incident sub-status data for customer: centralmotorwheel-thailand, month: ${currentMonth}`
+      `🔍 Fetching incident sub-status data for customer: ${customerKey}, month: ${formattedMonth}`
     );
     const incidentSSResponse = await incidentSSService.getIncidentsSubStatusEscalation(
-      currentMonth,
-      "centralmotorwheel-thailand"
+      formattedMonth,
+      customerKey
     );
 
     // ... (All the existing data processing for charts remains the same)
@@ -235,7 +249,7 @@ async function generateMonthlyReport(month = null, year = null) {
     // Create affiliate data for the severity table
     const incidentSeverityData = [
       {
-        affiliate: "centralmotorwheel-thailand",
+        affiliate: customerDisplayName, // ✅ UPDATED: Use customer display name
         high:
           sortedMonths.find((m) => m.period === "Current Month")?.priorities
             .high || 0,
@@ -294,7 +308,7 @@ async function generateMonthlyReport(month = null, year = null) {
     // Create affiliate data for the detection source table (current month only)
     const incidentDetectionData = [
       {
-        affiliate: "centralmotorwheel-thailand",
+        affiliate: customerDisplayName, // ✅ UPDATED: Use customer display name
         ...detectionChartLabels.reduce((acc, sourceName) => {
           const source = filteredSources[sourceName] || {};
           acc[sourceName] = source.Total || 0; // Use the total count
@@ -394,7 +408,7 @@ async function generateMonthlyReport(month = null, year = null) {
       `📊 Handling Status Table data: ${JSON.stringify(incidentHandlingStatusData, null, 2)}`
     );
 
-    // Process sub-status data for the chart - UPDATED to match React component
+    // Process sub-status data for the chart - UPDATED to match requirements
     const subStatusData = incidentSSResponse.substatus || [];
 
     // Filter out null values from the substatus data
@@ -408,53 +422,67 @@ async function generateMonthlyReport(month = null, year = null) {
       subStatusChartData = [0]; // Simple array
       subStatusColors = ["#556ee6"]; // Default blue
     } else {
-      // Format the data for the chart - exactly like the React component
+      // Define the color mapping according to requirements
+      const colorMap = {
+        "SOC Investigating": "#0066ff", // blue
+        "Tuning": "#ffcc00", // yellow
+        "Awaiting Customer Response": "#ff8c00", // orange
+        "False Positive": "#00cc00", // green
+        "True Positive": "#ff0000", // red
+      };
+      
+      // Format the data for the chart
       const formattedData = filteredSubstatus.map((item) => {
         const status = item._id;
-        let type = "In Progress";
-        let color = "#f1b44c"; // Default yellow for In Progress
-
-        if (status === "True Positive") {
-          type = "Resolved";
-          color = "#70db70"; // Green for Resolved
-        } else if (status === "False Positive") {
-          type = "Closed";
-          color = "#66b2ff"; // Blue for Closed
-        }
-
+        // Use the color from our mapping, or a default color if not found
+        const color = colorMap[status] || "#556ee6"; // Default blue
+        
         return {
           status,
           count: item.count,
-          type,
           color,
         };
       });
 
-      // Sort data to group by status type (In Progress first, then Resolved, then Closed)
+      // Sort data to match the desired order
+      const desiredOrder = [
+        "SOC Investigating",
+        "Tuning", 
+        "Awaiting Customer Response",
+        "False Positive",
+        "True Positive"
+      ];
+      
       formattedData.sort((a, b) => {
-        const typeOrder = { "In Progress": 0, Resolved: 1, Closed: 2 };
-        if (a.type === b.type) return b.count - a.count;
-        return typeOrder[a.type] - typeOrder[b.type];
+        const aIndex = desiredOrder.indexOf(a.status);
+        const bIndex = desiredOrder.indexOf(b.status);
+        
+        // If both statuses are in our desired order, sort by that order
+        if (aIndex !== -1 && bIndex !== -1) {
+          return aIndex - bIndex;
+        }
+        
+        // If only one is in our desired order, prioritize it
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+        
+        // If neither is in our desired order, sort alphabetically
+        return a.status.localeCompare(b.status);
       });
 
-      // Extract categories, counts, and colors - exactly like the React component
+      // Extract categories, counts, and colors
       subStatusChartLabels = formattedData.map((item) => item.status);
       subStatusChartData = formattedData.map((item) => item.count); // Simple array of counts
       subStatusColors = formattedData.map((item) => item.color);
 
       // Log the counts for each status type
-      const resolvedCount = formattedData
-        .filter((item) => item.type === "Resolved")
-        .reduce((sum, item) => sum + item.count, 0);
-      const inProgressCount = formattedData
-        .filter((item) => item.type === "In Progress")
-        .reduce((sum, item) => sum + item.count, 0);
-      const closedCount = formattedData
-        .filter((item) => item.type === "Closed")
-        .reduce((sum, item) => sum + item.count, 0);
-
+      const countsByStatus = {};
+      formattedData.forEach(item => {
+        countsByStatus[item.status] = item.count;
+      });
+      
       logger.info(
-        `📊 Sub-status counts - Resolved: ${resolvedCount}, In Progress: ${inProgressCount}, Closed: ${closedCount}`
+        `📊 Sub-status counts: ${JSON.stringify(countsByStatus)}`
       );
     }
 
@@ -493,10 +521,18 @@ async function generateMonthlyReport(month = null, year = null) {
     );
 
     // Fetch non-health escalation incidents for the "Analysis on Incident Ticket" table
-    const incidentTicketsData = await getNonHealthEscalationIncidents();
+    const incidentTicketsData = await getNonHealthEscalationIncidents(
+      customerKey, 
+      reportDate.getMonth() + 1, 
+      reportDate.getFullYear()
+    );
 
     // Fetch health escalation incidents for the "Analysis on Health Ticket" table
-    const healthTicketsData = await getHealthEscalationIncidents();
+    const healthTicketsData = await getHealthEscalationIncidents(
+      customerKey, 
+      reportDate.getMonth() + 1, 
+      reportDate.getFullYear()
+    );
 
     logger.info(
       `✅ Fetched ${incidentTicketsData.length} incident tickets and ${healthTicketsData.length} health tickets.`
@@ -505,9 +541,21 @@ async function generateMonthlyReport(month = null, year = null) {
     // END: FETCH REAL TICKET DATA
     // ========================================================================
 
+    // Define the legend data for substatus chart
+    const subStatusLegend = [
+      { label: "SOC Investigating", color: "#0066ff" },
+      { label: "Tuning", color: "#ffcc00" },
+      { label: "Awaiting Customer Response", color: "#ff8c00" },
+      { label: "False Positive", color: "#00cc00" },
+      { label: "True Positive", color: "#ff0000" }
+    ];
+
     // Mock data for the rest of the report (you can replace these with real data later)
     const data = {
       reportMonth,
+      // ✅ UPDATED: Use customer display name in title
+      customerDisplayName,
+      
       // Real Incident by Severity Table Data
       incidentSeverityData,
 
@@ -534,6 +582,7 @@ async function generateMonthlyReport(month = null, year = null) {
       subStatusChartLabels,
       subStatusChartData,
       subStatusColors, // Add colors for sub-status chart
+      subStatusLegend, // Add legend data for sub-status chart
       incidentSubStatusData,
 
       // ✅ UPDATED: Real Incident Tickets Data
@@ -554,9 +603,19 @@ async function generateMonthlyReport(month = null, year = null) {
     // Render HTML from EJS
     const html = await ejs.renderFile(templatePath, data);
 
-    // Create reports directory if it doesn't exist
-    const reportsDir = path.join(process.cwd(), "src", "reports"); // Also using absolute path for consistency
-    if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir);
+    // Create customer/year/month directory if it doesn't exist
+    const reportsDir = path.join(
+      process.cwd(), 
+      "src", 
+      "reports", 
+      customerKey, 
+      reportDate.getFullYear().toString(),
+      reportDate.toLocaleString("default", { month: "short" }).toLowerCase()
+    );
+    
+    if (!fs.existsSync(reportsDir)) {
+      fs.mkdirSync(reportsDir, { recursive: true });
+    }
 
     // Launch Puppeteer
     const browser = await puppeteer.launch({
@@ -581,16 +640,99 @@ async function generateMonthlyReport(month = null, year = null) {
 
     await browser.close();
 
-    logger.info(`✅ Monthly report generated: ${pdfPath}`);
+    logger.info(`✅ Monthly report generated for ${customerDisplayName} (${reportDate.getMonth() + 1}/${reportDate.getFullYear()}): ${pdfPath}`);
     return pdfPath;
   } catch (error) {
-    logger.error("❌ Error generating report:", error);
+    logger.error(`❌ Error generating report for ${customerDisplayName} (${reportDate.getMonth() + 1}/${reportDate.getFullYear()}):`, error);
     throw error;
   }
 }
 
-// Function to get report data for HTML view
-async function getReportData() {
+// ✅ NEW: Function to generate reports for all months from January 2025 for all customers
+async function generateAllHistoricalReports() {
+  logger.info("📅 Starting historical report generation for all customers...");
+  const reportPaths = [];
+  
+  try {
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1; // getMonth() returns 0-11
+    
+    // Generate report for each customer
+    for (const [customerKey, customerDisplayName] of Object.entries(customers)) {
+      try {
+        // Generate reports from January 2025 to current month
+        for (let year = 2025; year <= currentYear; year++) {
+          const startMonth = year === 2025 ? 1 : 1; // Start from January for all years
+          const endMonth = year === currentYear ? currentMonth : 12; // End at current month for current year
+          
+          for (let month = startMonth; month <= endMonth; month++) {
+            try {
+              const reportPath = await generateMonthlyReportForCustomer(
+                customerKey,
+                customerDisplayName,
+                month,
+                year
+              );
+              reportPaths.push(reportPath);
+              logger.info(`✅ Generated report for ${customerDisplayName} (${month}/${year})`);
+            } catch (error) {
+              logger.error(`❌ Failed to generate report for ${customerDisplayName} (${month}/${year}):`, error);
+              // Continue with other months even if one fails
+            }
+          }
+        }
+      } catch (error) {
+        logger.error(`❌ Failed to generate reports for ${customerDisplayName}:`, error);
+        // Continue with other customers even if one fails
+      }
+    }
+    
+    logger.info(`✅ Generated ${reportPaths.length} historical reports for all customers`);
+    return reportPaths;
+  } catch (error) {
+    logger.error("❌ Error generating historical reports for all customers:", error);
+    throw error;
+  }
+}
+
+// Function to generate report PDF for all customers for the previous month
+async function generateMonthlyReport() {
+  logger.info("📅 Starting monthly report generation for all customers (previous month)...");
+  const reportPaths = [];
+  
+  try {
+    // Get the previous month
+    const now = new Date();
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const month = prevMonth.getMonth() + 1; // getMonth() returns 0-11
+    const year = prevMonth.getFullYear();
+    
+    // Generate report for each customer
+    for (const [customerKey, customerDisplayName] of Object.entries(customers)) {
+      try {
+        const reportPath = await generateMonthlyReportForCustomer(
+          customerKey,
+          customerDisplayName,
+          month,
+          year
+        );
+        reportPaths.push(reportPath);
+      } catch (error) {
+        logger.error(`❌ Failed to generate report for ${customerDisplayName}:`, error);
+        // Continue with other customers even if one fails
+      }
+    }
+    
+    logger.info(`✅ Generated ${reportPaths.length} reports for all customers for ${month}/${year}`);
+    return reportPaths;
+  } catch (error) {
+    logger.error("❌ Error generating reports for all customers:", error);
+    throw error;
+  }
+}
+
+// Function to get report data for a specific customer
+async function getReportDataForCustomer(customerKey, customerDisplayName) {
   try {
     const now = new Date();
     const reportMonth = now.toLocaleString("default", {
@@ -598,25 +740,25 @@ async function getReportData() {
       year: "numeric",
     });
 
-    // ... (All the existing data fetching for charts remains the same)
+    // ... (All the existing data fetching for charts remains the same but with customerKey)
     // Fetch real incident severity data
     logger.info(
-      "🔍 Fetching incident severity data for customer: centralmotorwheel-thailand"
+      `🔍 Fetching incident severity data for customer: ${customerKey}`
     );
     const incidentSeverityResponse =
       await incidentService.getIncidentSeverityEscalation(
-        "centralmotorwheel-thailand"
+        customerKey, true
       );
 
     // Fetch real incident detection source data for current month
     const currentMonth = now.toISOString().slice(0, 7); // Format: YYYY-MM
     logger.info(
-      `🔍 Fetching incident detection source data for customer: centralmotorwheel-thailand, month: ${currentMonth}`
+      `🔍 Fetching incident detection source data for customer: ${customerKey}, month: ${currentMonth}`
     );
     const incidentDSResponse =
       await incidentDSService.getIncidentsDetectionSourceEscalation(
         currentMonth,
-        "centralmotorwheel-thailand"
+        customerKey
       );
 
     // Fetch previous month data
@@ -624,12 +766,12 @@ async function getReportData() {
       .toISOString()
       .slice(0, 7);
     logger.info(
-      `🔍 Fetching incident detection source data for customer: centralmotorwheel-thailand, month: ${prevMonth}`
+      `🔍 Fetching incident detection source data for customer: ${customerKey}, month: ${prevMonth}`
     );
     const prevMonthDSResponse =
       await incidentDSService.getIncidentsDetectionSourceEscalation(
         prevMonth,
-        "centralmotorwheel-thailand"
+        customerKey
       );
 
     // Fetch two months ago data
@@ -637,30 +779,30 @@ async function getReportData() {
       .toISOString()
       .slice(0, 7);
     logger.info(
-      `🔍 Fetching incident detection source data for customer: centralmotorwheel-thailand, month: ${twoMonthsAgo}`
+      `🔍 Fetching incident detection source data for customer: ${customerKey}, month: ${twoMonthsAgo}`
     );
     const twoMonthsAgoDSResponse =
       await incidentDSService.getIncidentsDetectionSourceEscalation(
         twoMonthsAgo,
-        "centralmotorwheel-thailand"
+        customerKey
       );
 
     // Fetch incident handling status data
     logger.info(
-      "🔍 Fetching incident handling status data for customer: centralmotorwheel-thailand"
+      `🔍 Fetching incident handling status data for customer: ${customerKey}`
     );
     const incidentHSResponse =
       await incidentHSService.getIncidentsHandlingStatusEscalation(
-        "centralmotorwheel-thailand"
+        customerKey, true
       );
 
     // Fetch incident sub-status data for current month
     logger.info(
-      `🔍 Fetching incident sub-status data for customer: centralmotorwheel-thailand, month: ${currentMonth}`
+      `🔍 Fetching incident sub-status data for customer: ${customerKey}, month: ${currentMonth}`
     );
     const incidentSSResponse = await incidentSSService.getIncidentsSubStatusEscalation(
       currentMonth,
-      "centralmotorwheel-thailand"
+      customerKey
     );
 
     // ... (All the existing data processing for charts remains the same)
@@ -741,7 +883,7 @@ async function getReportData() {
     // Create affiliate data for the severity table
     const incidentSeverityData = [
       {
-        affiliate: "Current Month",
+        affiliate: customerDisplayName, // ✅ UPDATED: Use customer display name
         high:
           sortedMonths.find((m) => m.period === "Current Month")?.priorities
             .high || 0,
@@ -823,7 +965,7 @@ async function getReportData() {
     // Create affiliate data for the detection source table
     const incidentDetectionData = [
       {
-        affiliate: "Current Month",
+        affiliate: customerDisplayName, // ✅ UPDATED: Use customer display name
         ...detectionChartLabels.reduce((acc, sourceName) => {
           const source = currentMonthSources.find((s) => {
             const sName = s._id || "EntraID";
@@ -948,7 +1090,7 @@ async function getReportData() {
       `📊 Handling Status Table data: ${JSON.stringify(incidentHandlingStatusData, null, 2)}`
     );
 
-    // Process sub-status data for the chart - UPDATED to match React component
+    // Process sub-status data for the chart - UPDATED to match requirements
     const subStatusData = incidentSSResponse.substatus || [];
 
     // Filter out null values from the substatus data
@@ -962,53 +1104,67 @@ async function getReportData() {
       subStatusChartData = [0]; // Simple array
       subStatusColors = ["#556ee6"]; // Default blue
     } else {
-      // Format the data for the chart - exactly like the React component
+      // Define the color mapping according to requirements
+      const colorMap = {
+        "SOC Investigating": "#0066ff", // blue
+        "Tuning": "#ffcc00", // yellow
+        "Awaiting Customer Response": "#ff8c00", // orange
+        "False Positive": "#00cc00", // green
+        "True Positive": "#ff0000", // red
+      };
+      
+      // Format the data for the chart
       const formattedData = filteredSubstatus.map((item) => {
         const status = item._id;
-        let type = "In Progress";
-        let color = "#f1b44c"; // Default yellow for In Progress
-
-        if (status === "True Positive") {
-          type = "Resolved";
-          color = "#70db70"; // Green for Resolved
-        } else if (status === "False Positive") {
-          type = "Closed";
-          color = "#66b2ff"; // Blue for Closed
-        }
-
+        // Use the color from our mapping, or a default color if not found
+        const color = colorMap[status] || "#556ee6"; // Default blue
+        
         return {
           status,
           count: item.count,
-          type,
           color,
         };
       });
 
-      // Sort data to group by status type (In Progress first, then Resolved, then Closed)
+      // Sort data to match the desired order
+      const desiredOrder = [
+        "SOC Investigating",
+        "Tuning", 
+        "Awaiting Customer Response",
+        "False Positive",
+        "True Positive"
+      ];
+      
       formattedData.sort((a, b) => {
-        const typeOrder = { "In Progress": 0, Resolved: 1, Closed: 2 };
-        if (a.type === b.type) return b.count - a.count;
-        return typeOrder[a.type] - typeOrder[b.type];
+        const aIndex = desiredOrder.indexOf(a.status);
+        const bIndex = desiredOrder.indexOf(b.status);
+        
+        // If both statuses are in our desired order, sort by that order
+        if (aIndex !== -1 && bIndex !== -1) {
+          return aIndex - bIndex;
+        }
+        
+        // If only one is in our desired order, prioritize it
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+        
+        // If neither is in our desired order, sort alphabetically
+        return a.status.localeCompare(b.status);
       });
 
-      // Extract categories, counts, and colors - exactly like the React component
+      // Extract categories, counts, and colors
       subStatusChartLabels = formattedData.map((item) => item.status);
       subStatusChartData = formattedData.map((item) => item.count); // Simple array of counts
       subStatusColors = formattedData.map((item) => item.color);
 
       // Log the counts for each status type
-      const resolvedCount = formattedData
-        .filter((item) => item.type === "Resolved")
-        .reduce((sum, item) => sum + item.count, 0);
-      const inProgressCount = formattedData
-        .filter((item) => item.type === "In Progress")
-        .reduce((sum, item) => sum + item.count, 0);
-      const closedCount = formattedData
-        .filter((item) => item.type === "Closed")
-        .reduce((sum, item) => sum + item.count, 0);
-
+      const countsByStatus = {};
+      formattedData.forEach(item => {
+        countsByStatus[item.status] = item.count;
+      });
+      
       logger.info(
-        `📊 Sub-status counts - Resolved: ${resolvedCount}, In Progress: ${inProgressCount}, Closed: ${closedCount}`
+        `📊 Sub-status counts: ${JSON.stringify(countsByStatus)}`
       );
     }
 
@@ -1047,10 +1203,10 @@ async function getReportData() {
     );
 
     // Fetch non-health escalation incidents for the "Analysis on Incident Ticket" table
-    const incidentTicketsData = await getNonHealthEscalationIncidents();
+    const incidentTicketsData = await getNonHealthEscalationIncidents(customerKey);
 
     // Fetch health escalation incidents for the "Analysis on Health Ticket" table
-    const healthTicketsData = await getHealthEscalationIncidents();
+    const healthTicketsData = await getHealthEscalationIncidents(customerKey);
 
     logger.info(
       `✅ Fetched ${incidentTicketsData.length} incident tickets and ${healthTicketsData.length} health tickets.`
@@ -1059,9 +1215,21 @@ async function getReportData() {
     // END: FETCH REAL TICKET DATA
     // ========================================================================
 
+    // Define the legend data for substatus chart
+    const subStatusLegend = [
+      { label: "SOC Investigating", color: "#0066ff" },
+      { label: "Tuning", color: "#ffcc00" },
+      { label: "Awaiting Customer Response", color: "#ff8c00" },
+      { label: "False Positive", color: "#00cc00" },
+      { label: "True Positive", color: "#ff0000" }
+    ];
+
     // Return the data object
     return {
       reportMonth,
+      // ✅ UPDATED: Use customer display name in title
+      customerDisplayName,
+      
       // Real Incident by Severity Table Data
       incidentSeverityData,
 
@@ -1088,6 +1256,7 @@ async function getReportData() {
       subStatusChartLabels,
       subStatusChartData,
       subStatusColors, // Add colors for sub-status chart
+      subStatusLegend, // Add legend data for sub-status chart
       incidentSubStatusData,
 
       // ✅ UPDATED: Real Incident Tickets Data
@@ -1097,7 +1266,30 @@ async function getReportData() {
       healthTickets: healthTicketsData,
     };
   } catch (error) {
-    logger.error("❌ Error getting report data:", error);
+    logger.error(`❌ Error getting report data for ${customerDisplayName}:`, error);
+    throw error;
+  }
+}
+
+// Function to get report data for all customers
+async function getReportData() {
+  const allCustomersData = {};
+  
+  try {
+    // Get report data for each customer
+    for (const [customerKey, customerDisplayName] of Object.entries(customers)) {
+      try {
+        const customerData = await getReportDataForCustomer(customerKey, customerDisplayName);
+        allCustomersData[customerKey] = customerData;
+      } catch (error) {
+        logger.error(`❌ Failed to get report data for ${customerDisplayName}:`, error);
+        // Continue with other customers even if one fails
+      }
+    }
+    
+    return allCustomersData;
+  } catch (error) {
+    logger.error("❌ Error getting report data for all customers:", error);
     throw error;
   }
 }
@@ -1105,11 +1297,17 @@ async function getReportData() {
 // Schedule: Run on 1st of every month at 00:00
 function scheduleMonthlyReport() {
   schedule.scheduleJob("0 0 1 * *", () => {
-    generateMonthlyReport();
+    generateMonthlyReport(); // This will now generate reports for the previous month
   });
   logger.info(
-    "📅 Monthly report generation scheduled for 1st of every month at 00:00"
+    "📅 Monthly report generation scheduled for 1st of every month at 00:00 for all customers (previous month)"
   );
 }
 
-export { generateMonthlyReport, getReportData, scheduleMonthlyReport };
+export { 
+  generateMonthlyReport, 
+  generateAllHistoricalReports, // ✅ NEW: Export the historical reports function
+  getReportData, 
+  scheduleMonthlyReport, 
+  customers 
+};
