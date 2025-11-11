@@ -9,6 +9,7 @@ import * as incidentHSService from "./incidentHS.service.js";
 import * as incidentSSService from "./incidentSS.service.js";
 import logger from "../config/logger.js";
 import Incident from "../models/incident.model.js"; // Import the Incident model
+import { generateExecutiveSummary } from "./executiveSummary.service.js";
 
 // Customer configuration
 const customers = {
@@ -591,6 +592,12 @@ async function generateMonthlyReportForCustomer(
       // ✅ UPDATED: Real Health Tickets Data
       healthTickets: healthTicketsData,
     };
+
+      logger.info(`🧠 Generating executive summary with Azure OpenAI for ${customerDisplayName}...`);
+  const executiveSummary = await generateExecutiveSummary(data, customerDisplayName);
+  data.executiveSummary = executiveSummary;
+  
+  logger.info(`✅ Executive summary generated for ${customerDisplayName}`);
 
     // ✅ CORRECTED PATH: Use absolute path from project root
     const templatePath = path.join(
@@ -1223,7 +1230,11 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
       { label: "False Positive", color: "#00cc00" },
       { label: "True Positive", color: "#ff0000" }
     ];
-
+            logger.info(`🧠 Generating executive summary with Azure OpenAI for ${customerDisplayName}...`);
+    const executiveSummary = await generateExecutiveSummary(data, customerDisplayName);
+    data.executiveSummary = executiveSummary;
+    
+    logger.info(`✅ Executive summary generated for ${customerDisplayName}`);
     // Return the data object
     return {
       reportMonth,
@@ -1265,6 +1276,8 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
       // ✅ UPDATED: Real Health Tickets Data
       healthTickets: healthTicketsData,
     };
+
+
   } catch (error) {
     logger.error(`❌ Error getting report data for ${customerDisplayName}:`, error);
     throw error;
