@@ -77,6 +77,18 @@ function getReportStatusModel() {
   return mongoose.model('ReportStatus', ReportStatusSchema);
 }
 
+// Function to check if a blob exists in Azure Storage
+async function checkBlobExists(blobPath) {
+  try {
+    const blobClient = containerClient.getBlobClient(blobPath);
+    const exists = await blobClient.exists();
+    return exists;
+  } catch (error) {
+    logger.error(`Error checking if blob exists: ${blobPath}`, error);
+    return false;
+  }
+}
+
 // Function to generate SAS URL for a specific report
 async function getReportSasUrl(req, res) {
   try {
@@ -121,6 +133,18 @@ async function getReportSasUrl(req, res) {
         error: "Report is not ready for download",
         status: report.status 
       });
+    }
+    
+    // Check if the blob actually exists in Azure Storage
+    if (!report.blobPath) {
+      return res.status(404).json({ error: "Report file path not available" });
+    }
+    
+    const blobExists = await checkBlobExists(report.blobPath);
+    
+    if (!blobExists) {
+      logger.warn(`⚠️ Blob not found for report ${reportId}: ${report.blobPath}`);
+      return res.status(404).json({ error: "Report file not found" });
     }
     
     // Create SAS token that's valid for 1 hour
@@ -188,24 +212,31 @@ async function getAvailableReportsForCustomer(req, res) {
       status: 'verified'
     }).sort({ year: -1, month: -1 });
     
-    // Format the response
-    const formattedReports = reports.map(report => ({
-      reportId: report.reportId,
-      customerKey: report.customerKey,
-      customerDisplayName: report.customerDisplayName,
-      month: report.month,
-      year: report.year,
-      blobUrl: report.blobUrl,
-      blobPath: report.blobPath,
-      fileSize: report.fileSize,
-      createdAt: report.createdAt,
-      verifiedAt: report.verifiedAt
-    }));
+    // Check which blobs actually exist
+    const reportsWithBlobStatus = await Promise.all(
+      reports.map(async (report) => {
+        const blobExists = report.blobPath ? await checkBlobExists(report.blobPath) : false;
+        
+        return {
+          reportId: report.reportId,
+          customerKey: report.customerKey,
+          customerDisplayName: report.customerDisplayName,
+          month: report.month,
+          year: report.year,
+          blobUrl: report.blobUrl,
+          blobPath: report.blobPath,
+          fileSize: report.fileSize,
+          createdAt: report.createdAt,
+          verifiedAt: report.verifiedAt,
+          blobExists: blobExists // Include blob existence status
+        };
+      })
+    );
     
     res.json({
       customerKey,
       customerDisplayName,
-      reports: formattedReports
+      reports: reportsWithBlobStatus
     });
     
   } catch (error) {
@@ -236,19 +267,30 @@ async function debugReports(req, res) {
     });
     
     console.log("All reports for customer:", allReports.length);
-    allReports.forEach(report => {
-      console.log(`- ${report.reportId}: ${report.status} (${report.month}/${report.year})`);
-      console.log(`  Blob URL: ${report.blobUrl}`);
-      console.log(`  Blob Path: ${report.blobPath}`);
-    });
+    
+    // Check blob existence for each report
+    const reportsWithBlobStatus = await Promise.all(
+      allReports.map(async (report) => {
+        const blobExists = report.blobPath ? await checkBlobExists(report.blobPath) : false;
+        
+        console.log(`- ${report.reportId}: ${report.status} (${report.month}/${report.year})`);
+        console.log(`  Blob URL: ${report.blobUrl}`);
+        console.log(`  Blob Path: ${report.blobPath}`);
+        console.log(`  Blob Exists: ${blobExists}`);
+        
+        return {
+          ...report.toObject(),
+          blobExists
+        };
+      })
+    );
     
     // Find only verified reports
-    const verifiedReports = await ReportStatus.find({ 
-      customerKey: customerKey || 'unknown',
-      status: 'verified'
-    });
+    const verifiedReports = reportsWithBlobStatus.filter(report => report.status === 'verified');
+    const verifiedReportsWithBlob = verifiedReports.filter(report => report.blobExists);
     
     console.log("Verified reports for customer:", verifiedReports.length);
+    console.log("Verified reports with existing blob:", verifiedReportsWithBlob.length);
     
     res.json({
       customerIdentifier,
@@ -256,8 +298,10 @@ async function debugReports(req, res) {
       customerDisplayName,
       totalReports: allReports.length,
       verifiedReports: verifiedReports.length,
-      allReports: allReports,
-      verifiedReports: verifiedReports
+      verifiedReportsWithBlob: verifiedReportsWithBlob.length,
+      allReports: reportsWithBlobStatus,
+      verifiedReports: verifiedReports,
+      verifiedReportsWithBlob: verifiedReportsWithBlob
     });
     
   } catch (error) {
@@ -324,20 +368,24 @@ async function createTestReport(req, res) {
     // IMPORTANT: Use the CORRECT blob URL with your actual account name
     const blobUrl = `https://socwatchtowerreports.blob.core.windows.net/customerreports/${blobPath}`;
     
+    // Check if the blob actually exists before marking as verified
+    const blobExists = await checkBlobExists(blobPath);
+    
     const testReport = {
       reportId,
       customerKey,
       customerDisplayName,
       month,
       year,
-      status: 'verified',
+      status: blobExists ? 'verified' : 'uploaded', // Only mark as verified if blob exists
       blobUrl,
       blobPath,
       fileSize: 1024000, // 1MB
-      verifiedAt: new Date()
+      verifiedAt: blobExists ? new Date() : undefined
     };
     
     console.log("Creating test report with URL:", blobUrl);
+    console.log("Blob exists:", blobExists);
     
     await ReportStatus.findOneAndUpdate(
       { reportId },
@@ -349,7 +397,8 @@ async function createTestReport(req, res) {
     
     res.json({ 
       message: "Test report created",
-      report: testReport
+      report: testReport,
+      blobExists
     });
     
   } catch (error) {
@@ -389,20 +438,24 @@ async function createMultipleTestReports(req, res) {
       // Create blob URL matching your actual structure with correct account name
       const blobUrl = `https://socwatchtowerreports.blob.core.windows.net/customerreports/${blobPath}`;
       
+      // Check if the blob actually exists before marking as verified
+      const blobExists = await checkBlobExists(blobPath);
+      
       const testReport = {
         reportId,
         customerKey,
         customerDisplayName,
         month,
         year,
-        status: 'verified',
+        status: blobExists ? 'verified' : 'uploaded', // Only mark as verified if blob exists
         blobUrl,
         blobPath,
         fileSize: 1024000 + (i * 500000), // Varying file sizes
-        verifiedAt: new Date()
+        verifiedAt: blobExists ? new Date() : undefined
       };
       
       console.log(`Creating test report for ${monthShort} ${year} with URL:`, blobUrl);
+      console.log(`Blob exists: ${blobExists}`);
       
       await ReportStatus.findOneAndUpdate(
         { reportId },
