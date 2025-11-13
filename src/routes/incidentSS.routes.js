@@ -1,0 +1,10 @@
+import express from "express";
+import * as incidentSSController from "../controllers/incidentSS.controller.js";
+import { authenticate, attachCustomerInfo } from "../middlewares/auth.js";
+
+const router = express.Router();
+router.use(authenticate, attachCustomerInfo);
+
+router.get("/total_incidents_ss", incidentSSController.getIncidentsSubStatus);
+
+export default router;

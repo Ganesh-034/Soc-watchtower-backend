@@ -5,7 +5,16 @@ import compression from "compression";
 import morgan from "morgan";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { notFound } from "./middlewares/notFound.js";
-import userRoutes from "./routes/user.routes.js";
+import incidentRoutes from "./routes/incident.routes.js";
+import incidentTicketRoutes from "./routes/incidentTicket.routes.js"; 
+import incidentSeverityRoutes from "./routes/incident.severity.routes.js"; 
+import incidentDSRoutes from "./routes/incidentDS.routes.js";
+import incidentViewRoutes from "./routes/incidentView.routes.js";
+import incidentHSRoutes from "./routes/incidentHS.routes.js";
+import incidentSSRoutes from "./routes/incidentSS.routes.js";
+import reportRoutes from "./routes/report.routes.js"
+import incidentTicketReportRoutes from "./routes/incidentTicketReport.routes.js";
+import reportDownloadRoutes from './routes/reportDownload.routes.js';
 
 const app = express();
 
@@ -17,9 +26,20 @@ app.use(compression());
 app.use(morgan("dev"));
 
 // Routes
-app.use("/api/users", userRoutes);
+app.use("/api", incidentRoutes);
+app.use("/api", incidentTicketRoutes); 
+app.use("/api", incidentSeverityRoutes); 
+app.use("/api", incidentDSRoutes);
+app.use("/api", incidentViewRoutes);
+app.use("/api", incidentHSRoutes);
+app.use("/api", incidentSSRoutes);
+app.use("/api/incidents", incidentRoutes); // Assuming this already exists
+app.use("/api", incidentTicketReportRoutes); // Assuming this already exists
+app.use("/api/reports", reportRoutes); // Add this line
+app.use('/api/reports', reportDownloadRoutes);
 
 // 404 handler
+
 app.use(notFound);
 
 // Global error handler
