@@ -14,6 +14,7 @@ import * as incidentSSService from "./incidentSS.service.js";
 import logger from "../config/logger.js";
 import Incident from "../models/incident.model.js";
 import { generateExecutiveSummary } from "./executiveSummary.service.js";
+import { generateTicketSummary } from "./ticketSummary.service.js";
 
 // Customer configuration
 const customers = {
@@ -891,6 +892,13 @@ async function generateMonthlyReportForCustomer(
       healthTickets: healthTicketsData,
     };
 
+    logger.info(`🧠 Generating ticket summaries for ${customerDisplayName}...`);
+data.incidentTicketSummary = await generateTicketSummary(incidentTicketsData, "Incident", reportMonth);
+data.healthTicketSummary = await generateTicketSummary(healthTicketsData, "Health", reportMonth);
+logger.info(`✅ Ticket summaries generated for ${customerDisplayName}`);
+logger.info(`✅ eeeeeeeeeeeeeee ${data.incidentTicketSummary}`);
+logger.info(`✅ ttttttttttttttttttttttt ${data.healthTicketSummary}`);
+
     logger.info(
       `🧠 Generating executive summary with Azure OpenAI for ${customerDisplayName}...`
     );
@@ -1116,7 +1124,9 @@ async function generateAllHistoricalReports() {
     const currentMonth = new Date().getMonth() + 1;
 
     // Generate report for each customer
-    for (const [customerKey, customerDisplayName] of Object.entries(customers)) {
+    for (const [customerKey, customerDisplayName] of Object.entries(
+      customers
+    )) {
       try {
         // Generate reports from January 2025 to current month
         for (let year = 2025; year <= currentYear; year++) {
@@ -1732,7 +1742,16 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
       { label: "False Positive", color: "#00cc00" },
       { label: "True Positive", color: "#ff0000" },
     ];
+    logger.info(
+      `🧠 Generating executive summary with Azure OpenAI for ${customerDisplayName}...`
+    );
+    const executiveSummary = await generateExecutiveSummary(
+      data,
+      customerDisplayName
+    );
+    data.executiveSummary = executiveSummary;
 
+    logger.info(`✅ Executive summary generated for ${customerDisplayName}`);
     // Return the data object
     return {
       reportMonth,

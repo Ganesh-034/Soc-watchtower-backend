@@ -16,6 +16,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@azure/openai": "^2.0.0",
+    "@azure/storage-blob": "^12.29.1",
+    "axios": "^1.13.1",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -25,6 +28,7 @@
     "jwks-rsa": "^3.2.0",
     "mongoose": "^8.19.2",
     "morgan": "^1.10.1",
+    "openai": "^6.8.1",
     "winston": "^3.18.3"
   },
   "devDependencies": {
