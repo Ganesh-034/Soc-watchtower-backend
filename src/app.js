@@ -14,6 +14,7 @@ import incidentHSRoutes from "./routes/incidentHS.routes.js";
 import incidentSSRoutes from "./routes/incidentSS.routes.js";
 import reportRoutes from "./routes/report.routes.js"
 import incidentTicketReportRoutes from "./routes/incidentTicketReport.routes.js";
+import reportDownloadRoutes from './routes/reportDownload.routes.js';
 
 const app = express();
 
@@ -35,7 +36,10 @@ app.use("/api", incidentSSRoutes);
 app.use("/api/incidents", incidentRoutes); // Assuming this already exists
 app.use("/api", incidentTicketReportRoutes); // Assuming this already exists
 app.use("/api/reports", reportRoutes); // Add this line
+app.use('/api/reports', reportDownloadRoutes);
+
 // 404 handler
+
 app.use(notFound);
 
 // Global error handler
