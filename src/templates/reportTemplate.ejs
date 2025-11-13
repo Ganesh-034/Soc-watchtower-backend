@@ -409,10 +409,11 @@
       <div class="section-title">Analysis on Incident Ticket</div>
 
       <!-- New: Date Range and Summary for Incident Tickets -->
-      <div class="date-range-summary">
-        <div class="date-range" id="incidentDateRange"></div>
-        <div class="date-summary">During this period, our team handled <%- incidentTickets.length %> incident tickets with customer escalation.</div>
-      </div>
+<div class="date-range-summary">
+  <div class="date-range"></div>
+  <div class="date-summary"><%- incidentTicketSummary || `During this period, our team handled ${incidentTickets.length} incident tickets with customer escalation.` %></div>
+</div>
+
 
       <% if (incidentTickets && incidentTickets.length > 0) { %>
       <!-- 11th row: Incident Ticket Table -->
@@ -450,10 +451,11 @@
       <div class="section-title">Analysis on Health Ticket</div>
 
       <!-- New: Date Range and Summary for Health Tickets -->
-      <div class="date-range-summary">
-        <div class="date-range" id="healthDateRange"></div>
-        <div class="date-summary">System health monitoring identified <%- healthTickets.length %> health incidents with customer escalation.</div>
-      </div>
+<div class="date-range-summary">
+  <div class="date-range"></div>
+  <div class="date-summary"><%- healthTicketSummary || `System health monitoring identified <{healthTickets.length} health incidents with customer escalation.` %></div>
+</div>
+
 
       <% if (healthTickets && healthTickets.length > 0) { %>
       <!-- 13th row: Health Ticket Table -->
