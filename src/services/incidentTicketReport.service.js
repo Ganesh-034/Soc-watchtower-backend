@@ -38,7 +38,7 @@ function mapStatus(statusCode) {
 }
 
 // Regex for November 2025 (matches strings like "2025-11-05T06:04:53Z")
-const november2025Regex = /^2025-10/;
+const november2025Regex = /^2025-06/;
 
 // Route 1: Get all Health incidents with customer escalation in November 2025
 export const getHealthEscalationIncidents = async () => {

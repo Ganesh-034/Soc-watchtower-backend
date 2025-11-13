@@ -15,7 +15,7 @@ import logger from "../config/logger.js";
 import Incident from "../models/incident.model.js";
 import { generateExecutiveSummary } from "./executiveSummary.service.js";
 import { generateTicketSummary } from "./ticketSummary.service.js";
-
+import {stripHtmlTags} from "../utils/sanitizeHtml.js"
 // Customer configuration
 const customers = {
   toyotatsushoapacsoc: "Toyota Tsusho Asia Pacific",
@@ -457,7 +457,7 @@ const formatTicket = (ticket) => ({
   socRecommendation: ticket.soc_recommendation || "NA",
   sentinelIncidentNumber: ticket.sentinel_incident_number || "NA",
   ttps: ticket.ttps || "NA",
-  description: ticket.description || "NA",
+  description: stripHtmlTags(ticket.description) || "NA",
   incidentType: ticket.incident_type || "NA",
   incidentSubStatus: ticket.incident_sub_status || "NA",
   createdDate: ticket.created_at || "NA",
@@ -2179,6 +2179,7 @@ reportGenerationEvents.on("reportFailed", (data) => {
     );
   }
 });
+
 
 export {
   generateMonthlyReport,
