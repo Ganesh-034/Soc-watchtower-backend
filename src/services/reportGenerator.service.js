@@ -15,12 +15,43 @@ import logger from "../config/logger.js";
 import Incident from "../models/incident.model.js";
 import { generateExecutiveSummary } from "./executiveSummary.service.js";
 import { generateTicketSummary } from "./ticketSummary.service.js";
-import {stripHtmlTags} from "../utils/sanitizeHtml.js"
+import { stripHtmlTags } from "../utils/sanitizeHtml.js";
 // Customer configuration
 const customers = {
-  toyotatsushoapacsoc: "Toyota Tsusho Asia Pacific",
+  "ajinomoto-thailand(ajt)": "Ajinomoto Thailand",
+  "hino motor- hmst": "Hino Motor Sales Thailand HMST", // can remove this
+  "pt.rknforge": "PT RKN Forge",
+  "aji-sentinel4apc-prod": "Ajinomoto Philippines",
   "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
+  "hinomotorssalesthailand-hmst": "Hino Motors Sales Thailand HMST", // Keep this
+  // "log-scg-logistics-sentinel-hub": "SCG Logistics Sentinel Hub",
+  "pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
+  "pt-tokairika-indonesia": "PT Tokairika Indonesia",
   "taiho-thailand": "Taiho Thailand",
+  toyotaacseautocsengineeringcoltdsoc: "Toyota ACSE Auto CS Engineering Co Ltd",
+  toyotaadmptastradaihatsumotorsoc: "Toyota ADM PT Astra Daihatsu Motor",
+  toyotaafpaichiforgephilippinesincsoc:
+    "Toyota AFP Aichi Forge Philippines Inc",
+  toyotaaftaichiforgethailandsoc: "Toyota AFT Aichi Forge Thailand",
+  toyotaakakawashimaindonesiasoc: "Toyota AKA Kawashima Indonesia",
+  toyotafigplfutabaindtrgujaratpvtltdsoc:
+    "Toyota FIGPL Futaba Indtr Gujarat Pvt Ltd",
+  toyotafmiautomtvcomponentspvtltdsoc: "Toyota FMI Automotv Components Pvt Ltd",
+  toyotaftsiptftsautomotiveindonesiasoc:
+    "Toyota FTSI PT FTS Automotive Indonesia",
+  toyotaftsthftsautomotivethailandcoltd:
+    "Toyota FTSTH FTS Automotive Thailand Co Ltd",
+  toyotahmmmyhinomotorsmalaysiasoc: "Toyota HMMMY Hino Motors Malaysia",
+  toyotahmmthinomotorsmnfcthailandltdsoc:
+    "Toyota HMMT Hino Motors Mnfc Thailand Ltd",
+  toyotashirokiindonesiasoc: "Toyota Shiroki Indonesia",
+  toyotatgastoyodagoseiasiasoc: "Toyota TGAS Toyoda Gosei Asia",
+  toyotatgrttoyodagoseirubberthailandsoc:
+    "Toyota TGRT Toyoda Gosei Rubber Thailand",
+  toyotatkttakebethailandcoltdsoc: "Toyota TKT Takebe Thailand Co Ltd",
+  toyotatrttokairikathailandcoltdsoc: "Toyota TRT Tokairika Thailand Co Ltd",
+  "tts-asia-internal-soc-workspace-test": "TTS Asia Internal",
+  "ajinomoto-cambodia-ajc": "Ajinomoto Cambodia",
 };
 
 // Azure Blob Storage configuration
@@ -1385,7 +1416,7 @@ async function generateMonthlyReport() {
   try {
     // Get the previous month
     const now = new Date();
-    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 2, 1);
     const month = prevMonth.getMonth() + 1;
     const year = prevMonth.getFullYear();
 
@@ -2180,10 +2211,209 @@ reportGenerationEvents.on("reportFailed", (data) => {
   }
 });
 
+// Function to generate reports for the last 5 months for all customers
+async function generateLast5MonthsReports() {
+  logger.info(
+    "📅 Starting report generation for the last 5 months for all customers..."
+  );
+  const results = {
+    total: 0,
+    successful: 0,
+    failed: 0,
+    pending: 0,
+    processing: 0,
+    reports: [],
+    errors: [],
+  };
+
+  try {
+    const now = new Date();
+
+    // Generate report for each customer
+    for (const [customerKey, customerDisplayName] of Object.entries(
+      customers
+    )) {
+      try {
+        // Generate reports for the last 5 months
+        for (let i = 0; i < 5; i++) {
+          const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const month = targetDate.getMonth() + 1;
+          const year = targetDate.getFullYear();
+          const reportId = `${customerKey}_${month}_${year}`;
+          results.total++;
+
+          // Get the ReportStatus model
+          const ReportStatus = getReportStatusModel();
+          const existingReport = await ReportStatus.findOne({ reportId });
+
+          // Check if report exists and is verified AND blob actually exists
+          if (existingReport && existingReport.status === "verified") {
+            // Verify blob actually exists before skipping
+            const blobExists = await verifyBlob(existingReport.blobPath, null);
+            if (blobExists) {
+              results.successful++;
+              results.reports.push({
+                reportId,
+                customerKey,
+                customerDisplayName,
+                month,
+                year,
+                blobUrl: existingReport.blobUrl,
+                status: "verified",
+                timestamp: existingReport.verifiedAt,
+              });
+
+              logger.info(
+                `⏭️ Skipping already verified report for ${customerDisplayName} (${month}/${year})`
+              );
+              continue;
+            } else {
+              // Blob doesn't exist, update status to failed and continue with generation
+              logger.warn(
+                `⚠️ Report ${reportId} marked as verified but blob is missing. Regenerating...`
+              );
+              await updateReportStatus(reportId, {
+                status: "failed",
+                error: "Blob file is missing from storage",
+              });
+            }
+          }
+
+          // If report exists but failed, and we haven't reached max retries, skip
+          if (
+            existingReport &&
+            existingReport.status === "failed" &&
+            existingReport.retryCount >= existingReport.maxRetries
+          ) {
+            results.failed++;
+            results.errors.push({
+              reportId,
+              customerKey,
+              customerDisplayName,
+              month,
+              year,
+              error: existingReport.error,
+              status: "failed",
+              timestamp: existingReport.updatedAt,
+            });
+
+            logger.info(
+              `⏭️ Skipping failed report for ${customerDisplayName} (${month}/${year}) - max retries reached`
+            );
+            continue;
+          }
+
+          // If report is pending or processing, count it and continue
+          if (
+            existingReport &&
+            (existingReport.status === "queued" ||
+              existingReport.status === "generating" ||
+              existingReport.status === "generated" ||
+              existingReport.status === "uploading" ||
+              existingReport.status === "uploaded" ||
+              existingReport.status === "retrying")
+          ) {
+            if (existingReport.status === "queued") results.pending++;
+            else if (
+              existingReport.status === "generating" ||
+              existingReport.status === "generated" ||
+              existingReport.status === "uploading" ||
+              existingReport.status === "uploaded" ||
+              existingReport.status === "retrying"
+            )
+              results.processing++;
+
+            results.reports.push({
+              reportId,
+              customerKey,
+              customerDisplayName,
+              month,
+              year,
+              status: existingReport.status,
+              timestamp: existingReport.updatedAt,
+            });
+
+            logger.info(
+              `⏭️ Skipping ${existingReport.status} report for ${customerDisplayName} (${month}/${year})`
+            );
+            continue;
+          }
+
+          try {
+            // Generate the report
+            const reportResult = await generateMonthlyReportForCustomer(
+              customerKey,
+              customerDisplayName,
+              month,
+              year
+            );
+
+            // Only count as successful if status is verified
+            if (reportResult.status === "verified") {
+              results.successful++;
+            } else {
+              results.failed++;
+            }
+
+            results.reports.push({
+              reportId,
+              customerKey,
+              customerDisplayName,
+              month,
+              year,
+              blobUrl: reportResult.blobUrl,
+              status: reportResult.status || "verified",
+              timestamp: new Date().toISOString(),
+            });
+
+            logger.info(
+              `✅ Generated report for ${customerDisplayName} (${month}/${year}) with status: ${reportResult.status || "verified"}`
+            );
+          } catch (error) {
+            results.failed++;
+            results.errors.push({
+              reportId,
+              customerKey,
+              customerDisplayName,
+              month,
+              year,
+              error: error.message,
+              status: "failed",
+              timestamp: new Date().toISOString(),
+            });
+
+            logger.error(
+              `❌ Failed to generate report for ${customerDisplayName} (${month}/${year}):`,
+              error
+            );
+          }
+        }
+      } catch (error) {
+        logger.error(
+          `❌ Failed to process reports for ${customerDisplayName}:`,
+          error
+        );
+      }
+    }
+
+    logger.info(
+      `📊 Report generation summary: ${results.successful}/${results.total} successful, ${results.failed} failed, ${results.pending} pending, ${results.processing} processing`
+    );
+
+    return results;
+  } catch (error) {
+    logger.error(
+      "❌ Error generating reports for the last 5 months for all customers:",
+      error
+    );
+    throw error;
+  }
+}
 
 export {
   generateMonthlyReport,
   generateAllHistoricalReports,
+  generateLast5MonthsReports,
   getReportData,
   getReportStatus,
   retryFailedReports,

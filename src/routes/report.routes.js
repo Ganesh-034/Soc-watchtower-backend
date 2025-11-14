@@ -4,10 +4,10 @@ import {
   generateMonthlyReport,
   getReportData,
   checkReportsDBHealth,
-  // generateLast5MonthsReports,
-  // getReportStatus,
-  // retryFailedReports,
-  // verifyReportsIntegrity,
+  generateLast5MonthsReports,
+  getReportStatus,
+  retryFailedReports,
+  verifyReportsIntegrity,
 } from "../services/reportGenerator.service.js";
 import path from "path";
 import logger from "../config/logger.js";
@@ -58,18 +58,18 @@ router.get("/view-report", async (req, res) => {
 });
 
 // Generate reports for the last 5 months
-// router.post("/generate/last5months", async (req, res) => {
-//   try {
-//     const results = await generateLast5MonthsReports();
-//     res.json({
-//       message: "Last 5 months report generation completed",
-//       results
-//     });
-//   } catch (error) {
-//     logger.error("Error generating last 5 months reports:", error);
-//     res.status(500).json({ error: "Failed to generate last 5 months reports" });
-//   }
-// });
+router.post("/generate/last5months", async (req, res) => {
+  try {
+    const results = await generateLast5MonthsReports();
+    res.json({
+      message: "Last 5 months report generation completed",
+      results
+    });
+  } catch (error) {
+    logger.error("Error generating last 5 months reports:", error);
+    res.status(500).json({ error: "Failed to generate last 5 months reports" });
+  }
+});
 
 
 export default router;
