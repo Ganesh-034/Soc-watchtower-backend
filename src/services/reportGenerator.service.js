@@ -786,60 +786,51 @@ async function generateMonthlyReportForCustomer(
 
     const handlingStatusChartLabels = sortedHsMonths.map((month) => month.name);
     const handlingStatusChartData = {
-      open: sortedHsMonths.map((month) => month.statuses.Open || 0),
       pending: sortedHsMonths.map((month) => month.statuses.Pending || 0),
-      resolved: sortedHsMonths.map((month) => month.statuses.Resolved || 0),
-      closed: sortedHsMonths.map((month) => month.statuses.Closed || 0),
+ 
+      resolved: sortedHsMonths.map((month) =>
+        (month.statuses.Resolved || 0) + (month.statuses.Closed || 0)
+      ),
     };
 
     // Create affiliate data for the handling status table
-    const incidentHandlingStatusData = [
+ const incidentHandlingStatusData = [
       {
         affiliate: "Current Month",
-        open:
-          sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Open || 0,
+ 
         pending:
           sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
             .Pending || 0,
         resolved:
-          sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Resolved || 0,
-        closed:
-          sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Closed || 0,
+          (sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
+            .Resolved || 0) +
+          (sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
+            .Closed || 0),
       },
       {
         affiliate: "Previous Month",
-        open:
-          sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Open || 0,
         pending:
           sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
             .Pending || 0,
         resolved:
-          sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Resolved || 0,
-        closed:
-          sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Closed || 0,
+          (sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
+            .Resolved || 0) +
+          (sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
+            .Closed || 0),
       },
       {
         affiliate: "Two Months Ago",
-        open:
-          sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Open || 0,
         pending:
           sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
             .Pending || 0,
         resolved:
-          sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Resolved || 0,
-        closed:
-          sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Closed || 0,
+          (sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
+            .Resolved || 0) +
+          (sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
+            .Closed || 0),
       },
     ];
+ 
 
     // Process sub-status data for the chart
     const subStatusData = incidentSSResponse.substatus || [];
@@ -1710,60 +1701,52 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
 
     const handlingStatusChartLabels = sortedHsMonths.map((month) => month.name);
     const handlingStatusChartData = {
-      open: sortedHsMonths.map((month) => month.statuses.Open || 0),
       pending: sortedHsMonths.map((month) => month.statuses.Pending || 0),
-      resolved: sortedHsMonths.map((month) => month.statuses.Resolved || 0),
-      closed: sortedHsMonths.map((month) => month.statuses.Closed || 0),
+ 
+      resolved: sortedHsMonths.map((month) =>
+        (month.statuses.Resolved || 0) + (month.statuses.Closed || 0)
+      ),
     };
+ 
 
     // Create affiliate data for the handling status table
-    const incidentHandlingStatusData = [
+   const incidentHandlingStatusData = [
       {
         affiliate: "Current Month",
-        open:
-          sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Open || 0,
+ 
         pending:
           sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
             .Pending || 0,
         resolved:
-          sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Resolved || 0,
-        closed:
-          sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Closed || 0,
+          (sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
+            .Resolved || 0) +
+          (sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
+            .Closed || 0),
       },
       {
         affiliate: "Previous Month",
-        open:
-          sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Open || 0,
         pending:
           sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
             .Pending || 0,
         resolved:
-          sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Resolved || 0,
-        closed:
-          sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Closed || 0,
+          (sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
+            .Resolved || 0) +
+          (sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
+            .Closed || 0),
       },
       {
         affiliate: "Two Months Ago",
-        open:
-          sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Open || 0,
         pending:
           sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
             .Pending || 0,
-        closed:
-          sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Closed || 0,
         resolved:
-          sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Resolved || 0,
+          (sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
+            .Resolved || 0) +
+          (sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
+            .Closed || 0),
       },
     ];
+ 
 
     // Process sub-status data for the chart
     const subStatusData = incidentSSResponse.substatus || [];

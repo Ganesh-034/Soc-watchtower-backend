@@ -585,10 +585,27 @@
       <div class="section-title">Analysis on Incident Ticket</div>
 
       <!-- New: Date Range and Summary for Incident Tickets -->
-      <div class="date-range-summary">
-        <div class="date-range"></div>
-        <div class="date-summary"><%- incidentTicketSummary || `During this period, our team handled ${incidentTickets.length} incident tickets with customer escalation.` %></div>
-      </div>
+   <div class="date-range-summary">
+  <div class="date-range">
+    <%
+      // Parse month and year from reportMonth
+      const [monthName, yearStr] = reportMonth.split(' ');
+      const year = parseInt(yearStr);
+     
+      // Get month index (0-11) from month name
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const monthIndex = monthNames.indexOf(monthName);
+     
+      // Calculate last day of month
+      const lastDayOfMonth = new Date(year, monthIndex + 1, 0).getDate();
+     
+      // Output date range
+    %>
+    <%= monthName %> 1 - <%= monthName %> <%= lastDayOfMonth %>, <%= year %>
+  </div>
+  <div class="date-summary"><%- incidentTicketSummary || `During this period, our team handled ${incidentTickets.length} incident tickets with customer escalation.` %></div>
+</div>
+ 
 
       <% if (incidentTickets && incidentTickets.length > 0) { %>
       <!-- 11th row: Incident Ticket Table -->
@@ -646,24 +663,43 @@
       <div class="section-title">Analysis on Health Ticket</div>
 
       <!-- New: Date Range and Summary for Health Tickets -->
-      <div class="date-range-summary">
-        <div class="date-range"></div>
-        <div class="date-summary"><%- healthTicketSummary || `System health monitoring identified <{healthTickets.length} health incidents with customer escalation.` %></div>
-      </div>
+     <div class="date-range-summary">
+  <div class="date-range">
+    <%
+      // Parse month and year from reportMonth
+      const [healthMonthName, healthYearStr] = reportMonth.split(' ');
+      const healthYear = parseInt(healthYearStr);
+     
+      // Get month index (0-11) from month name
+      const healthMonthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const healthMonthIndex = healthMonthNames.indexOf(healthMonthName);
+     
+      // Calculate last day of month
+      const healthLastDayOfMonth = new Date(healthYear, healthMonthIndex + 1, 0).getDate();
+     
+      // Output date range
+    %>
+    <%= healthMonthName %> 1 - <%= healthMonthName %> <%= healthLastDayOfMonth %>, <%= healthYear %>
+  </div>
+  <div class="date-summary"><%- healthTicketSummary || `System health monitoring identified ${healthTickets.length} health incidents with customer escalation.` %></div>
+</div>
 
       <% if (healthTickets && healthTickets.length > 0) { %>
       <!-- 13th row: Health Ticket Table -->
       <div class="table-container" id="healthTableContainer">
-        <table class="table table-striped table-bordered" id="healthTable">
+      
+  <table class="table table-striped table-bordered" id="healthTable">
           <thead>
             <tr>
-              <th>Ticket ID</th>
-              <th>Subject</th>
-              <th>Date</th>
-              <th>Affiliate</th>
-              <th>System</th>
-              <th>Status</th>
-              <th>Description</th>
+              <th>Incident Number</th>
+              <th>Incident Name</th>
+              <th>Incident Time</th>
+              <th>Incident Severity</th>
+              <th>Incident Type</th>
+              <th>SOC Analysis</th>
+              <th>SOC Recommendation</th>
+              <th>Incident Status</th>
+              <th>Incident SubStatus</th>
             </tr>
           </thead>
           <tbody>
@@ -671,15 +707,34 @@
             <tr>
               <td><%= ticket.id %></td>
               <td><%= ticket.subject %></td>
-              <td><%= new Date(ticket.createdDate).toLocaleDateString() %></td>
-              <td><%= ticket.customerName %></td>
+<%
+  const date = new Date(ticket.createdDate);
+  const dateStr = date.toLocaleDateString("en-US", { timeZone: "UTC" });
+  const timeStr = date.toLocaleTimeString("en-US", {
+    timeZone: "UTC",
+    hour12: true,
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+  const ms = date.getUTCMilliseconds().toString().padStart(3, "0");
+%>
+<td>
+  <%= dateStr %><br>
+  <%= timeStr %>.<%= ms %> <br>
+  (UTC)
+</td>
+              <td><%= ticket.priority %></td>
               <td><%= ticket.incidentType %></td>
-              <td><%= ticket.status %></td>
-              <td><%= ticket.description %></td>
+              <td><%= ticket.socAnalysis %></td>
+              <td><%= ticket.socRecommendation %></td>
+              <td><%= ticket.status && ticket.status.toLowerCase() === 'closed' ? 'Resolved' : ticket.status %></td>
+              <td><%= ticket.incidentSubStatus %></td>
             </tr>
             <% }); %>
           </tbody>
         </table>
+		
       </div>
       <% } %>
     </div>
@@ -1185,7 +1240,7 @@
               labels: handlingStatusChartLabels,
               datasets: [
                 {
-                  label: "Pending",
+                  label: "In Progress",
                   data: handlingStatusChartData.pending,
                   backgroundColor: "#ffdd57",
                 },
@@ -1193,12 +1248,7 @@
                   label: "Resolved",
                   data: handlingStatusChartData.resolved,
                   backgroundColor: "#70db70",
-                },
-                {
-                  label: "Closed",
-                  data: handlingStatusChartData.closed,
-                  backgroundColor: "#66b2ff",
-                },
+                }
               ],
             },
             options: {
