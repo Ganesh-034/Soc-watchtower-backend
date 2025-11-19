@@ -58,6 +58,7 @@ const containerClient = blobServiceClient.getContainerClient(
 
 // Customer configuration - bidirectional mapping
 const customers = {
+    toyotatsushoapacsoc: "Toyota Tsusho Asia Pacific",
   "ajinomoto-thailand(ajt)": "Ajinomoto Thailand",
   "hino motor- hmst": "Hino Motor Sales Thailand HMST", // can remove this
   "pt.rknforge": "PT RKN Forge",
