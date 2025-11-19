@@ -137,9 +137,9 @@ export async function generateTicketSummary(tickets, type, reportMonth) {
         });
  
         const ticketCount = tickets.length;
-        if (ticketCount === 0) {
-            return `No ${type.toLowerCase()} tickets were recorded during ${reportMonth}.`;
-        }
+        // if (ticketCount === 0) {
+        //     return `No ${type.toLowerCase()} tickets were recorded during ${reportMonth}.`;
+        // }
  
         // Count by status (case-insensitive)
         const statusCounts = {};
@@ -165,13 +165,14 @@ export async function generateTicketSummary(tickets, type, reportMonth) {
       - Report Month: ${reportMonth}
  
       Use this sentence pattern exactly:
-      "During this period, our team handled ${ticketCount} ${type.toLowerCase()} tickets, out of which <status1count> are in <status1> and <status2count> are in <status2>."
+      "For the month of ${reportMonth}, our team handled ${ticketCount} ${type.toLowerCase()} tickets, out of which <status1count> are in <status1> and <status2count> are in <status2>."
  
       Replace <status1> etc. with real status names from the list above.
+      Only include the <status2> section in your report if there are one or more unresolved tickets in either the incident analysis and health ticket categories
       Use natural grammar (singular/plural) and correct phrasing.
       Avoid extra commentary or introductions.
     `;
-        logger.info(`🧠 Calling Azure OpenAI for ${prompt} ticket summary generation`);
+        logger.info(`🧠 Ticket summary Azure OpenAI for ${prompt} ticket summary generation`);
         logger.info(`🧠 Calling Azure OpenAI for ${type} ticket summary generation`);
         const response = await client.chat.completions.create({
             messages: [{ role: "user", content: prompt }],
@@ -212,7 +213,7 @@ function getDefaultTicketSummary(tickets, type, reportMonth) {
         .map(([status, num]) => `${num} are in ${capitalizeStatus(status)}`)
         .join(" and ");
  
-    return `During this period, our team handled ${count} ${type.toLowerCase()} tickets, out of which ${readableStatuses}.`;
+    return `For the month of ${reportMonth}, our team handled ${count} ${type.toLowerCase()} tickets, out of which ${readableStatuses}.`;
 }
  
 function capitalizeStatus(status) {
