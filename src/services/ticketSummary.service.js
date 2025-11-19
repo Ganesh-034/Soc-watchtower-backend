@@ -137,9 +137,9 @@ export async function generateTicketSummary(tickets, type, reportMonth) {
         });
  
         const ticketCount = tickets.length;
-        // if (ticketCount === 0) {
-        //     return `No ${type.toLowerCase()} tickets were recorded during ${reportMonth}.`;
-        // }
+        if (ticketCount === 0) {
+            return `No ${type.toLowerCase()} tickets were reported during ${reportMonth}.`;
+        }
  
         // Count by status (case-insensitive)
         const statusCounts = {};
@@ -197,7 +197,7 @@ export async function generateTicketSummary(tickets, type, reportMonth) {
 function getDefaultTicketSummary(tickets, type, reportMonth) {
     const count = tickets.length;
     if (count === 0) {
-        return `No ${type.toLowerCase()} tickets were recorded during ${reportMonth}.`;
+        return `No ${type.toLowerCase()} tickets were reported during ${reportMonth}.`;
     }
  
     const statusCounts = {};

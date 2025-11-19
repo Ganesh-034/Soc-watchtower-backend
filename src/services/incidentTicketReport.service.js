@@ -38,7 +38,7 @@ function mapStatus(statusCode) {
 }
 
 // Regex for November 2025 (matches strings like "2025-11-05T06:04:53Z")
-const november2025Regex = /^2025-06/;
+const november2025Regex = /^2025-09/;
 
 // Route 1: Get all Health incidents with customer escalation in November 2025
 export const getHealthEscalationIncidents = async () => {
@@ -47,7 +47,7 @@ export const getHealthEscalationIncidents = async () => {
       incident_type: "Health Incident",
       customer_escalation: { $regex: /^yes$/i },
       created_at: { $regex: november2025Regex },
-      customer_name: "toyotatsushoapacsoc",
+      customer_name: "ajinomoto-thailand(ajt)",
     };
 
     const tickets = await Incident.find(filters).sort({ created_at: 1 }).lean();
@@ -75,7 +75,7 @@ export const getNonHealthEscalationIncidents = async () => {
       incident_type: { $ne: "Health Incident" },
       customer_escalation: { $regex: /^yes$/i },
       created_at: { $regex: november2025Regex },
-      customer_name: "toyotatsushoapacsoc",
+      customer_name: "ajinomoto-thailand(ajt)",
     };
 
     const tickets = await Incident.find(filters).sort({ created_at: 1 }).lean();

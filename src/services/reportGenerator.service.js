@@ -18,40 +18,41 @@ import { generateTicketSummary } from "./ticketSummary.service.js";
 import { stripHtmlTags } from "../utils/sanitizeHtml.js";
 // Customer configuration
 const customers = {
-//   "ajinomoto-thailand(ajt)": "Ajinomoto Thailand",
-//   "hino motor- hmst": "Hino Motor Sales Thailand HMST", // can remove this
-//   "pt.rknforge": "PT RKN Forge",
-  "aji-sentinel4apc-prod": "Ajinomoto Philippines",
-//   "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
-//   "hinomotorssalesthailand-hmst": "Hino Motors Sales Thailand HMST", // Keep this
-//   // "log-scg-logistics-sentinel-hub": "SCG Logistics Sentinel Hub",
-//   "pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
-//   "pt-tokairika-indonesia": "PT Tokairika Indonesia",
-//   "taiho-thailand": "Taiho Thailand",
-//   toyotaacseautocsengineeringcoltdsoc: "Toyota ACSE Auto CS Engineering Co Ltd",
-//   toyotaadmptastradaihatsumotorsoc: "Toyota ADM PT Astra Daihatsu Motor",
-//   toyotaafpaichiforgephilippinesincsoc:
-//     "Toyota AFP Aichi Forge Philippines Inc",
-//   toyotaaftaichiforgethailandsoc: "Toyota AFT Aichi Forge Thailand",
-//   toyotaakakawashimaindonesiasoc: "Toyota AKA Kawashima Indonesia",
-//   toyotafigplfutabaindtrgujaratpvtltdsoc:
-//     "Toyota FIGPL Futaba Indtr Gujarat Pvt Ltd",
-//   toyotafmiautomtvcomponentspvtltdsoc: "Toyota FMI Automotv Components Pvt Ltd",
-//   toyotaftsiptftsautomotiveindonesiasoc:
-//     "Toyota FTSI PT FTS Automotive Indonesia",
-//   toyotaftsthftsautomotivethailandcoltd:
-//     "Toyota FTSTH FTS Automotive Thailand Co Ltd",
-//   toyotahmmmyhinomotorsmalaysiasoc: "Toyota HMMMY Hino Motors Malaysia",
-//   toyotahmmthinomotorsmnfcthailandltdsoc:
-//     "Toyota HMMT Hino Motors Mnfc Thailand Ltd",
-//   toyotashirokiindonesiasoc: "Toyota Shiroki Indonesia",
-//   toyotatgastoyodagoseiasiasoc: "Toyota TGAS Toyoda Gosei Asia",
-//   toyotatgrttoyodagoseirubberthailandsoc:
-//     "Toyota TGRT Toyoda Gosei Rubber Thailand",
-//   toyotatkttakebethailandcoltdsoc: "Toyota TKT Takebe Thailand Co Ltd",
-//   toyotatrttokairikathailandcoltdsoc: "Toyota TRT Tokairika Thailand Co Ltd",
-//   "tts-asia-internal-soc-workspace-test": "TTS Asia Internal",
-//   "ajinomoto-cambodia-ajc": "Ajinomoto Cambodia",
+  // "ajinomoto-thailand(ajt)": "Ajinomoto Thailand",
+  // "hino motor- hmst": "Hino Motor Sales Thailand HMST", // can remove this
+  // "pt.rknforge": "PT RKN Forge",
+ "aji-sentinel4apc-prod": "Ajinomoto Philippines",
+  // "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
+  // "hinomotorssalesthailand-hmst": "Hino Motors Sales Thailand HMST", // Keep this
+  // // "log-scg-logistics-sentinel-hub": "SCG Logistics Sentinel Hub",
+  // "pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
+  // "pt-tokairika-indonesia": "PT Tokairika Indonesia",
+  // "taiho-thailand": "Taiho Thailand",
+  // toyotaacseautocsengineeringcoltdsoc: "Toyota ACSE Auto CS Engineering Co Ltd",
+  // toyotaadmptastradaihatsumotorsoc: "Toyota ADM PT Astra Daihatsu Motor",
+  // toyotaafpaichiforgephilippinesincsoc:
+  //   "Toyota AFP Aichi Forge Philippines Inc",
+  // toyotaaftaichiforgethailandsoc: "Toyota AFT Aichi Forge Thailand",
+  // toyotaakakawashimaindonesiasoc: "Toyota AKA Kawashima Indonesia",
+  // toyotafigplfutabaindtrgujaratpvtltdsoc:
+  //   "Toyota FIGPL Futaba Indtr Gujarat Pvt Ltd",
+  // toyotafmiautomtvcomponentspvtltdsoc: "Toyota FMI Automotv Components Pvt Ltd",
+  // toyotaftsiptftsautomotiveindonesiasoc:
+  //   "Toyota FTSI PT FTS Automotive Indonesia",
+  // toyotaftsthftsautomotivethailandcoltd:
+  //   "Toyota FTSTH FTS Automotive Thailand Co Ltd",
+  // toyotahmmmyhinomotorsmalaysiasoc: "Toyota HMMMY Hino Motors Malaysia",
+  // toyotahmmthinomotorsmnfcthailandltdsoc:
+  //   "Toyota HMMT Hino Motors Mnfc Thailand Ltd",
+  // toyotashirokiindonesiasoc: "Toyota Shiroki Indonesia",
+  // toyotatgastoyodagoseiasiasoc: "Toyota TGAS Toyoda Gosei Asia",
+  // toyotatgrttoyodagoseirubberthailandsoc:
+  //   "Toyota TGRT Toyoda Gosei Rubber Thailand",
+  // toyotatkttakebethailandcoltdsoc: "Toyota TKT Takebe Thailand Co Ltd",
+  // toyotatrttokairikathailandcoltdsoc: "Toyota TRT Tokairika Thailand Co Ltd",
+  // "tts-asia-internal-soc-workspace-test": "TTS Asia Internal",
+  // "ajinomoto-cambodia-ajc": "Ajinomoto Cambodia",  
+  //"pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
 };
 
 // Azure Blob Storage configuration
@@ -785,60 +786,51 @@ async function generateMonthlyReportForCustomer(
 
     const handlingStatusChartLabels = sortedHsMonths.map((month) => month.name);
     const handlingStatusChartData = {
-      open: sortedHsMonths.map((month) => month.statuses.Open || 0),
       pending: sortedHsMonths.map((month) => month.statuses.Pending || 0),
-      resolved: sortedHsMonths.map((month) => month.statuses.Resolved || 0),
-      closed: sortedHsMonths.map((month) => month.statuses.Closed || 0),
+ 
+      resolved: sortedHsMonths.map((month) =>
+        (month.statuses.Resolved || 0) + (month.statuses.Closed || 0)
+      ),
     };
 
     // Create affiliate data for the handling status table
-    const incidentHandlingStatusData = [
+ const incidentHandlingStatusData = [
       {
         affiliate: "Current Month",
-        open:
-          sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Open || 0,
+ 
         pending:
           sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
             .Pending || 0,
         resolved:
-          sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Resolved || 0,
-        closed:
-          sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Closed || 0,
+          (sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
+            .Resolved || 0) +
+          (sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
+            .Closed || 0),
       },
       {
         affiliate: "Previous Month",
-        open:
-          sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Open || 0,
         pending:
           sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
             .Pending || 0,
         resolved:
-          sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Resolved || 0,
-        closed:
-          sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Closed || 0,
+          (sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
+            .Resolved || 0) +
+          (sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
+            .Closed || 0),
       },
       {
         affiliate: "Two Months Ago",
-        open:
-          sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Open || 0,
         pending:
           sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
             .Pending || 0,
         resolved:
-          sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Resolved || 0,
-        closed:
-          sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Closed || 0,
+          (sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
+            .Resolved || 0) +
+          (sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
+            .Closed || 0),
       },
     ];
+ 
 
     // Process sub-status data for the chart
     const subStatusData = incidentSSResponse.substatus || [];
@@ -1416,7 +1408,7 @@ async function generateMonthlyReport() {
   try {
     // Get the previous month
     const now = new Date();
-    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const month = prevMonth.getMonth() + 1;
     const year = prevMonth.getFullYear();
 
@@ -1709,60 +1701,52 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
 
     const handlingStatusChartLabels = sortedHsMonths.map((month) => month.name);
     const handlingStatusChartData = {
-      open: sortedHsMonths.map((month) => month.statuses.Open || 0),
       pending: sortedHsMonths.map((month) => month.statuses.Pending || 0),
-      resolved: sortedHsMonths.map((month) => month.statuses.Resolved || 0),
-      closed: sortedHsMonths.map((month) => month.statuses.Closed || 0),
+ 
+      resolved: sortedHsMonths.map((month) =>
+        (month.statuses.Resolved || 0) + (month.statuses.Closed || 0)
+      ),
     };
+ 
 
     // Create affiliate data for the handling status table
-    const incidentHandlingStatusData = [
+   const incidentHandlingStatusData = [
       {
         affiliate: "Current Month",
-        open:
-          sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Open || 0,
+ 
         pending:
           sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
             .Pending || 0,
         resolved:
-          sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Resolved || 0,
-        closed:
-          sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Closed || 0,
+          (sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
+            .Resolved || 0) +
+          (sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
+            .Closed || 0),
       },
       {
         affiliate: "Previous Month",
-        open:
-          sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Open || 0,
         pending:
           sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
             .Pending || 0,
         resolved:
-          sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Resolved || 0,
-        closed:
-          sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Closed || 0,
+          (sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
+            .Resolved || 0) +
+          (sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
+            .Closed || 0),
       },
       {
         affiliate: "Two Months Ago",
-        open:
-          sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Open || 0,
         pending:
           sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
             .Pending || 0,
-        closed:
-          sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Closed || 0,
         resolved:
-          sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Resolved || 0,
+          (sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
+            .Resolved || 0) +
+          (sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
+            .Closed || 0),
       },
     ];
+ 
 
     // Process sub-status data for the chart
     const subStatusData = incidentSSResponse.substatus || [];

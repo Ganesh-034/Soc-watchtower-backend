@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= customerDisplayName %> Monthly Report</title>
+    <title><%= customerDisplayName %> - TTS GSOC - Monthly Report</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -123,7 +123,8 @@
       .table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 14px;
+        font-size: 16px; /* Increased from 14px to 16px for better readability */
+        table-layout: auto;
       }
 
       .table th,
@@ -133,15 +134,82 @@
         text-align: center;
         white-space: normal;
         word-wrap: break-word;
-        max-width: 200px;
+        vertical-align: top;
       }
 
+      /* Enhanced word wrapping for table headers */
       .table th {
         background-color: #3498db;
         color: white;
+        white-space: normal;
+        word-wrap: break-word;
+        word-break: break-word;
+        hyphens: auto;
+        overflow-wrap: break-word;
+        max-width: 100px; /* Set a max-width to force wrapping */
+        height: auto; /* Allow height to adjust */
+        min-height: 40px; /* Minimum height for better appearance */
       }
 
+      /* Make SOC Analysis column wider */
+      .table th:nth-child(6),
+      .table td:nth-child(6) {
+        min-width: 200px;
+        width: 25%;
+      }
+
+      /* Make SOC Recommendation column half the width of SOC Analysis */
+      .table th:nth-child(7),
+      .table td:nth-child(7) {
+        min-width: 100px;
+        width: 12.5%; /* Half of the previous 25% width */
+      }
+
+      /* Make other columns narrower */
+      .table th:not(:nth-child(6)):not(:nth-child(7)),
+      .table td:not(:nth-child(6)):not(:nth-child(7)) {
+        min-width: 80px;
+        width: auto;
+      }
+
+      /* Make executive summary and analysis content bold */
+      .summary-box p,
+      .date-range-summary {
+        font-weight: bold;
+      }
+
+      /* Print header and footer */
       @media print {
+        @page {
+          margin: 15mm 10mm 15mm 10mm;
+          size: A4;
+        }
+
+        .print-header {
+          position: fixed;
+          top: 0;
+          right: 0;
+          width: 100%;
+          text-align: right;
+          font-size: 12px;
+          font-weight: normal;
+          color: #2c3e50;
+          padding: 5px 15px;
+        }
+
+        .print-footer {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 20px;
+          text-align: center;
+          font-size: 10px;
+          color: #777;
+          padding: 5px 0;
+          border-top: 1px solid #ddd;
+        }
+
         html,
         body {
           width: 297mm;
@@ -154,9 +222,10 @@
         .report-container {
           box-shadow: none !important;
           margin: 0;
-          padding: 15mm;
+          padding: 15mm 10mm 20mm 10mm;
           overflow: visible;
           background: white !important;
+          max-width: 100%;
         }
 
         .grid-row {
@@ -177,19 +246,115 @@
           overflow: visible;
         }
 
+        /* More aggressive table styling for print */
         .table {
-          font-size: 11px;
+          font-size: 11px; /* Increased from 9px to 11px for better readability */
           table-layout: fixed;
+          width: 100%;
+          max-width: 100%;
         }
 
         .table th,
         .table td {
-          padding: 4px 6px;
+          padding: 3px 4px;
           white-space: normal;
           word-wrap: break-word;
-          max-width: 150px;
+          vertical-align: top;
           overflow: hidden;
           text-overflow: ellipsis;
+        }
+
+        /* Enhanced word wrapping for print headers */
+        .table th {
+          white-space: normal;
+          word-wrap: break-word;
+          word-break: break-word;
+          hyphens: auto;
+          overflow-wrap: break-word;
+          height: auto;
+          min-height: 30px; /* Smaller min-height for print */
+        }
+
+        /* More specific column widths for print */
+        .table th:nth-child(1), /* Incident Number */
+        .table td:nth-child(1) {
+          width: 8%;
+        }
+        
+        .table th:nth-child(2), /* Incident Name */
+        .table td:nth-child(2) {
+          width: 12%;
+        }
+        
+        .table th:nth-child(3), /* Incident Time */
+        .table td:nth-child(3) {
+          width: 10%;
+        }
+        
+        .table th:nth-child(4), /* Incident Severity */
+        .table td:nth-child(4) {
+          width: 8%;
+        }
+        
+        .table th:nth-child(5), /* Incident Type */
+        .table td:nth-child(5) {
+          width: 10%;
+        }
+        
+        .table th:nth-child(6), /* SOC Analysis */
+        .table td:nth-child(6) {
+          width: 25%;
+        }
+        
+        .table th:nth-child(7), /* SOC Recommendation - reduced by half */
+        .table td:nth-child(7) {
+          width: 12.5%; /* Half of the previous 25% width */
+        }
+        
+        .table th:nth-child(8), /* Incident Status */
+        .table td:nth-child(8) {
+          width: 9.5%; /* Increased from 7% to compensate for reduced column 7 */
+        }
+        
+        .table th:nth-child(9), /* Incident SubStatus */
+        .table td:nth-child(9) {
+          width: 7%; /* Increased from 5% to compensate for reduced column 7 */
+        }
+
+        /* Health table specific widths */
+        #healthTable th:nth-child(1), /* Ticket ID */
+        #healthTable td:nth-child(1) {
+          width: 10%;
+        }
+        
+        #healthTable th:nth-child(2), /* Subject */
+        #healthTable td:nth-child(2) {
+          width: 15%;
+        }
+        
+        #healthTable th:nth-child(3), /* Date */
+        #healthTable td:nth-child(3) {
+          width: 10%;
+        }
+        
+        #healthTable th:nth-child(4), /* Affiliate */
+        #healthTable td:nth-child(4) {
+          width: 15%;
+        }
+        
+        #healthTable th:nth-child(5), /* System */
+        #healthTable td:nth-child(5) {
+          width: 15%;
+        }
+        
+        #healthTable th:nth-child(6), /* Status */
+        #healthTable td:nth-child(6) {
+          width: 10%;
+        }
+        
+        #healthTable th:nth-child(7), /* Description */
+        #healthTable td:nth-child(7) {
+          width: 25%;
         }
 
         .table thead {
@@ -226,6 +391,8 @@
           page-break-inside: auto;
           orphans: 4;
           widows: 4;
+          overflow-x: hidden;
+          width: 100%;
         }
 
         .page-break {
@@ -267,21 +434,30 @@
     </style>
   </head>
   <body>
+    <!-- Print Header -->
+    <div class="print-header">
+      Created by SOC Watchtower<br>
+      <span id="generationDateTime"></span>
+    </div>
+    
+    <!-- Print Footer -->
+    <div class="print-footer">© 2025 SOC-WatchTower. All Rights Reserved.</div>
+    
     <div class="report-container">
       <!-- 1st row: Header -->
       <div class="header-title">
-        <%= customerDisplayName %> - Monthly Report of <%= reportMonth %>
+        <%= customerDisplayName %> - TTS GSOC - Monthly Report of <%= reportMonth %>
       </div>
 
       <!-- 2nd row: Executive Summary Title -->
       <div class="section-title">Executive Summary</div>
 
       <!-- 3rd row: Executive Summary Box -->
-<div class="summary-box">
-<p style="white-space: pre-line; margin-top: 0; margin-bottom: 0;">
-<%= executiveSummary %>
-</p>
-</div>
+      <div class="summary-box">
+        <p style="white-space: pre-line; margin-bottom: 0;">
+          <%= executiveSummary %>
+        </p>
+      </div>
 
       <!-- 4th row: Incident Management Title -->
       <div class="section-title">Incident Management</div>
@@ -326,7 +502,7 @@
               <tbody>
                 <% incidentSeverityData.forEach(function(item) { %>
                 <tr>
-                  <td><%= item.affiliate %></td>
+                  <td><%= item.affiliate%> - TTS GSOC</td>
                   <td><%= item.high %></td>
                   <td><%= item.medium %></td>
                   <td><%= item.low %></td>
@@ -346,7 +522,7 @@
                   // ✅ ENSURE WE ALWAYS HAVE DETECTION SOURCES FOR THE TABLE
                   const tableDetectionSources = (detectionSources && detectionSources.length > 0) 
                     ? detectionSources 
-                    : ['Active Directory', 'MDE', 'Entra ID', 'Firewall'];
+                    : ['Active Directory', 'MDE', 'Entra ID', 'Firewall', 'O365'];
                   %>
                   <% tableDetectionSources.forEach(function(source) { %>
                   <th><%= source %></th>
@@ -366,7 +542,7 @@
                 %>
                 <% tableDetectionData.forEach(function(item) { %>
                 <tr>
-                  <td><%= item.affiliate %></td>
+                  <td><%= item.affiliate %> - TTS GSOC</td>
                   <% tableDetectionSources.forEach(function(source) { %>
                   <td><%= item[source] || 0 %></td>
                   <% }); %>
@@ -409,11 +585,27 @@
       <div class="section-title">Analysis on Incident Ticket</div>
 
       <!-- New: Date Range and Summary for Incident Tickets -->
-<div class="date-range-summary">
-  <div class="date-range"></div>
+   <div class="date-range-summary">
+  <div class="date-range">
+    <%
+      // Parse month and year from reportMonth
+      const [monthName, yearStr] = reportMonth.split(' ');
+      const year = parseInt(yearStr);
+     
+      // Get month index (0-11) from month name
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const monthIndex = monthNames.indexOf(monthName);
+     
+      // Calculate last day of month
+      const lastDayOfMonth = new Date(year, monthIndex + 1, 0).getDate();
+     
+      // Output date range
+    %>
+    <%= monthName %> 1 - <%= monthName %> <%= lastDayOfMonth %>, <%= year %>
+  </div>
   <div class="date-summary"><%- incidentTicketSummary || `During this period, our team handled ${incidentTickets.length} incident tickets with customer escalation.` %></div>
 </div>
-
+ 
 
       <% if (incidentTickets && incidentTickets.length > 0) { %>
       <!-- 11th row: Incident Ticket Table -->
@@ -421,13 +613,15 @@
         <table class="table table-striped table-bordered" id="incidentTable">
           <thead>
             <tr>
-              <th>Ticket ID</th>
-              <th>Subject</th>
-              <th>Date</th>
-              <th>Affiliate</th>
-              <th>Priority</th>
-              <th>Status</th>
-              <th>Description</th>
+              <th>Incident Number</th>
+              <th>Incident Name</th>
+              <th>Incident Time</th>
+              <th>Incident Severity</th>
+              <th>Incident Type</th>
+              <th>SOC Analysis</th>
+              <th>SOC Recommendation</th>
+              <th>Incident Status</th>
+              <th>Incident SubStatus</th>
             </tr>
           </thead>
           <tbody>
@@ -435,11 +629,29 @@
             <tr>
               <td><%= ticket.id %></td>
               <td><%= ticket.subject %></td>
-              <td><%= new Date(ticket.createdDate).toLocaleDateString() %></td>
-              <td><%= ticket.customerName %></td>
+<%
+  const date = new Date(ticket.createdDate);
+  const dateStr = date.toLocaleDateString("en-US", { timeZone: "UTC" });
+  const timeStr = date.toLocaleTimeString("en-US", {
+    timeZone: "UTC",
+    hour12: true,
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+  const ms = date.getUTCMilliseconds().toString().padStart(3, "0");
+%>
+<td>
+  <%= dateStr %><br>
+  <%= timeStr %>.<%= ms %> <br>
+  (UTC)
+</td>
               <td><%= ticket.priority %></td>
-              <td><%= ticket.status %></td>
-              <td><%= ticket.description %></td>
+              <td><%= ticket.incidentType %></td>
+              <td><%= ticket.socAnalysis %></td>
+              <td><%= ticket.socRecommendation %></td>
+              <td><%= ticket.status && ticket.status.toLowerCase() === 'closed' ? 'Resolved' : ticket.status %></td>
+              <td><%= ticket.incidentSubStatus %></td>
             </tr>
             <% }); %>
           </tbody>
@@ -451,25 +663,43 @@
       <div class="section-title">Analysis on Health Ticket</div>
 
       <!-- New: Date Range and Summary for Health Tickets -->
-<div class="date-range-summary">
-  <div class="date-range"></div>
-  <div class="date-summary"><%- healthTicketSummary || `System health monitoring identified <{healthTickets.length} health incidents with customer escalation.` %></div>
+     <div class="date-range-summary">
+  <div class="date-range">
+    <%
+      // Parse month and year from reportMonth
+      const [healthMonthName, healthYearStr] = reportMonth.split(' ');
+      const healthYear = parseInt(healthYearStr);
+     
+      // Get month index (0-11) from month name
+      const healthMonthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const healthMonthIndex = healthMonthNames.indexOf(healthMonthName);
+     
+      // Calculate last day of month
+      const healthLastDayOfMonth = new Date(healthYear, healthMonthIndex + 1, 0).getDate();
+     
+      // Output date range
+    %>
+    <%= healthMonthName %> 1 - <%= healthMonthName %> <%= healthLastDayOfMonth %>, <%= healthYear %>
+  </div>
+  <div class="date-summary"><%- healthTicketSummary || `System health monitoring identified ${healthTickets.length} health incidents with customer escalation.` %></div>
 </div>
-
 
       <% if (healthTickets && healthTickets.length > 0) { %>
       <!-- 13th row: Health Ticket Table -->
       <div class="table-container" id="healthTableContainer">
-        <table class="table table-striped table-bordered" id="healthTable">
+      
+  <table class="table table-striped table-bordered" id="healthTable">
           <thead>
             <tr>
-              <th>Ticket ID</th>
-              <th>Subject</th>
-              <th>Date</th>
-              <th>Affiliate</th>
-              <th>System</th>
-              <th>Status</th>
-              <th>Description</th>
+              <th>Incident Number</th>
+              <th>Incident Name</th>
+              <th>Incident Time</th>
+              <th>Incident Severity</th>
+              <th>Incident Type</th>
+              <th>SOC Analysis</th>
+              <th>SOC Recommendation</th>
+              <th>Incident Status</th>
+              <th>Incident SubStatus</th>
             </tr>
           </thead>
           <tbody>
@@ -477,22 +707,36 @@
             <tr>
               <td><%= ticket.id %></td>
               <td><%= ticket.subject %></td>
-              <td><%= new Date(ticket.createdDate).toLocaleDateString() %></td>
-              <td><%= ticket.customerName %></td>
+<%
+  const date = new Date(ticket.createdDate);
+  const dateStr = date.toLocaleDateString("en-US", { timeZone: "UTC" });
+  const timeStr = date.toLocaleTimeString("en-US", {
+    timeZone: "UTC",
+    hour12: true,
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+  const ms = date.getUTCMilliseconds().toString().padStart(3, "0");
+%>
+<td>
+  <%= dateStr %><br>
+  <%= timeStr %>.<%= ms %> <br>
+  (UTC)
+</td>
+              <td><%= ticket.priority %></td>
               <td><%= ticket.incidentType %></td>
-              <td><%= ticket.status %></td>
-              <td><%= ticket.description %></td>
+              <td><%= ticket.socAnalysis %></td>
+              <td><%= ticket.socRecommendation %></td>
+              <td><%= ticket.status && ticket.status.toLowerCase() === 'closed' ? 'Resolved' : ticket.status %></td>
+              <td><%= ticket.incidentSubStatus %></td>
             </tr>
             <% }); %>
           </tbody>
         </table>
+		
       </div>
       <% } %>
-
-      <!-- Footer -->
-      <div class="footer">
-        © 2025 SOC-WatchTower. All Rights Reserved.
-      </div>
     </div>
 
     <!-- Hidden data containers for chart data -->
@@ -555,7 +799,7 @@
           const tbody = table.querySelector('tbody');
           const rows = Array.from(tbody.querySelectorAll('tr'));
           
-          if (rows.length <= 20) return; // Only process tables with more than 20 rows
+          if (rows.length <= 15) return; // Only process tables with more than 15 rows
 
           // ✅ CREATE CLONE FOR MEASUREMENT
           const clone = table.cloneNode(true);
@@ -695,6 +939,25 @@
       const subStatusColors = getChartData("subStatusColors");
       const defaultDetectionSources = getChartData("defaultDetectionSources");
       const defaultSubStatusCategories = getChartData("defaultSubStatusCategories");
+
+      // ✅ NEW: Function to set generation date and time in UTC
+      function setGenerationDateTime() {
+        const now = new Date();
+        const dateStr = now.toLocaleDateString("en-US", { timeZone: "UTC" });
+        const timeStr = now.toLocaleTimeString("en-US", {
+          timeZone: "UTC",
+          hour12: true,
+          hour: "numeric",
+          minute: "2-digit",
+          second: "2-digit"
+        });
+        const ms = now.getUTCMilliseconds().toString().padStart(3, "0");
+        
+        const generationDateTime = document.getElementById("generationDateTime");
+        if (generationDateTime) {
+          generationDateTime.textContent = ` ${dateStr} ${timeStr}.${ms} (UTC)`;
+        }
+      }
 
       // ✅ NEW: Function to calculate and display dynamic date ranges
       function updateDateRanges() {
@@ -977,7 +1240,7 @@
               labels: handlingStatusChartLabels,
               datasets: [
                 {
-                  label: "Pending",
+                  label: "In Progress",
                   data: handlingStatusChartData.pending,
                   backgroundColor: "#ffdd57",
                 },
@@ -985,12 +1248,7 @@
                   label: "Resolved",
                   data: handlingStatusChartData.resolved,
                   backgroundColor: "#70db70",
-                },
-                {
-                  label: "Closed",
-                  data: handlingStatusChartData.closed,
-                  backgroundColor: "#66b2ff",
-                },
+                }
               ],
             },
             options: {
@@ -1048,176 +1306,177 @@
           });
         }
 
-        // ✅ FIXED: Incident by Sub Status Chart - Using default styling like other charts
-       // ✅ FIXED: Incident by Sub Status Chart - No overlapping labels
-const subStatusCtx = document.getElementById("subStatusChart");
+        // ✅ FIXED: Incident by Sub Status Chart - No overlapping labels
+        const subStatusCtx = document.getElementById("subStatusChart");
 
-if (subStatusCtx) {
-  // Define all possible substatus categories with their exact colors
-  const allSubStatuses = [
-    { label: "SOC Investigating", color: "#66b2ff" },
-    { label: "Tuning", color: "#ffdd57" },
-    { label: "Awaiting Customer Response", color: "#e6ad57" },
-    { label: "False Positive", color: "#70db70" },
-    { label: "True Positive", color: "#f08080" }
-  ];
+        if (subStatusCtx) {
+          // Define all possible substatus categories with their exact colors
+          const allSubStatuses = [
+            { label: "SOC Investigating", color: "#66b2ff" },
+            { label: "Tuning", color: "#ffdd57" },
+            { label: "Awaiting Customer Response", color: "#e6ad57" },
+            { label: "False Positive", color: "#70db70" },
+            { label: "True Positive", color: "#f08080" }
+          ];
 
-  // Get the actual labels from data
-  let labels = subStatusChartLabels;
-  let data = subStatusChartData;
+          // Get the actual labels from data
+          let labels = subStatusChartLabels;
+          let data = subStatusChartData;
 
-  // If no data, use default categories with zero values
-  if (!labels || !labels.length || !data || !data.length) {
-    labels = defaultSubStatusCategories || [
-      'SOC Investigating',
-      'Tuning',
-      'Awaiting Customer Response',
-      'False Positive',
-      'True Positive'
-    ];
-    data = new Array(labels.length).fill(0);
-  }
-
-  // Match each label to its defined color
-  const colors = labels.map(label => {
-    const status = allSubStatuses.find(s => s.label === label);
-    return status ? status.color : "#556ee6";
-  });
-
-  console.log("📊 Creating sub-status chart with labels:", labels);
-  console.log("📊 Creating sub-status chart with data:", data);
-  console.log("📊 Creating sub-status chart with colors:", colors);
-
-  const subStatusChart = new Chart(subStatusCtx.getContext("2d"), {
-    type: "bar",
-    data: {
-      labels: labels, // ✅ Keep real x-axis labels
-      datasets: [
-        {
-          label: "Incidents",
-          data: data,
-          backgroundColor: colors,
-          barPercentage: 0.6,
-          categoryPercentage: 0.7
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: { duration: 0 },
-      layout: { padding: { top: 20 } },
-      plugins: {
-        datalabels: { display: false },
-
-        // ✅ Custom legend that matches each color/label
-       legend: {
-  display: true,
-  position: 'bottom',
-  labels: {
-    padding: 15,
-    generateLabels: function(chart) {
-      const data = chart.data;
-      if (data.labels.length && data.datasets.length) {
-        return data.labels.map((label, i) => ({
-          text: label,
-          fillStyle: data.datasets[0].backgroundColor[i],
-          strokeStyle: data.datasets[0].backgroundColor[i],
-          lineWidth: 0,
-           fontColor: '#666666' // ✅ apply text color
-        }));
-      }
-      return [];
-    }
-  }
-}, tooltip: {
-          callbacks: {
-            label: function(context) {
-              return context.label + ": " + context.raw + " incidents";
-            }
+          // If no data, use default categories with zero values
+          if (!labels || !labels.length || !data || !data.length) {
+            labels = defaultSubStatusCategories || [
+              'SOC Investigating',
+              'Tuning',
+              'Awaiting Customer Response',
+              'False Positive',
+              'True Positive'
+            ];
+            data = new Array(labels.length).fill(0);
           }
-        },
 
-        // Draw value labels above bars
-        afterDatasetsDraw: function(chart) {
-          const ctx = chart.ctx;
-          ctx.save();
-
-          chart.data.datasets.forEach(function(dataset) {
-            const meta = chart.getDatasetMeta(0);
-            if (!meta.hidden) {
-              meta.data.forEach(function(element, index) {
-                const value = dataset.data[index];
-                if (value > 0) {
-                  ctx.fillStyle = '#304758';
-                  ctx.font = '500 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
-                  ctx.textAlign = 'center';
-                  ctx.textBaseline = 'bottom';
-
-                  const barTopY = element.y;
-                  const barCenterX = element.x;
-
-                  ctx.fillText(value, barCenterX, barTopY - 6);
-                }
-              });
-            }
+          // Match each label to its defined color
+          const colors = labels.map(label => {
+            const status = allSubStatuses.find(s => s.label === label);
+            return status ? status.color : "#556ee6";
           });
 
-          ctx.restore();
-        }
-      },
+          console.log("📊 Creating sub-status chart with labels:", labels);
+          console.log("📊 Creating sub-status chart with data:", data);
+          console.log("📊 Creating sub-status chart with colors:", colors);
 
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: { display: true, text: 'Incident Count' },
-          ticks: {
-            padding: 10,
-            stepSize: 1,
-            callback: function(value) {
-              if (Math.floor(value) === value) return value;
-            }
-          },
-          afterBuildTicks: function(scale) {
-            if (scale.ticks.length > 0) {
-              const maxTick = Math.max(...scale.ticks.map(t => t.value));
-              scale.ticks.push({ value: maxTick + 1, label: '' });
-            }
-          }
-        },
-        x: {
-          ticks: {
-            callback: function(value, index, values) {
-              const label = this.getLabelForValue(value);
-              if (label.length > 12) {
-                const words = label.split(' ');
-                let lines = [];
-                let currentLine = words[0];
+          const subStatusChart = new Chart(subStatusCtx.getContext("2d"), {
+            type: "bar",
+            data: {
+              labels: labels, // ✅ Keep real x-axis labels
+              datasets: [
+                {
+                  label: "Incidents",
+                  data: data,
+                  backgroundColor: colors,
+                  barPercentage: 0.6,
+                  categoryPercentage: 0.7
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              animation: { duration: 0 },
+              layout: { padding: { top: 20 } },
+              plugins: {
+                datalabels: { display: false },
 
-                for (let i = 1; i < words.length; i++) {
-                  const word = words[i];
-                  if ((currentLine + ' ' + word).length <= 12) {
-                    currentLine += ' ' + word;
-                  } else {
-                    lines.push(currentLine);
-                    currentLine = word;
+                // ✅ Custom legend that matches each color/label
+                legend: {
+                  display: true,
+                  position: 'bottom',
+                  labels: {
+                    padding: 15,
+                    generateLabels: function(chart) {
+                      const data = chart.data;
+                      if (data.labels.length && data.datasets.length) {
+                        return data.labels.map((label, i) => ({
+                          text: label,
+                          fillStyle: data.datasets[0].backgroundColor[i],
+                          strokeStyle: data.datasets[0].backgroundColor[i],
+                          lineWidth: 0,
+                          fontColor: '#666666' // ✅ apply text color
+                        }));
+                      }
+                      return [];
+                    }
+                  }
+                }, 
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      return context.label + ": " + context.raw + " incidents";
+                    }
+                  }
+                },
+
+                // Draw value labels above bars
+                afterDatasetsDraw: function(chart) {
+                  const ctx = chart.ctx;
+                  ctx.save();
+
+                  chart.data.datasets.forEach(function(dataset) {
+                    const meta = chart.getDatasetMeta(0);
+                    if (!meta.hidden) {
+                      meta.data.forEach(function(element, index) {
+                        const value = dataset.data[index];
+                        if (value > 0) {
+                          ctx.fillStyle = '#304758';
+                          ctx.font = '500 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
+                          ctx.textAlign = 'center';
+                          ctx.textBaseline = 'bottom';
+
+                          const barTopY = element.y;
+                          const barCenterX = element.x;
+
+                          ctx.fillText(value, barCenterX, barTopY - 6);
+                        }
+                      });
+                    }
+                  });
+
+                  ctx.restore();
+                }
+              },
+
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  title: { display: true, text: 'Incident Count' },
+                  ticks: {
+                    padding: 10,
+                    stepSize: 1,
+                    callback: function(value) {
+                      if (Math.floor(value) === value) return value;
+                    }
+                  },
+                  afterBuildTicks: function(scale) {
+                    if (scale.ticks.length > 0) {
+                      const maxTick = Math.max(...scale.ticks.map(t => t.value));
+                      scale.ticks.push({ value: maxTick + 1, label: '' });
+                    }
+                  }
+                },
+                x: {
+                  ticks: {
+                    callback: function(value, index, values) {
+                      const label = this.getLabelForValue(value);
+                      if (label.length > 12) {
+                        const words = label.split(' ');
+                        let lines = [];
+                        let currentLine = words[0];
+
+                        for (let i = 1; i < words.length; i++) {
+                          const word = words[i];
+                          if ((currentLine + ' ' + word).length <= 12) {
+                            currentLine += ' ' + word;
+                          } else {
+                            lines.push(currentLine);
+                            currentLine = word;
+                          }
+                        }
+                        if (currentLine) lines.push(currentLine);
+                        return lines;
+                      }
+                      return label;
+                    }
                   }
                 }
-                if (currentLine) lines.push(currentLine);
-                return lines;
               }
-              return label;
             }
-          }
+          });
         }
       }
-    }
-  });
-}
-}
 
       // ✅ PRODUCTION-READY INITIALIZATION
       function initializePage() {
+        setGenerationDateTime(); // Set generation date/time
         updateDateRanges();
         createCharts();
         

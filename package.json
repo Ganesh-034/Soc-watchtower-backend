@@ -21,6 +21,7 @@
     "axios": "^1.13.1",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
+    "crypto-js": "^4.2.0",
     "dotenv": "^17.2.3",
     "express-jwt": "^8.5.1",
     "helmet": "^8.1.0",
