@@ -24,7 +24,7 @@ const customers = {
   // "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
   //"hinomotorssalesthailand-hmst": "Hino Motors Sales Thailand HMST", // Keep this
   // // "log-scg-logistics-sentinel-hub": "SCG Logistics Sentinel Hub",
-"pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
+//"pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
    "pt-tokairika-indonesia": "PT Tokairika Indonesia",
   // "taiho-thailand": "Taiho Thailand",
   // toyotaacseautocsengineeringcoltdsoc: "Toyota ACSE Auto CS Engineering Co Ltd",
@@ -51,7 +51,7 @@ const customers = {
   // toyotatrttokairikathailandcoltdsoc: "Toyota TRT Tokairika Thailand Co Ltd",
   // "tts-asia-internal-soc-workspace-test": "TTS Asia Internal",
   // "ajinomoto-cambodia-ajc": "Ajinomoto Cambodia",  
-  "pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
+  //"pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
 };
 
 
@@ -646,7 +646,8 @@ async function generateMonthlyReportForCustomer(
     month: "long",
     year: "numeric",
   });
-  const reportFileName = `${customerDisplayName}_Monthly_Report_${reportDate.toLocaleString("default", { month: "short" })}_${reportDate.getFullYear()}.pdf`;
+const formattedName = customerDisplayName.replace(/ /g, "_");
+  const reportFileName = `${formattedName}_Monthly_Report_${reportDate.toLocaleString("default", { month: "short" })}_${reportDate.getFullYear()}.pdf`;
   const reportId = `${customerKey}_${reportDate.getMonth() + 1}_${reportDate.getFullYear()}`;
 
   // Initialize or update report status
