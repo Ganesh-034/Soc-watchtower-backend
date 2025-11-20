@@ -30,9 +30,12 @@ export const getTotalIncidents = async (customerName) => {
     let closedCount = 0;
 
     statusCounts.forEach((item) => {
+      console.log("itemmmmmmmmmmITEMMMMMMMMMMMMMMMMMMMMMMMMMM",item);
       if (item._id === 2) openCount = item.count;
-      if (item._id === 5) closedCount = item.count;
+      if (item._id === 5) closedCount = closedCount + item.count;
+      if (item._id === 4) closedCount = closedCount + item.count;
     });
+    
 
     return {
       total: totalCount,
