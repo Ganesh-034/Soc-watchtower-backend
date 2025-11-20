@@ -646,7 +646,7 @@ async function generateMonthlyReportForCustomer(
     month: "long",
     year: "numeric",
   });
-  const reportFileName = `${customerKey}_Monthly_Report_${reportDate.toLocaleString("default", { month: "short" })}_${reportDate.getFullYear()}.pdf`;
+  const reportFileName = `${customerDisplayName}_Monthly_Report_${reportDate.toLocaleString("default", { month: "short" })}_${reportDate.getFullYear()}.pdf`;
   const reportId = `${customerKey}_${reportDate.getMonth() + 1}_${reportDate.getFullYear()}`;
 
   // Initialize or update report status
