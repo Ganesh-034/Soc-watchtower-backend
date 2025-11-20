@@ -669,24 +669,23 @@ export async function generateExecutiveSummary(data, customerDisplayName) {
     const totalHealthTickets = Array.isArray(data.healthTickets) ? data.healthTickets.length : 0;
  
     // === PROMPT ===
-    const prompt = `
+     const prompt = `
       You are generating a concise, factual executive summary for a SOC monthly report
       for the customer "${customerDisplayName}" for ${data.reportMonth}.
       Use the data below to write exactly 3 bullet points:
-      - Total incidents: ${totalIncidents} (High: ${highSeverityCount}, Medium: ${mediumSeverityCount}, Low: ${lowSeverityCount})
-      - Top detection sources (with counts): ${detectionSourcesText}
-      - Handling status: Resolved: ${resolvedCount}, Closed: ${closedCount}, Pending: ${pendingCount}, Open: ${openCount}
-      - True Positive: ${truePositiveCount}, False Positive: ${falsePositiveCount}
-      - Health Tickets: ${totalHealthTickets}
+      1st point - Total incidents: ${totalIncidents}, all are in resolved state, Top detection sources (with counts): ${detectionSourcesText}
+      2nd point - False Positive: ${falsePositiveCount}, True Positive: ${truePositiveCount}, Severity breakdown: High: ${highSeverityCount}, Medium: ${mediumSeverityCount}, Low: ${lowSeverityCount}
+      3rd point - Health Tickets: ${totalHealthTickets}
  
       Format strictly as bullet points using "•".
       Each point should be one clear sentence. Use the following example style and tone:
-      • 3 incidents were reported for the month of October 25, detected from O365 (5), AzureAD (3), and Defender (2).
-      • 1 incident was True Positive and 2 were False Positive with High severity.
-      • 0 health tickets got triggered on the dashboard for the month of October 25.
- 
+      • 3 incidents were reported for the month of October 25, all in resolved state, detected from various sources Entra id, O365 etc
+      • 2 incidents are false positive, and 1 incident is True positive with Medium severity.
+      • 2 health tickets got triggered on the dashboard for the month of October 25.
+   
       Keep numbers factual and avoid speculation or generic statements.
     `;
+ 
 logger.info(`🧠 Calling Azure OpenAI for ${prompt} executive summary generation`);
     logger.info(`🧠 Calling Azure OpenAI for ${customerDisplayName} executive summary generation`);
  

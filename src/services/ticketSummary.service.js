@@ -155,7 +155,7 @@ export async function generateTicketSummary(tickets, type, reportMonth) {
             .map(([s, c]) => `${capitalizeStatus(s)}: ${c}`)
             .join(", ");
  
-        const prompt = `
+      const prompt = `
       Write a concise single-sentence summary of ticket handling for a SOC report.
  
       Details:
@@ -165,9 +165,10 @@ export async function generateTicketSummary(tickets, type, reportMonth) {
       - Report Month: ${reportMonth}
  
       Use this sentence pattern exactly:
-      "During this period, our team handled ${ticketCount} ${type.toLowerCase()} tickets, out of which <status1count> are in <status1> and <status2count> are in <status2>."
+      "For the month of ${reportMonth}, our team handled ${ticketCount} ${type.toLowerCase()} tickets, out of which <status1count> are in <status1> and <status2count> are in <status2>."
  
       Replace <status1> etc. with real status names from the list above.
+      Only include the <status2> section in your report if there are one or more unresolved tickets in either the incident analysis and health ticket categories
       Use natural grammar (singular/plural) and correct phrasing.
       Avoid extra commentary or introductions.
     `;
@@ -212,7 +213,7 @@ function getDefaultTicketSummary(tickets, type, reportMonth) {
         .map(([status, num]) => `${num} are in ${capitalizeStatus(status)}`)
         .join(" and ");
  
-    return `During this period, our team handled ${count} ${type.toLowerCase()} tickets, out of which ${readableStatuses}.`;
+    return `For the month of ${reportMonth}, our team handled ${count} ${type.toLowerCase()} tickets, out of which ${readableStatuses}.`;
 }
  
 function capitalizeStatus(status) {

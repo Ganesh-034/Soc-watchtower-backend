@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= customerDisplayName %> - TTS GSOC - Monthly Report</title>
+    <title><%= customerDisplayName %> Monthly Report</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -49,16 +49,16 @@
       }
 
       .summary-box {
-        background-color: #f8f9fa;
+        background-color: #e6f2ff; /* Changed from #f8f9fa to #e6f2ff */
         border-left: 4px solid #3498db;
-        padding: 20px;
+        padding: 0 20px 20px 20px;
         margin-bottom: 30px;
         border-radius: 4px;
         page-break-inside: avoid;
       }
 
       .date-range-summary {
-        background-color: #f0f7ff;
+        background-color: #e6f2ff; /* Made darker by reducing opacity */
         border-left: 4px solid #5c9eff;
         padding: 15px 20px;
         margin-bottom: 20px;
@@ -84,7 +84,7 @@
         justify-content: space-between;
         align-items: stretch;
         gap: 20px;
-        margin-bottom: 25px;
+        margin-bottom: 15px; /* Reduced from 25px to 15px */
         page-break-inside: avoid;
       }
 
@@ -92,7 +92,7 @@
         flex: 1 1 48%;
         background: #fff;
         border-radius: 6px;
-        padding: 10px;
+        padding: 5px; /* Reduced from 10px to 5px */
         box-sizing: border-box;
         page-break-inside: avoid;
         overflow: visible;
@@ -102,13 +102,13 @@
         font-size: 18px;
         font-weight: 600;
         color: #2c3e50;
-        margin-bottom: 10px;
+        margin-bottom: 5px; /* Reduced from 10px to 5px */
         text-align: center;
       }
 
       .chart-container {
         position: relative;
-        height: 300px;
+        height: 400px; /* Consistent height for all charts */
         width: 100%;
         page-break-inside: avoid;
         overflow: visible;
@@ -158,11 +158,11 @@
         width: 25%;
       }
 
-      /* Make SOC Recommendation column half the width of SOC Analysis */
+      /* Make SOC Recommendation column half width of SOC Analysis */
       .table th:nth-child(7),
       .table td:nth-child(7) {
         min-width: 100px;
-        width: 12.5%; /* Half of the previous 25% width */
+        width: 12.5%; /* Half of previous 25% width */
       }
 
       /* Make other columns narrower */
@@ -242,7 +242,7 @@
         }
 
         .chart-container {
-          height: 250px;
+          height: 350px; /* Consistent height for all charts in print */
           overflow: visible;
         }
 
@@ -308,7 +308,7 @@
         
         .table th:nth-child(7), /* SOC Recommendation - reduced by half */
         .table td:nth-child(7) {
-          width: 12.5%; /* Half of the previous 25% width */
+          width: 12.5%; /* Half of previous 25% width */
         }
         
         .table th:nth-child(8), /* Incident Status */
@@ -321,15 +321,15 @@
           width: 7%; /* Increased from 5% to compensate for reduced column 7 */
         }
 
-        /* Health table specific widths */
+        /* Health table specific widths - SAME AS INCIDENT TABLE */
         #healthTable th:nth-child(1), /* Ticket ID */
         #healthTable td:nth-child(1) {
-          width: 10%;
+          width: 8%;
         }
         
         #healthTable th:nth-child(2), /* Subject */
         #healthTable td:nth-child(2) {
-          width: 15%;
+          width: 12%;
         }
         
         #healthTable th:nth-child(3), /* Date */
@@ -339,22 +339,32 @@
         
         #healthTable th:nth-child(4), /* Affiliate */
         #healthTable td:nth-child(4) {
-          width: 15%;
+          width: 8%;
         }
         
         #healthTable th:nth-child(5), /* System */
         #healthTable td:nth-child(5) {
-          width: 15%;
+          width: 10%;
         }
         
         #healthTable th:nth-child(6), /* Status */
         #healthTable td:nth-child(6) {
-          width: 10%;
+          width: 25%;
         }
         
         #healthTable th:nth-child(7), /* Description */
         #healthTable td:nth-child(7) {
-          width: 25%;
+          width: 12.5%;
+        }
+        
+        #healthTable th:nth-child(8), /* Status */
+        #healthTable td:nth-child(8) {
+          width: 9.5%;
+        }
+        
+        #healthTable th:nth-child(9), /* Description */
+        #healthTable td:nth-child(9) {
+          width: 7%;
         }
 
         .table thead {
@@ -408,7 +418,7 @@
         }
 
         .grid-row {
-          margin-bottom: 15px;
+          margin-bottom: 10px; /* Reduced from 15px to 10px */
         }
 
         .table-container {
@@ -441,12 +451,12 @@
     </div>
     
     <!-- Print Footer -->
-    <div class="print-footer">© 2025 SOC-WatchTower. All Rights Reserved.</div>
+    <div class="print-footer">© 2025 SOC-WatchTower. All Rights Reserved to Toyota Tsusho Systems.</div>
     
     <div class="report-container">
       <!-- 1st row: Header -->
       <div class="header-title">
-        <%= customerDisplayName %> - TTS GSOC - Monthly Report of <%= reportMonth %>
+        <%= customerDisplayName %> Monthly Report of <%= reportMonth %>
       </div>
 
       <!-- 2nd row: Executive Summary Title -->
@@ -454,7 +464,7 @@
 
       <!-- 3rd row: Executive Summary Box -->
       <div class="summary-box">
-        <p style="white-space: pre-line; margin-bottom: 0;">
+<p style="white-space: pre-line; margin-top: 0; margin-bottom: 0;">
           <%= executiveSummary %>
         </p>
       </div>
@@ -490,31 +500,31 @@
       <div class="grid-row">
         <div class="grid-cell">
           <div class="table-container">
-            <table class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Affiliate</th>
-                  <th>High</th>
-                  <th>Medium</th>
-                  <th>Low</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% incidentSeverityData.forEach(function(item) { %>
-                <tr>
-                  <td><%= item.affiliate%> - TTS GSOC</td>
-                  <td><%= item.high %></td>
-                  <td><%= item.medium %></td>
-                  <td><%= item.low %></td>
-                </tr>
-                <% }); %>
-              </tbody>
-            </table>
+         <table class="table table-bordered" style="margin-top: 20px;">
+  <thead>
+    <tr>
+      <th>Affiliate</th>
+      <th>High</th>
+      <th>Medium</th>
+      <th>Low</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% incidentSeverityData.forEach(function(item) { %>
+    <tr>
+      <td><%= item.affiliate %></td>
+      <td><%= item.high %></td>
+      <td><%= item.medium %></td>
+      <td><%= item.low %></td>
+    </tr>
+    <% }); %>
+  </tbody>
+</table>
           </div>
         </div>
         <div class="grid-cell">
           <div class="table-container">
-            <table class="table table-bordered">
+            <table class="table table-bordered" style="margin-top: 20px">
               <thead>
                 <tr>
                   <th>Affiliate</th>
@@ -542,7 +552,7 @@
                 %>
                 <% tableDetectionData.forEach(function(item) { %>
                 <tr>
-                  <td><%= item.affiliate %> - TTS GSOC</td>
+                  <td><%= item.affiliate %></td>
                   <% tableDetectionSources.forEach(function(source) { %>
                   <td><%= item[source] || 0 %></td>
                   <% }); %>
@@ -584,28 +594,10 @@
       <!-- 10th row: Analysis on Incident Ticket Title -->
       <div class="section-title">Analysis on Incident Ticket</div>
 
-      <!-- New: Date Range and Summary for Incident Tickets -->
-   <div class="date-range-summary">
-  <div class="date-range">
-    <%
-      // Parse month and year from reportMonth
-      const [monthName, yearStr] = reportMonth.split(' ');
-      const year = parseInt(yearStr);
-     
-      // Get month index (0-11) from month name
-      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-      const monthIndex = monthNames.indexOf(monthName);
-     
-      // Calculate last day of month
-      const lastDayOfMonth = new Date(year, monthIndex + 1, 0).getDate();
-     
-      // Output date range
-    %>
-    <%= monthName %> 1 - <%= monthName %> <%= lastDayOfMonth %>, <%= year %>
-  </div>
-  <div class="date-summary"><%- incidentTicketSummary || `During this period, our team handled ${incidentTickets.length} incident tickets with customer escalation.` %></div>
-</div>
- 
+      <!-- New: Summary for Incident Tickets (without date range) -->
+      <div class="date-range-summary">
+        <div class="date-summary"><%- incidentTicketSummary || `During this period, our team handled ${incidentTickets.length} incident tickets with customer escalation.` %></div>
+      </div>
 
       <% if (incidentTickets && incidentTickets.length > 0) { %>
       <!-- 11th row: Incident Ticket Table -->
@@ -629,23 +621,7 @@
             <tr>
               <td><%= ticket.id %></td>
               <td><%= ticket.subject %></td>
-<%
-  const date = new Date(ticket.createdDate);
-  const dateStr = date.toLocaleDateString("en-US", { timeZone: "UTC" });
-  const timeStr = date.toLocaleTimeString("en-US", {
-    timeZone: "UTC",
-    hour12: true,
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit"
-  });
-  const ms = date.getUTCMilliseconds().toString().padStart(3, "0");
-%>
-<td>
-  <%= dateStr %><br>
-  <%= timeStr %>.<%= ms %> <br>
-  (UTC)
-</td>
+              <td><%= ticket.createdDate %></td>
               <td><%= ticket.priority %></td>
               <td><%= ticket.incidentType %></td>
               <td><%= ticket.socAnalysis %></td>
@@ -662,27 +638,10 @@
       <!-- 12th row: Analysis on Health Ticket Title -->
       <div class="section-title">Analysis on Health Ticket</div>
 
-      <!-- New: Date Range and Summary for Health Tickets -->
-     <div class="date-range-summary">
-  <div class="date-range">
-    <%
-      // Parse month and year from reportMonth
-      const [healthMonthName, healthYearStr] = reportMonth.split(' ');
-      const healthYear = parseInt(healthYearStr);
-     
-      // Get month index (0-11) from month name
-      const healthMonthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-      const healthMonthIndex = healthMonthNames.indexOf(healthMonthName);
-     
-      // Calculate last day of month
-      const healthLastDayOfMonth = new Date(healthYear, healthMonthIndex + 1, 0).getDate();
-     
-      // Output date range
-    %>
-    <%= healthMonthName %> 1 - <%= healthMonthName %> <%= healthLastDayOfMonth %>, <%= healthYear %>
-  </div>
-  <div class="date-summary"><%- healthTicketSummary || `System health monitoring identified ${healthTickets.length} health incidents with customer escalation.` %></div>
-</div>
+      <!-- New: Summary for Health Tickets (without date range) -->
+      <div class="date-range-summary">
+        <div class="date-summary"><%- healthTicketSummary || `System health monitoring identified ${healthTickets.length} health incidents with customer escalation.` %></div>
+      </div>
 
       <% if (healthTickets && healthTickets.length > 0) { %>
       <!-- 13th row: Health Ticket Table -->
@@ -707,23 +666,7 @@
             <tr>
               <td><%= ticket.id %></td>
               <td><%= ticket.subject %></td>
-<%
-  const date = new Date(ticket.createdDate);
-  const dateStr = date.toLocaleDateString("en-US", { timeZone: "UTC" });
-  const timeStr = date.toLocaleTimeString("en-US", {
-    timeZone: "UTC",
-    hour12: true,
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit"
-  });
-  const ms = date.getUTCMilliseconds().toString().padStart(3, "0");
-%>
-<td>
-  <%= dateStr %><br>
-  <%= timeStr %>.<%= ms %> <br>
-  (UTC)
-</td>
+              <td><%= ticket.createdDate %></td>
               <td><%= ticket.priority %></td>
               <td><%= ticket.incidentType %></td>
               <td><%= ticket.socAnalysis %></td>
@@ -734,7 +677,7 @@
             <% }); %>
           </tbody>
         </table>
-		
+        
       </div>
       <% } %>
     </div>
@@ -775,7 +718,7 @@
 
     <!-- ✅ NEW: Default sub-status categories for when no data is available -->
     <script type="application/json" id="defaultSubStatusCategories">
-      <%- JSON.stringify(['SOC Investigating', 'Tuning', 'Awaiting Customer Response', 'False Positive', 'True Positive']) %>
+      <%- JSON.stringify(['SOC Investigating', 'Awaiting Customer Response', 'False Positive', 'True Positive']) %>
     </script>
 
     <script>
@@ -956,41 +899,6 @@
         const generationDateTime = document.getElementById("generationDateTime");
         if (generationDateTime) {
           generationDateTime.textContent = ` ${dateStr} ${timeStr}.${ms} (UTC)`;
-        }
-      }
-
-      // ✅ NEW: Function to calculate and display dynamic date ranges
-      function updateDateRanges() {
-        const reportMonthText = "<%= reportMonth %>";
-        const dateParts = reportMonthText.split(' ');
-        const monthName = dateParts[0];
-        const year = parseInt(dateParts[1]);
-        
-        const monthNames = ["January", "February", "March", "April", "May", "June",
-                            "July", "August", "September", "October", "November", "December"];
-        const month = monthNames.indexOf(monthName) + 1;
-        
-        const firstDay = new Date(year, month - 1, 1);
-        const lastDay = new Date(year, month, 0);
-        
-        const formatDate = (date) => {
-          const day = date.getDate();
-          const monthName = monthNames[date.getMonth()];
-          const shortYear = date.getFullYear().toString().slice(-2);
-          return `${day} ${monthName} ${shortYear}`;
-        };
-        
-        const dateRange = `${formatDate(firstDay)} - ${formatDate(lastDay)}`;
-        
-        const incidentDateRange = document.getElementById("incidentDateRange");
-        const healthDateRange = document.getElementById("healthDateRange");
-        
-        if (incidentDateRange) {
-          incidentDateRange.textContent = dateRange;
-        }
-        
-        if (healthDateRange) {
-          healthDateRange.textContent = dateRange;
         }
       }
 
@@ -1306,33 +1214,41 @@
           });
         }
 
-        // ✅ FIXED: Incident by Sub Status Chart - No overlapping labels
+        // ✅ FIXED: Incident by Sub Status Chart - Use default Chart.js legend
         const subStatusCtx = document.getElementById("subStatusChart");
 
         if (subStatusCtx) {
-          // Define all possible substatus categories with their exact colors
+          // Define all 4 substatus categories with their exact colors
           const allSubStatuses = [
-            { label: "SOC Investigating", color: "#66b2ff" },
-            { label: "Tuning", color: "#ffdd57" },
-            { label: "Awaiting Customer Response", color: "#e6ad57" },
-            { label: "False Positive", color: "#70db70" },
-            { label: "True Positive", color: "#f08080" }
+            { label: "SOC Investigating", color: "#003d82" }, // Dark blue
+            { label: "Awaiting Customer Response", color: "#ff8c00" }, // Orange
+            { label: "False Positive", color: "#70db70" }, // Green
+            { label: "True Positive", color: "#f08080" }  // Red
           ];
 
-          // Get the actual labels from data
-          let labels = subStatusChartLabels;
-          let data = subStatusChartData;
+          // Always use all 4 categories as labels - this ensures they appear on x-axis
+          const labels = defaultSubStatusCategories || [
+            'SOC Investigating',
+            'Awaiting Customer Response',
+            'False Positive',
+            'True Positive'
+          ];
 
-          // If no data, use default categories with zero values
-          if (!labels || !labels.length || !data || !data.length) {
-            labels = defaultSubStatusCategories || [
-              'SOC Investigating',
-              'Tuning',
-              'Awaiting Customer Response',
-              'False Positive',
-              'True Positive'
-            ];
+          // Get the actual data if available
+          let data = subStatusChartData;
+          
+          // If no data, create array of zeros
+          if (!data || !data.length) {
             data = new Array(labels.length).fill(0);
+          } else {
+            // Ensure we have data for all 4 categories
+            const newData = [];
+            for (let i = 0; i < labels.length; i++) {
+              const label = labels[i];
+              const existingIndex = subStatusChartLabels ? subStatusChartLabels.indexOf(label) : -1;
+              newData.push(existingIndex >= 0 ? data[existingIndex] : 0);
+            }
+            data = newData;
           }
 
           // Match each label to its defined color
@@ -1348,7 +1264,7 @@
           const subStatusChart = new Chart(subStatusCtx.getContext("2d"), {
             type: "bar",
             data: {
-              labels: labels, // ✅ Keep real x-axis labels
+              labels: labels, // This ensures all 4 labels appear on x-axis
               datasets: [
                 {
                   label: "Incidents",
@@ -1363,16 +1279,17 @@
               responsive: true,
               maintainAspectRatio: false,
               animation: { duration: 0 },
-              layout: { padding: { top: 20 } },
+              layout: { 
+                padding: { 
+                  top: 20
+                } 
+              },
               plugins: {
-                datalabels: { display: false },
-
-                // ✅ Custom legend that matches each color/label
+                // ✅ Use default Chart.js legend to match other charts
                 legend: {
                   display: true,
                   position: 'bottom',
                   labels: {
-                    padding: 15,
                     generateLabels: function(chart) {
                       const data = chart.data;
                       if (data.labels.length && data.datasets.length) {
@@ -1381,7 +1298,7 @@
                           fillStyle: data.datasets[0].backgroundColor[i],
                           strokeStyle: data.datasets[0].backgroundColor[i],
                           lineWidth: 0,
-                          fontColor: '#666666' // ✅ apply text color
+                          hidden: false
                         }));
                       }
                       return [];
@@ -1444,25 +1361,16 @@
                   }
                 },
                 x: {
+                  // ✅ Force all labels to show on x-axis
                   ticks: {
+                    autoSkip: false, // Don't skip any labels
+                    maxRotation: 45, // Allow rotation if needed
+                    minRotation: 0,
                     callback: function(value, index, values) {
                       const label = this.getLabelForValue(value);
-                      if (label.length > 12) {
-                        const words = label.split(' ');
-                        let lines = [];
-                        let currentLine = words[0];
-
-                        for (let i = 1; i < words.length; i++) {
-                          const word = words[i];
-                          if ((currentLine + ' ' + word).length <= 12) {
-                            currentLine += ' ' + word;
-                          } else {
-                            lines.push(currentLine);
-                            currentLine = word;
-                          }
-                        }
-                        if (currentLine) lines.push(currentLine);
-                        return lines;
+                      // Wrap long labels
+                      if (label.length > 15) {
+                        return label.split(' ');
                       }
                       return label;
                     }
@@ -1472,12 +1380,12 @@
             }
           });
         }
+      
       }
 
       // ✅ PRODUCTION-READY INITIALIZATION
       function initializePage() {
         setGenerationDateTime(); // Set generation date/time
-        updateDateRanges();
         createCharts();
         
         // ✅ OPTIMIZE TABLES FOR PRINT

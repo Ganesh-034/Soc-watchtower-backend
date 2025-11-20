@@ -19,14 +19,13 @@ import { stripHtmlTags } from "../utils/sanitizeHtml.js";
 // Customer configuration
 const customers = {
   // "ajinomoto-thailand(ajt)": "Ajinomoto Thailand",
-  // "hino motor- hmst": "Hino Motor Sales Thailand HMST", // can remove this
   // "pt.rknforge": "PT RKN Forge",
- "aji-sentinel4apc-prod": "Ajinomoto Philippines",
+ //"aji-sentinel4apc-prod": "Ajinomoto Philippines",
   // "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
-  // "hinomotorssalesthailand-hmst": "Hino Motors Sales Thailand HMST", // Keep this
+  //"hinomotorssalesthailand-hmst": "Hino Motors Sales Thailand HMST", // Keep this
   // // "log-scg-logistics-sentinel-hub": "SCG Logistics Sentinel Hub",
-  // "pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
-  // "pt-tokairika-indonesia": "PT Tokairika Indonesia",
+//"pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
+   "pt-tokairika-indonesia": "PT Tokairika Indonesia",
   // "taiho-thailand": "Taiho Thailand",
   // toyotaacseautocsengineeringcoltdsoc: "Toyota ACSE Auto CS Engineering Co Ltd",
   // toyotaadmptastradaihatsumotorsoc: "Toyota ADM PT Astra Daihatsu Motor",
@@ -54,6 +53,7 @@ const customers = {
   // "ajinomoto-cambodia-ajc": "Ajinomoto Cambodia",  
   //"pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
 };
+
 
 // Azure Blob Storage configuration
 const blobServiceClient = BlobServiceClient.fromConnectionString(
