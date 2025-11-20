@@ -19,14 +19,13 @@ import { stripHtmlTags } from "../utils/sanitizeHtml.js";
 // Customer configuration
 const customers = {
   // "ajinomoto-thailand(ajt)": "Ajinomoto Thailand",
-  // "hino motor- hmst": "Hino Motor Sales Thailand HMST", // can remove this
   // "pt.rknforge": "PT RKN Forge",
- "aji-sentinel4apc-prod": "Ajinomoto Philippines",
+ //"aji-sentinel4apc-prod": "Ajinomoto Philippines",
   // "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
-  // "hinomotorssalesthailand-hmst": "Hino Motors Sales Thailand HMST", // Keep this
+  //"hinomotorssalesthailand-hmst": "Hino Motors Sales Thailand HMST", // Keep this
   // // "log-scg-logistics-sentinel-hub": "SCG Logistics Sentinel Hub",
-  // "pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
-  // "pt-tokairika-indonesia": "PT Tokairika Indonesia",
+//"pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
+   "pt-tokairika-indonesia": "PT Tokairika Indonesia",
   // "taiho-thailand": "Taiho Thailand",
   // toyotaacseautocsengineeringcoltdsoc: "Toyota ACSE Auto CS Engineering Co Ltd",
   // toyotaadmptastradaihatsumotorsoc: "Toyota ADM PT Astra Daihatsu Motor",
@@ -54,6 +53,7 @@ const customers = {
   // "ajinomoto-cambodia-ajc": "Ajinomoto Cambodia",  
   //"pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
 };
+
 
 // Azure Blob Storage configuration
 const blobServiceClient = BlobServiceClient.fromConnectionString(
@@ -544,6 +544,57 @@ const getHealthEscalationIncidents = async (customerName, month, year) => {
   }
 };
 
+const filterHealthIncidentsFromSubStatus = async (customerKey, subStatusData, month, year) => {
+  try {
+    logger.info(`🔍 Filtering health incidents from sub-status for ${customerKey}, month: ${month}, year: ${year}`);
+    logger.info(`🔍 Input sub-status data:`, JSON.stringify(subStatusData, null, 2));
+    
+    // Create a deep copy to avoid modifying the original data
+    const filteredSubStatusData = JSON.parse(JSON.stringify(subStatusData));
+    
+    // Create regex for the specified month and year
+    const dateRegex = new RegExp(`^${year}-${String(month).padStart(2, "0")}`);
+    
+    // Count health incidents by sub-status for this month
+    const healthIncidents = await Incident.find({
+      customer_name: customerKey,
+      incident_type: "Health Incident",
+      customer_escalation: { $regex: /^yes$/i },
+      created_at: { $regex: dateRegex },
+    }).lean();
+    
+    logger.info(`🔍 Found ${healthIncidents.length} health incidents for filtering`);
+    
+    // Count by sub-status
+    const healthCounts = {};
+    healthIncidents.forEach(incident => {
+      const subStatus = incident.incident_sub_status || "Unknown";
+      healthCounts[subStatus] = (healthCounts[subStatus] || 0) + 1;
+    });
+    
+    logger.info(`🔍 Health incident counts by sub-status:`, JSON.stringify(healthCounts, null, 2));
+    
+    // Subtract health incident counts from the total counts
+    filteredSubStatusData.forEach(item => {
+      const statusName = item._id;
+      if (healthCounts[statusName]) {
+        const originalCount = item.count;
+        item.count = Math.max(0, item.count - healthCounts[statusName]);
+        logger.info(`🔍 Adjusted ${statusName}: ${originalCount} -> ${item.count} (subtracted ${healthCounts[statusName]})`);
+      }
+    });
+    
+    logger.info(`🔍 Filtered sub-status data:`, JSON.stringify(filteredSubStatusData, null, 2));
+    
+    return filteredSubStatusData;
+  } catch (error) {
+    logger.error(`Error filtering health incidents from sub-status data: ${error.message}`);
+    logger.error(error.stack);
+    // If there's an error, return the original data
+    return subStatusData;
+  }
+};
+
 // Function to get Non-Health Escalation Incidents
 const getNonHealthEscalationIncidents = async (customerName, month, year) => {
   try {
@@ -595,7 +646,8 @@ async function generateMonthlyReportForCustomer(
     month: "long",
     year: "numeric",
   });
-  const reportFileName = `${customerKey}_Monthly_Report_${reportDate.toLocaleString("default", { month: "short" })}_${reportDate.getFullYear()}.pdf`;
+const formattedName = customerDisplayName.replace(/ /g, "_");
+  const reportFileName = `${formattedName}_Monthly_Report_${reportDate.toLocaleString("default", { month: "short" })}_${reportDate.getFullYear()}.pdf`;
   const reportId = `${customerKey}_${reportDate.getMonth() + 1}_${reportDate.getFullYear()}`;
 
   // Initialize or update report status
@@ -682,11 +734,12 @@ async function generateMonthlyReportForCustomer(
     logger.info(
       `🔍 Fetching incident sub-status data for customer: ${customerKey}, month: ${formattedMonth}`
     );
-    const incidentSSResponse =
-      await incidentSSService.getIncidentsSubStatusEscalation(
-        formattedMonth,
-        customerKey
-      );
+const incidentSSResponse = await incidentSSService.getIncidentsSubStatusEscalationForReport(
+  formattedMonth,
+  customerKey
+);
+
+      logger.info(`🔍 Raw sub-status response for ${customerKey}:`, JSON.stringify(incidentSSResponse, null, 2));
 
     // Validate responses
     if (!incidentSeverityResponse || !incidentSeverityResponse.months) {
@@ -706,38 +759,101 @@ async function generateMonthlyReportForCustomer(
     }
 
     // Format the severity data for the chart
-    const months = incidentSeverityResponse.months;
-    const sortedMonths = [...months].sort((a, b) => {
-      const periodOrder = {
-        "Two Months Ago": 0,
-        "Previous Month": 1,
-        "Current Month": 2,
+// Format the severity data for the chart
+const months = incidentSeverityResponse.months;
+const sortedMonths = [...months].sort((a, b) => {
+  const periodOrder = {
+    "Two Months Ago": 0,
+    "Previous Month": 1,
+    "Current Month": 2,
+  };
+  return periodOrder[a.period] - periodOrder[b.period];
+});
+
+// Filter out health incidents from severity data
+const filterHealthIncidentsFromSeverity = async (customerKey, sortedMonths) => {
+  try {
+    // Create a deep copy to avoid modifying the original data
+    const filteredMonths = JSON.parse(JSON.stringify(sortedMonths));
+    
+    for (let monthIndex = 0; monthIndex < filteredMonths.length; monthIndex++) {
+      const month = filteredMonths[monthIndex];
+      const monthId = month.id;
+      
+      // Parse the month and year from the id (format: YYYY-MM)
+      const [year, monthNum] = monthId.split('-').map(part => parseInt(part));
+      
+      // Create regex for the specified month and year
+      const dateRegex = new RegExp(`^${year}-${String(monthNum).padStart(2, "0")}`);
+      
+      // Count health incidents by priority for this month
+      const healthIncidents = await Incident.find({
+        customer_name: customerKey,
+        incident_type: "Health Incident",
+        customer_escalation: { $regex: /^yes$/i },
+        created_at: { $regex: dateRegex },
+      }).lean();
+      
+      // Count by priority
+      const healthCounts = {
+        high: 0,
+        medium: 0,
+        low: 0
       };
-      return periodOrder[a.period] - periodOrder[b.period];
-    });
+      
+      healthIncidents.forEach(incident => {
+        const priorityLower = (incident.priority || "").toString().trim().toLowerCase();
+        if (priorityLower.includes("high") || Number(incident.priority) === 3) {
+          healthCounts.high++;
+        } else if (priorityLower.includes("medium") || priorityLower.includes("med") || Number(incident.priority) === 2) {
+          healthCounts.medium++;
+        } else if (priorityLower.includes("low") || Number(incident.priority) === 1) {
+          healthCounts.low++;
+        }
+      });
+      
+      // Subtract health incident counts from the total counts
+      month.priorities.high = Math.max(0, month.priorities.high - healthCounts.high);
+      month.priorities.medium = Math.max(0, month.priorities.medium - healthCounts.medium);
+      month.priorities.low = Math.max(0, month.priorities.low - healthCounts.low);
+    }
+    
+    return filteredMonths;
+  } catch (error) {
+    logger.error(`Error filtering health incidents from severity data: ${error.message}`);
+    // If there's an error, return the original data
+    return sortedMonths;
+  }
+};
 
-    const severityChartLabels = sortedMonths.map((month) => month.name);
-    const severityChartData = {
-      high: sortedMonths.map((month) => month.priorities.high || 0),
-      medium: sortedMonths.map((month) => month.priorities.medium || 0),
-      low: sortedMonths.map((month) => month.priorities.low || 0),
-    };
+// Apply the filter to the sorted months
+logger.info(`🔍 Filtering health incidents from severity data for ${customerKey}...`);
+const filteredSortedMonths = await filterHealthIncidentsFromSeverity(customerKey, sortedMonths);
+logger.info(`✅ Filtered health incidents from severity data for ${customerKey}`);
 
+// Use filteredSortedMonths instead of sortedMonths for chart data
+const severityChartLabels = filteredSortedMonths.map((month) => month.name);
+const severityChartData = {
+  high: filteredSortedMonths.map((month) => month.priorities.high || 0),
+  medium: filteredSortedMonths.map((month) => month.priorities.medium || 0),
+  low: filteredSortedMonths.map((month) => month.priorities.low || 0),
+};
     // Create affiliate data for the severity table
-    const incidentSeverityData = [
-      {
-        affiliate: customerDisplayName,
-        high:
-          sortedMonths.find((m) => m.period === "Current Month")?.priorities
-            .high || 0,
-        medium:
-          sortedMonths.find((m) => m.period === "Current Month")?.priorities
-            .medium || 0,
-        low:
-          sortedMonths.find((m) => m.period === "Current Month")?.priorities
-            .low || 0,
-      },
-    ];
+// Create affiliate data for the severity table
+const incidentSeverityData = [
+  {
+    affiliate: customerDisplayName,
+    high:
+      filteredSortedMonths.find((m) => m.period === "Current Month")?.priorities
+        .high || 0,
+    medium:
+      filteredSortedMonths.find((m) => m.period === "Current Month")?.priorities
+        .medium || 0,
+    low:
+      filteredSortedMonths.find((m) => m.period === "Current Month")?.priorities
+        .low || 0,
+  },
+];
 
     // Process detection source data for the chart and table
     const currentMonthSources = incidentDSResponse.detectionsource || {};
@@ -774,138 +890,206 @@ async function generateMonthlyReportForCustomer(
     ];
 
     // Process handling status data for the chart
-    const hsMonths = incidentHSResponse.months;
-    const sortedHsMonths = [...hsMonths].sort((a, b) => {
-      const periodOrder = {
-        "Two Months Ago": 0,
-        "Previous Month": 1,
-        "Current Month": 2,
+   // Process handling status data for the chart
+const hsMonths = incidentHSResponse.months;
+const sortedHsMonths = [...hsMonths].sort((a, b) => {
+  const periodOrder = {
+    "Two Months Ago": 0,
+    "Previous Month": 1,
+    "Current Month": 2,
+  };
+  return periodOrder[a.period] - periodOrder[b.period];
+});
+
+// Filter out health incidents from handling status data
+const filterHealthIncidentsFromHandlingStatus = async (customerKey, sortedHsMonths) => {
+  try {
+    // Create a deep copy to avoid modifying the original data
+    const filteredHsMonths = JSON.parse(JSON.stringify(sortedHsMonths));
+    
+    for (let monthIndex = 0; monthIndex < filteredHsMonths.length; monthIndex++) {
+      const month = filteredHsMonths[monthIndex];
+      const monthId = month.id;
+      
+      // Parse the month and year from the id (format: YYYY-MM)
+      const [year, monthNum] = monthId.split('-').map(part => parseInt(part));
+      
+      // Create regex for the specified month and year
+      const dateRegex = new RegExp(`^${year}-${String(monthNum).padStart(2, "0")}`);
+      
+      // Count health incidents by status for this month
+      const healthIncidents = await Incident.find({
+        customer_name: customerKey,
+        incident_type: "Health Incident",
+        customer_escalation: { $regex: /^yes$/i },
+        created_at: { $regex: dateRegex },
+      }).lean();
+      
+      // Count by status
+      const healthCounts = {
+        Pending: 0,
+        Resolved: 0,
+        Closed: 0
       };
-      return periodOrder[a.period] - periodOrder[b.period];
-    });
+      
+      healthIncidents.forEach(incident => {
+        const statusCode = incident.status;
+        if (statusCode === 3) {
+          healthCounts.Pending++;
+        } else if (statusCode === 4) {
+          healthCounts.Resolved++;
+        } else if (statusCode === 5) {
+          healthCounts.Closed++;
+        }
+      });
+      
+      // Subtract health incident counts from the total counts
+      month.statuses.Pending = Math.max(0, (month.statuses.Pending || 0) - healthCounts.Pending);
+      month.statuses.Resolved = Math.max(0, (month.statuses.Resolved || 0) - healthCounts.Resolved);
+      month.statuses.Closed = Math.max(0, (month.statuses.Closed || 0) - healthCounts.Closed);
+    }
+    
+    return filteredHsMonths;
+  } catch (error) {
+    logger.error(`Error filtering health incidents from handling status data: ${error.message}`);
+    // If there's an error, return the original data
+    return sortedHsMonths;
+  }
+};
 
-    const handlingStatusChartLabels = sortedHsMonths.map((month) => month.name);
-    const handlingStatusChartData = {
-      pending: sortedHsMonths.map((month) => month.statuses.Pending || 0),
- 
-      resolved: sortedHsMonths.map((month) =>
-        (month.statuses.Resolved || 0) + (month.statuses.Closed || 0)
-      ),
-    };
 
-    // Create affiliate data for the handling status table
- const incidentHandlingStatusData = [
-      {
-        affiliate: "Current Month",
- 
-        pending:
-          sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Pending || 0,
-        resolved:
-          (sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Resolved || 0) +
-          (sortedHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Closed || 0),
-      },
-      {
-        affiliate: "Previous Month",
-        pending:
-          sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Pending || 0,
-        resolved:
-          (sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Resolved || 0) +
-          (sortedHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Closed || 0),
-      },
-      {
-        affiliate: "Two Months Ago",
-        pending:
-          sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Pending || 0,
-        resolved:
-          (sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Resolved || 0) +
-          (sortedHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Closed || 0),
-      },
-    ];
+
+// Apply the filter to the sorted handling status months
+logger.info(`🔍 Filtering health incidents from handling status data for ${customerKey}...`);
+const filteredHsMonths = await filterHealthIncidentsFromHandlingStatus(customerKey, sortedHsMonths);
+logger.info(`✅ Filtered health incidents from handling status data for ${customerKey}`);
+
+const handlingStatusChartLabels = filteredHsMonths.map((month) => month.name);
+const handlingStatusChartData = {
+  pending: filteredHsMonths.map((month) => month.statuses.Pending || 0),
+  resolved: filteredHsMonths.map((month) =>
+    (month.statuses.Resolved || 0) + (month.statuses.Closed || 0)
+  ),
+};
+
+// Create affiliate data for the handling status table using filtered data
+const incidentHandlingStatusData = [
+  {
+    affiliate: "Current Month",
+    pending:
+      filteredHsMonths.find((m) => m.period === "Current Month")?.statuses
+        .Pending || 0,
+    resolved:
+      (filteredHsMonths.find((m) => m.period === "Current Month")?.statuses
+        .Resolved || 0) +
+      (filteredHsMonths.find((m) => m.period === "Current Month")?.statuses
+        .Closed || 0),
+  },
+  {
+    affiliate: "Previous Month",
+    pending:
+      filteredHsMonths.find((m) => m.period === "Previous Month")?.statuses
+        .Pending || 0,
+    resolved:
+      (filteredHsMonths.find((m) => m.period === "Previous Month")?.statuses
+        .Resolved || 0) +
+      (filteredHsMonths.find((m) => m.period === "Previous Month")?.statuses
+        .Closed || 0),
+  },
+  {
+    affiliate: "Two Months Ago",
+    pending:
+      filteredHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
+        .Pending || 0,
+    resolved:
+      (filteredHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
+        .Resolved || 0) +
+      (filteredHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
+        .Closed || 0),
+  },
+];
  
 
     // Process sub-status data for the chart
-    const subStatusData = incidentSSResponse.substatus || [];
-    const filteredSubstatus = subStatusData.filter((item) => item._id !== null);
+const subStatusData = incidentSSResponse.substatus || [];
+const filteredSubstatus = subStatusData.filter((item) => item._id !== null);
 
-    let subStatusChartLabels, subStatusChartData, subStatusColors;
+// Apply the health incident filter to the sub-status data
+logger.info(`🔍 Filtering health incidents from sub-status data for ${customerKey}...`);
+const filteredSubStatusData = await filterHealthIncidentsFromSubStatus(
+  customerKey, 
+  filteredSubstatus, 
+  reportDate.getMonth() + 1, 
+  reportDate.getFullYear()
+);
+logger.info(`✅ Filtered health incidents from sub-status data for ${customerKey}`);
+let subStatusChartLabels, subStatusChartData, subStatusColors;
 
-    if (filteredSubstatus.length === 0) {
-      logger.warn("Warning: Sub-status array is empty after filtering");
-      subStatusChartLabels = ["No data available"];
-      subStatusChartData = [0];
-      subStatusColors = ["#556ee6"];
-    } else {
-      const colorMap = {
-        "SOC Investigating": "#0066ff",
-        Tuning: "#ffcc00",
-        "Awaiting Customer Response": "#ff8c00",
-        "False Positive": "#00cc00",
-        "True Positive": "#ff0000",
-      };
+if (filteredSubStatusData.length === 0) {
+  logger.warn("Warning: Sub-status array is empty after filtering");
+  subStatusChartLabels = ["No data available"];
+  subStatusChartData = [0];
+  subStatusColors = ["#556ee6"];
+} else {
+  const colorMap = {
+    "SOC Investigating": "#70b5fa",
+    "Awaiting Customer Response": "#f2a150",
+    "False Positive": "#00cc00",
+    "True Positive": "#ff0000",
+  };
 
-      const formattedData = filteredSubstatus.map((item) => {
-        const status = item._id;
-        const color = colorMap[status] || "#556ee6";
-        return {
-          status,
-          count: item.count,
-          color,
-        };
-      });
+  const formattedData = filteredSubStatusData.map((item) => {
+    const status = item._id;
+    const color = colorMap[status] || "#556ee6";
+    return {
+      status,
+      count: item.count,
+      color,
+    };
+  });
 
-      const desiredOrder = [
-        "SOC Investigating",
-        "Tuning",
-        "Awaiting Customer Response",
-        "False Positive",
-        "True Positive",
-      ];
+  const desiredOrder = [
+    "SOC Investigating",
+    "Awaiting Customer Response",
+    "False Positive",
+    "True Positive",
+  ];
 
-      formattedData.sort((a, b) => {
-        const aIndex = desiredOrder.indexOf(a.status);
-        const bIndex = desiredOrder.indexOf(b.status);
+  formattedData.sort((a, b) => {
+    const aIndex = desiredOrder.indexOf(a.status);
+    const bIndex = desiredOrder.indexOf(b.status);
 
-        if (aIndex !== -1 && bIndex !== -1) {
-          return aIndex - bIndex;
-        }
-
-        if (aIndex !== -1) return -1;
-        if (bIndex !== -1) return 1;
-
-        return a.status.localeCompare(b.status);
-      });
-
-      subStatusChartLabels = formattedData.map((item) => item.status);
-      subStatusChartData = formattedData.map((item) => item.count);
-      subStatusColors = formattedData.map((item) => item.color);
-
-      const countsByStatus = {};
-      formattedData.forEach((item) => {
-        countsByStatus[item.status] = item.count;
-      });
-
-      logger.info(`📊 Sub-status counts: ${JSON.stringify(countsByStatus)}`);
+    if (aIndex !== -1 && bIndex !== -1) {
+      return aIndex - bIndex;
     }
 
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+
+    return a.status.localeCompare(b.status);
+  });
+
+  subStatusChartLabels = formattedData.map((item) => item.status);
+  subStatusChartData = formattedData.map((item) => item.count);
+  subStatusColors = formattedData.map((item) => item.color);
+
+  const countsByStatus = {};
+  formattedData.forEach((item) => {
+    countsByStatus[item.status] = item.count;
+  });
+
+  logger.info(`📊 Sub-status counts: ${JSON.stringify(countsByStatus)}`);
+}
     // Create affiliate data for the sub-status table
-    const incidentSubStatusData = [
-      {
-        affiliate: "Current Month",
-        ...subStatusChartLabels.reduce((acc, statusName, index) => {
-          acc[statusName] = subStatusChartData[index] || 0;
-          return acc;
-        }, {}),
-      },
-    ];
+const incidentSubStatusData = [
+  {
+    affiliate: "Current Month",
+    ...subStatusChartLabels.reduce((acc, statusName, index) => {
+      acc[statusName] = subStatusChartData[index] || 0;
+      return acc;
+    }, {}),
+  },
+];
 
     // Fetch real ticket data
     logger.info(
@@ -930,9 +1114,8 @@ async function generateMonthlyReportForCustomer(
 
     // Define the legend data for substatus chart
     const subStatusLegend = [
-      { label: "SOC Investigating", color: "#0066ff" },
-      { label: "Tuning", color: "#ffcc00" },
-      { label: "Awaiting Customer Response", color: "#ff8c00" },
+      { label: "SOC Investigating", color: "#70b5fa" },
+      { label: "Awaiting Customer Response", color: "#f2a150" },
       { label: "False Positive", color: "#00cc00" },
       { label: "True Positive", color: "#ff0000" },
     ];
@@ -1568,6 +1751,8 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
         customerKey
       );
 
+      logger.info(`🔍 Raw sub-status response for ${customerKey}:`, JSON.stringify(incidentSSResponse, null, 2));
+
     // Validate responses
     const months =
       incidentSeverityResponse?.data?.months ||
@@ -1749,89 +1934,106 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
  
 
     // Process sub-status data for the chart
-    const subStatusData = incidentSSResponse.substatus || [];
-    const filteredSubstatus = subStatusData.filter((item) => item._id !== null);
+// In getReportDataForCustomer function, make sure you're using the filtered data:
+// Process sub-status data for the chart
+const subStatusData = incidentSSResponse.substatus || [];
+const filteredSubstatus = subStatusData.filter((item) => item._id !== null);
 
-    let subStatusChartLabels, subStatusChartData, subStatusColors;
+// Apply the health incident filter to the sub-status data
+logger.info(`🔍 Filtering health incidents from sub-status data for ${customerKey}...`);
+const filteredSubStatusData = await filterHealthIncidentsFromSubStatus(
+  customerKey, 
+  filteredSubstatus, 
+  now.getMonth() + 1, 
+  now.getFullYear()
+);
+logger.info(`✅ Filtered health incidents from sub-status data for ${customerKey}`);
 
-    if (filteredSubstatus.length === 0) {
-      logger.warn("Warning: Sub-status array is empty after filtering");
-      subStatusChartLabels = ["No data available"];
-      subStatusChartData = [0];
-      subStatusColors = ["#556ee6"];
-    } else {
-      const colorMap = {
-        "SOC Investigating": "#0066ff",
-        Tuning: "#ffcc00",
-        "Awaiting Customer Response": "#ff8c00",
-        "False Positive": "#00cc00",
-        "True Positive": "#ff0000",
-      };
+let subStatusChartLabels, subStatusChartData, subStatusColors;
 
-      const formattedData = filteredSubstatus.map((item) => {
-        const status = item._id;
-        const color = colorMap[status] || "#556ee6";
-        return {
-          status,
-          count: item.count,
-          color,
-        };
-      });
+if (filteredSubStatusData.length === 0) {
+  logger.warn("Warning: Sub-status array is empty after filtering");
+  subStatusChartLabels = ["No data available"];
+  subStatusChartData = [0];
+  subStatusColors = ["#556ee6"];
+} else {
+  const colorMap = {
+    "SOC Investigating": "#70b5fa",
+    "Awaiting Customer Response": "#f2a150",
+    "False Positive": "#00cc00",
+    "True Positive": "#ff0000",
+  };
 
-      const desiredOrder = [
-        "SOC Investigating",
-        "Tuning",
-        "Awaiting Customer Response",
-        "False Positive",
-        "True Positive",
-      ];
+  const formattedData = filteredSubStatusData.map((item) => {
+    const status = item._id;
+    const color = colorMap[status] || "#556ee6";
+    return {
+      status,
+      count: item.count,
+      color,
+    };
+  });
 
-      formattedData.sort((a, b) => {
-        const aIndex = desiredOrder.indexOf(a.status);
-        const bIndex = desiredOrder.indexOf(b.status);
+  const desiredOrder = [
+    "SOC Investigating",
+    "Awaiting Customer Response",
+    "False Positive",
+    "True Positive",
+  ];
 
-        if (aIndex !== -1 && bIndex !== -1) {
-          return aIndex - bIndex;
-        }
+  formattedData.sort((a, b) => {
+    const aIndex = desiredOrder.indexOf(a.status);
+    const bIndex = desiredOrder.indexOf(b.status);
 
-        if (aIndex !== -1) return -1;
-        if (bIndex !== -1) return 1;
-
-        return a.status.localeCompare(b.status);
-      });
-
-      subStatusChartLabels = formattedData.map((item) => item.status);
-      subStatusChartData = formattedData.map((item) => item.count);
-      subStatusColors = formattedData.map((item) => item.color);
-
-      const countsByStatus = {};
-      formattedData.forEach((item) => {
-        countsByStatus[item.status] = item.count;
-      });
-
-      logger.info(`📊 Sub-status counts: ${JSON.stringify(countsByStatus)}`);
+    if (aIndex !== -1 && bIndex !== -1) {
+      return aIndex - bIndex;
     }
 
-    // Create affiliate data for the sub-status table
-    const incidentSubStatusData = [
-      {
-        affiliate: "Current Month",
-        ...subStatusChartLabels.reduce((acc, statusName, index) => {
-          acc[statusName] = subStatusChartData[index] || 0;
-          return acc;
-        }, {}),
-      },
-    ];
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+
+    return a.status.localeCompare(b.status);
+  });
+
+  subStatusChartLabels = formattedData.map((item) => item.status);
+  subStatusChartData = formattedData.map((item) => item.count);
+  subStatusColors = formattedData.map((item) => item.color);
+
+  const countsByStatus = {};
+  formattedData.forEach((item) => {
+    countsByStatus[item.status] = item.count;
+  });
+
+  logger.info(`📊 Sub-status counts: ${JSON.stringify(countsByStatus)}`);
+}
+
+// Create affiliate data for the sub-status table
+const incidentSubStatusData = [
+  {
+    affiliate: "Current Month",
+    ...subStatusChartLabels.reduce((acc, statusName, index) => {
+      acc[statusName] = subStatusChartData[index] || 0;
+      return acc;
+    }, {}),
+  },
+];
 
     // Fetch real ticket data
     logger.info(
       "🎫 Fetching real data for incident and health ticket tables..."
     );
 
-    const incidentTicketsData =
-      await getNonHealthEscalationIncidents(customerKey);
+     const incidentTicketsData = await getNonHealthEscalationIncidents(
+      customerKey,
+      reportDate.getMonth() + 1,
+      reportDate.getFullYear()
+    );
 
-    const healthTicketsData = await getHealthEscalationIncidents(customerKey);
+      const healthTicketsData = await getHealthEscalationIncidents(
+      customerKey,
+      reportDate.getMonth() + 1,
+      reportDate.getFullYear()
+    );
 
     logger.info(
       `✅ Fetched ${incidentTicketsData.length} incident tickets and ${healthTicketsData.length} health tickets.`
@@ -1839,9 +2041,8 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
 
     // Define the legend data for substatus chart
     const subStatusLegend = [
-      { label: "SOC Investigating", color: "#0066ff" },
-      { label: "Tuning", color: "#ffcc00" },
-      { label: "Awaiting Customer Response", color: "#ff8c00" },
+      { label: "SOC Investigating", color: "#70b5fa" },
+      { label: "Awaiting Customer Response", color: "#f2a150" },
       { label: "False Positive", color: "#00cc00" },
       { label: "True Positive", color: "#ff0000" },
     ];

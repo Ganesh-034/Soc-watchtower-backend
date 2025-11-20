@@ -58,41 +58,41 @@ const containerClient = blobServiceClient.getContainerClient(
 
 // Customer configuration - bidirectional mapping
 const customers = {
-    toyotatsushoapacsoc: "Toyota Tsusho Asia Pacific",
-  "ajinomoto-thailand(ajt)": "Ajinomoto Thailand",
-  "hino motor- hmst": "Hino Motor Sales Thailand HMST", // can remove this
-  "pt.rknforge": "PT RKN Forge",
-  "aji-sentinel4apc-prod": "Ajinomoto Philippines",
-  "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
-  "hinomotorssalesthailand-hmst": "Hino Motors Sales Thailand HMST", // Keep this
-  // "log-scg-logistics-sentinel-hub": "SCG Logistics Sentinel Hub",
-  "pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
+  //   toyotatsushoapacsoc: "Toyota Tsusho Asia Pacific",
+  // "ajinomoto-thailand(ajt)": "Ajinomoto Thailand",
+  // "hino motor- hmst": "Hino Motor Sales Thailand HMST", // can remove this
+  // "pt.rknforge": "PT RKN Forge",
+  // "aji-sentinel4apc-prod": "Ajinomoto Philippines",
+  // "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
+  // "hinomotorssalesthailand-hmst": "Hino Motors Sales Thailand HMST", // Keep this
+  // // "log-scg-logistics-sentinel-hub": "SCG Logistics Sentinel Hub",
+  // "pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
   "pt-tokairika-indonesia": "PT Tokairika Indonesia",
-  "taiho-thailand": "Taiho Thailand",
-  toyotaacseautocsengineeringcoltdsoc: "Toyota ACSE Auto CS Engineering Co Ltd",
-  toyotaadmptastradaihatsumotorsoc: "Toyota ADM PT Astra Daihatsu Motor",
-  toyotaafpaichiforgephilippinesincsoc:
-    "Toyota AFP Aichi Forge Philippines Inc",
-  toyotaaftaichiforgethailandsoc: "Toyota AFT Aichi Forge Thailand",
-  toyotaakakawashimaindonesiasoc: "Toyota AKA Kawashima Indonesia",
-  toyotafigplfutabaindtrgujaratpvtltdsoc:
-    "Toyota FIGPL Futaba Indtr Gujarat Pvt Ltd",
-  toyotafmiautomtvcomponentspvtltdsoc: "Toyota FMI Automotv Components Pvt Ltd",
-  toyotaftsiptftsautomotiveindonesiasoc:
-    "Toyota FTSI PT FTS Automotive Indonesia",
-  toyotaftsthftsautomotivethailandcoltd:
-    "Toyota FTSTH FTS Automotive Thailand Co Ltd",
-  toyotahmmmyhinomotorsmalaysiasoc: "Toyota HMMMY Hino Motors Malaysia",
-  toyotahmmthinomotorsmnfcthailandltdsoc:
-    "Toyota HMMT Hino Motors Mnfc Thailand Ltd",
-  toyotashirokiindonesiasoc: "Toyota Shiroki Indonesia",
-  toyotatgastoyodagoseiasiasoc: "Toyota TGAS Toyoda Gosei Asia",
-  toyotatgrttoyodagoseirubberthailandsoc:
-    "Toyota TGRT Toyoda Gosei Rubber Thailand",
-  toyotatkttakebethailandcoltdsoc: "Toyota TKT Takebe Thailand Co Ltd",
-  toyotatrttokairikathailandcoltdsoc: "Toyota TRT Tokairika Thailand Co Ltd",
-  "tts-asia-internal-soc-workspace-test": "TTS Asia Internal",
-  "ajinomoto-cambodia-ajc": "Ajinomoto Cambodia",
+  // "taiho-thailand": "Taiho Thailand",
+  // toyotaacseautocsengineeringcoltdsoc: "Toyota ACSE Auto CS Engineering Co Ltd",
+  // toyotaadmptastradaihatsumotorsoc: "Toyota ADM PT Astra Daihatsu Motor",
+  // toyotaafpaichiforgephilippinesincsoc:
+  //   "Toyota AFP Aichi Forge Philippines Inc",
+  // toyotaaftaichiforgethailandsoc: "Toyota AFT Aichi Forge Thailand",
+  // toyotaakakawashimaindonesiasoc: "Toyota AKA Kawashima Indonesia",
+  // toyotafigplfutabaindtrgujaratpvtltdsoc:
+  //   "Toyota FIGPL Futaba Indtr Gujarat Pvt Ltd",
+  // toyotafmiautomtvcomponentspvtltdsoc: "Toyota FMI Automotv Components Pvt Ltd",
+  // toyotaftsiptftsautomotiveindonesiasoc:
+  //   "Toyota FTSI PT FTS Automotive Indonesia",
+  // toyotaftsthftsautomotivethailandcoltd:
+  //   "Toyota FTSTH FTS Automotive Thailand Co Ltd",
+  // toyotahmmmyhinomotorsmalaysiasoc: "Toyota HMMMY Hino Motors Malaysia",
+  // toyotahmmthinomotorsmnfcthailandltdsoc:
+  //   "Toyota HMMT Hino Motors Mnfc Thailand Ltd",
+  // toyotashirokiindonesiasoc: "Toyota Shiroki Indonesia",
+  // toyotatgastoyodagoseiasiasoc: "Toyota TGAS Toyoda Gosei Asia",
+  // toyotatgrttoyodagoseirubberthailandsoc:
+  //   "Toyota TGRT Toyoda Gosei Rubber Thailand",
+  // toyotatkttakebethailandcoltdsoc: "Toyota TKT Takebe Thailand Co Ltd",
+  // toyotatrttokairikathailandcoltdsoc: "Toyota TRT Tokairika Thailand Co Ltd",
+  // "tts-asia-internal-soc-workspace-test": "TTS Asia Internal",
+  // "ajinomoto-cambodia-ajc": "Ajinomoto Cambodia",
 };
 
 // Helper function to get customer key from either key or display name
@@ -178,30 +178,32 @@ function getReportsStatusModel() {
 }
 
 // Function to check if a blob exists in Azure Storage
-// Function to check if a blob exists in Azure Storage
 async function checkBlobExists(blobPath) {
   try {
     logger.info(`🔍 Checking blob existence: "${blobPath}"`);
-    
-    // Split the path into parts to handle encoding correctly
-    const pathParts = blobPath.split('/');
-    
-    // Only encode the parts that contain special characters (customer key)
-    const encodedPathParts = pathParts.map(part => {
-      // Check if part contains special characters that need encoding
-      if (part.includes('(') || part.includes(')') || part.includes(' ')) {
-        return encodeURIComponent(part);
-      }
-      return part;
-    });
-    
-    // Reconstruct the path with only the necessary parts encoded
-    const encodedBlobPath = encodedPathParts.join('/');
+
+    // Normalize path (remove duplicate slashes, trim)
+    const normalized = blobPath.replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
+
+    const encodedBlobPath = normalized
+      .split("/")
+      .map((segment) => {
+        if (!segment) return segment;
+
+        // If it looks already percent-encoded, don’t re-encode
+        const looksEncoded =
+          /%[0-9A-Fa-f]{2}/.test(segment) &&
+          decodeURIComponent(segment) !== segment;
+
+        return looksEncoded ? segment : encodeURIComponent(segment);
+      })
+      .join("/");
+
     logger.info(`🔐 Encoded blob path: "${encodedBlobPath}"`);
-    
+
     const blobClient = containerClient.getBlobClient(encodedBlobPath);
     const exists = await blobClient.exists();
-    
+
     logger.info(`📦 Blob exists result: ${exists}`);
     return exists;
   } catch (error) {

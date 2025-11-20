@@ -155,7 +155,7 @@ export async function generateTicketSummary(tickets, type, reportMonth) {
             .map(([s, c]) => `${capitalizeStatus(s)}: ${c}`)
             .join(", ");
  
-        const prompt = `
+      const prompt = `
       Write a concise single-sentence summary of ticket handling for a SOC report.
  
       Details:

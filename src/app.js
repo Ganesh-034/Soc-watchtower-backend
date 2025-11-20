@@ -18,6 +18,9 @@ import reportDownloadRoutes from './routes/reportDownload.routes.js';
 
 const app = express();
 
+//To disable server side caching
+app.disable("etag");
+
 // Middleware
 app.use(helmet());
 app.use(cors());

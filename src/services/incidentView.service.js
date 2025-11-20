@@ -228,7 +228,7 @@ export const getIncidentDetails = async (incidentId, customerName) => {
 
     // 2️⃣ Prepare prompt for Azure OpenAI
     const prompt = `
-You'll get the SOC Ticket details in JSON format, your task is to understand the details provided to you and based on that generate a good summary on what happened, when happened and what was done basically a good summary for anyone, dont assume or recommend anything just summarize
+You'll get the SOC Ticket details in JSON format, your task is to understand the details provided to you and based on that generate a good summary on what happened, when happened and what was done basically a good summary for anyone, dont assume or recommend anything just summarize. Do NOT use any markdown formatting, bold, italics, asterisks, headings, or special characters. Provide plain text only.
 
 Incident Details:
 ${JSON.stringify(incident, null, 2)}
