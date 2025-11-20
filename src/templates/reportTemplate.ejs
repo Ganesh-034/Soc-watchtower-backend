@@ -621,7 +621,23 @@
             <tr>
               <td><%= ticket.id %></td>
               <td><%= ticket.subject %></td>
-              <td><%= ticket.createdDate %></td>
+              <%
+  const date = new Date(ticket.createdDate);
+  const dateStr = date.toLocaleDateString("en-US", { timeZone: "UTC" });
+  const timeStr = date.toLocaleTimeString("en-US", {
+    timeZone: "UTC",
+    hour12: true,
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+  const ms = date.getUTCMilliseconds().toString().padStart(3, "0");
+%>
+<td>
+  <%= dateStr %><br>
+  <%= timeStr %>.<%= ms %> <br>
+  (UTC)
+</td>
               <td><%= ticket.priority %></td>
               <td><%= ticket.incidentType %></td>
               <td><%= ticket.socAnalysis %></td>
@@ -666,7 +682,23 @@
             <tr>
               <td><%= ticket.id %></td>
               <td><%= ticket.subject %></td>
-              <td><%= ticket.createdDate %></td>
+              <%
+  const date = new Date(ticket.createdDate);
+  const dateStr = date.toLocaleDateString("en-US", { timeZone: "UTC" });
+  const timeStr = date.toLocaleTimeString("en-US", {
+    timeZone: "UTC",
+    hour12: true,
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+  const ms = date.getUTCMilliseconds().toString().padStart(3, "0");
+%>
+<td>
+  <%= dateStr %><br>
+  <%= timeStr %>.<%= ms %> <br>
+  (UTC)
+</td>
               <td><%= ticket.priority %></td>
               <td><%= ticket.incidentType %></td>
               <td><%= ticket.socAnalysis %></td>
@@ -1215,173 +1247,172 @@
         }
 
         // ✅ FIXED: Incident by Sub Status Chart - Use default Chart.js legend
-        const subStatusCtx = document.getElementById("subStatusChart");
+// ✅ FIXED: Incident by Sub Status Chart - Use default Chart.js legend
+const subStatusCtx = document.getElementById("subStatusChart");
 
-        if (subStatusCtx) {
-          // Define all 4 substatus categories with their exact colors
-          const allSubStatuses = [
-            { label: "SOC Investigating", color: "#003d82" }, // Dark blue
-            { label: "Awaiting Customer Response", color: "#ff8c00" }, // Orange
-            { label: "False Positive", color: "#70db70" }, // Green
-            { label: "True Positive", color: "#f08080" }  // Red
-          ];
+if (subStatusCtx) {
+  // Define all 4 substatus categories with their exact colors
+  const allSubStatuses = [
+    { label: "SOC Investigating", color: "#70b5fa" }, // Dark blue
+    { label: "Awaiting Customer Response", color: "#f2a150" }, // Orange
+    { label: "False Positive", color: "#70db70" }, // Green
+    { label: "True Positive", color: "#f08080" }  // Red
+  ];
 
-          // Always use all 4 categories as labels - this ensures they appear on x-axis
-          const labels = defaultSubStatusCategories || [
-            'SOC Investigating',
-            'Awaiting Customer Response',
-            'False Positive',
-            'True Positive'
-          ];
+  // Always use all 4 categories as labels - this ensures they appear on x-axis
+  const labels = defaultSubStatusCategories || [
+    'SOC Investigating',
+    'Awaiting Customer Response',
+    'False Positive',
+    'True Positive'
+  ];
 
-          // Get the actual data if available
-          let data = subStatusChartData;
-          
-          // If no data, create array of zeros
-          if (!data || !data.length) {
-            data = new Array(labels.length).fill(0);
-          } else {
-            // Ensure we have data for all 4 categories
-            const newData = [];
-            for (let i = 0; i < labels.length; i++) {
-              const label = labels[i];
-              const existingIndex = subStatusChartLabels ? subStatusChartLabels.indexOf(label) : -1;
-              newData.push(existingIndex >= 0 ? data[existingIndex] : 0);
-            }
-            data = newData;
-          }
+  // Get the actual data if available
+  let data = subStatusChartData;
+  
+  // If no data, create array of zeros
+  if (!data || !data.length) {
+    data = new Array(labels.length).fill(0);
+  } else {
+    // Ensure we have data for all 4 categories
+    const newData = [];
+    for (let i = 0; i < labels.length; i++) {
+      const label = labels[i];
+      const existingIndex = subStatusChartLabels ? subStatusChartLabels.indexOf(label) : -1;
+      newData.push(existingIndex >= 0 ? data[existingIndex] : 0);
+    }
+    data = newData;
+  }
 
-          // Match each label to its defined color
-          const colors = labels.map(label => {
-            const status = allSubStatuses.find(s => s.label === label);
-            return status ? status.color : "#556ee6";
-          });
+  // Match each label to its defined color
+  const colors = labels.map(label => {
+    const status = allSubStatuses.find(s => s.label === label);
+    return status ? status.color : "#556ee6";
+  });
 
-          console.log("📊 Creating sub-status chart with labels:", labels);
-          console.log("📊 Creating sub-status chart with data:", data);
-          console.log("📊 Creating sub-status chart with colors:", colors);
+  console.log("📊 Creating sub-status chart with labels:", labels);
+  console.log("📊 Creating sub-status chart with data:", data);
+  console.log("📊 Creating sub-status chart with colors:", colors);
 
-          const subStatusChart = new Chart(subStatusCtx.getContext("2d"), {
-            type: "bar",
-            data: {
-              labels: labels, // This ensures all 4 labels appear on x-axis
-              datasets: [
-                {
-                  label: "Incidents",
-                  data: data,
-                  backgroundColor: colors,
-                  barPercentage: 0.6,
-                  categoryPercentage: 0.7
-                }
-              ]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              animation: { duration: 0 },
-              layout: { 
-                padding: { 
-                  top: 20
-                } 
-              },
-              plugins: {
-                // ✅ Use default Chart.js legend to match other charts
-                legend: {
-                  display: true,
-                  position: 'bottom',
-                  labels: {
-                    generateLabels: function(chart) {
-                      const data = chart.data;
-                      if (data.labels.length && data.datasets.length) {
-                        return data.labels.map((label, i) => ({
-                          text: label,
-                          fillStyle: data.datasets[0].backgroundColor[i],
-                          strokeStyle: data.datasets[0].backgroundColor[i],
-                          lineWidth: 0,
-                          hidden: false
-                        }));
-                      }
-                      return [];
-                    }
-                  }
-                }, 
-                tooltip: {
-                  callbacks: {
-                    label: function(context) {
-                      return context.label + ": " + context.raw + " incidents";
-                    }
-                  }
-                },
-
-                // Draw value labels above bars
-                afterDatasetsDraw: function(chart) {
-                  const ctx = chart.ctx;
-                  ctx.save();
-
-                  chart.data.datasets.forEach(function(dataset) {
-                    const meta = chart.getDatasetMeta(0);
-                    if (!meta.hidden) {
-                      meta.data.forEach(function(element, index) {
-                        const value = dataset.data[index];
-                        if (value > 0) {
-                          ctx.fillStyle = '#304758';
-                          ctx.font = '500 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
-                          ctx.textAlign = 'center';
-                          ctx.textBaseline = 'bottom';
-
-                          const barTopY = element.y;
-                          const barCenterX = element.x;
-
-                          ctx.fillText(value, barCenterX, barTopY - 6);
-                        }
-                      });
-                    }
-                  });
-
-                  ctx.restore();
-                }
-              },
-
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  title: { display: true, text: 'Incident Count' },
-                  ticks: {
-                    padding: 10,
-                    stepSize: 1,
-                    callback: function(value) {
-                      if (Math.floor(value) === value) return value;
-                    }
-                  },
-                  afterBuildTicks: function(scale) {
-                    if (scale.ticks.length > 0) {
-                      const maxTick = Math.max(...scale.ticks.map(t => t.value));
-                      scale.ticks.push({ value: maxTick + 1, label: '' });
-                    }
-                  }
-                },
-                x: {
-                  // ✅ Force all labels to show on x-axis
-                  ticks: {
-                    autoSkip: false, // Don't skip any labels
-                    maxRotation: 45, // Allow rotation if needed
-                    minRotation: 0,
-                    callback: function(value, index, values) {
-                      const label = this.getLabelForValue(value);
-                      // Wrap long labels
-                      if (label.length > 15) {
-                        return label.split(' ');
-                      }
-                      return label;
-                    }
-                  }
-                }
-              }
-            }
-          });
+  const subStatusChart = new Chart(subStatusCtx.getContext("2d"), {
+    type: "bar",
+    data: {
+      labels: labels, // This ensures all 4 labels appear on x-axis
+      datasets: [
+        {
+          label: "Incidents",
+          data: data,
+          backgroundColor: colors,
+          barPercentage: 0.6,
+          categoryPercentage: 0.7
         }
-      
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 0 },
+      layout: { 
+        padding: { 
+          top: 20
+        } 
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: {
+            color: '#666', // ✅ Set the color for all legend labels
+            generateLabels: function(chart) {
+              const data = chart.data;
+              if (data.labels.length && data.datasets.length) {
+                return data.labels.map((label, i) => ({
+                  text: label,
+                  fillStyle: data.datasets[0].backgroundColor[i],
+                  strokeStyle: data.datasets[0].backgroundColor[i],
+                  lineWidth: 0,
+                  hidden: false,
+                  fontColor: '#666' // ✅ Add fontColor property as well
+                }));
+              }
+              return [];
+            }
+          }
+        }, 
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.label + ": " + context.raw + " incidents";
+            }
+          }
+        },
+
+        // Draw value labels above bars
+        afterDatasetsDraw: function(chart) {
+          const ctx = chart.ctx;
+          ctx.save();
+
+          chart.data.datasets.forEach(function(dataset) {
+            const meta = chart.getDatasetMeta(0);
+            if (!meta.hidden) {
+              meta.data.forEach(function(element, index) {
+                const value = dataset.data[index];
+                // Show labels even when value is 0
+                ctx.fillStyle = '#304758';
+                ctx.font = '500 10px "Segoe UI", Tahoma, Geneva, Verdana, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+
+                const barTopY = element.y;
+                const barCenterX = element.x;
+
+                ctx.fillText(value, barCenterX, barTopY - 6);
+              });
+            }
+          });
+
+          ctx.restore();
+        }
+      },
+
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Incident Count' },
+          ticks: {
+            padding: 10,
+            stepSize: 1,
+            callback: function(value) {
+              if (Math.floor(value) === value) return value;
+            }
+          },
+          afterBuildTicks: function(scale) {
+            if (scale.ticks.length > 0) {
+              const maxTick = Math.max(...scale.ticks.map(t => t.value));
+              scale.ticks.push({ value: maxTick + 1, label: '' });
+            }
+          }
+        },
+        x: {
+          // ✅ Force all labels to show on x-axis
+          ticks: {
+            autoSkip: false, // Don't skip any labels
+            maxRotation: 45, // Allow rotation if needed
+            minRotation: 0,
+            callback: function(value, index, values) {
+              const label = this.getLabelForValue(value);
+              // Wrap long labels
+              if (label.length > 15) {
+                return label.split(' ');
+              }
+              return label;
+            }
+          }
+        }
       }
+    }
+  });
+}      }
 
       // ✅ PRODUCTION-READY INITIALIZATION
       function initializePage() {
