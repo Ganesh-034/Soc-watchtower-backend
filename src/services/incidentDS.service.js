@@ -1,6 +1,10 @@
 import Incident from "../models/incident.model.js";
 
-export const getIncidentsDetectionSource = async (month, customerName, includeEscalatedOnly = false) => {
+export const getIncidentsDetectionSource = async (
+  month,
+  customerName,
+  includeEscalatedOnly = false
+) => {
   try {
     if (!month || !customerName) {
       throw new Error(
@@ -9,7 +13,7 @@ export const getIncidentsDetectionSource = async (month, customerName, includeEs
     }
 
     const collection = Incident.collection;
-    
+
     // Build the match condition dynamically
     const matchCondition = {
       month: month,
@@ -18,7 +22,7 @@ export const getIncidentsDetectionSource = async (month, customerName, includeEs
 
     // Add escalation filter if requested
     if (includeEscalatedOnly) {
-      matchCondition.customer_escalation = 'Yes';
+      matchCondition.customer_escalation = "Yes";
     }
 
     const pipeline = [
@@ -39,7 +43,7 @@ export const getIncidentsDetectionSource = async (month, customerName, includeEs
         $group: {
           _id: {
             incident_type: "$incident_type",
-            priority: "$priority"
+            priority: "$priority",
           },
           count: { $sum: 1 },
         },
@@ -55,32 +59,32 @@ export const getIncidentsDetectionSource = async (month, customerName, includeEs
 
     // Transform the data to the expected format
     const transformedData = {};
-    
-    detectionsourceCounts.forEach(item => {
+
+    for (const item of detectionsourceCounts) {
       let incidentType = item._id.incident_type || "Unknown";
-      
+
       // Replace "Unknown" with "Entra ID"
       if (incidentType === "Unknown") {
         incidentType = "Entra ID";
       }
-      
+
       const priority = item._id.priority || "Unknown";
-      
+
       if (!transformedData[incidentType]) {
         transformedData[incidentType] = {
           High: 0,
           Medium: 0,
           Low: 0,
-          Total: 0 // Add total count
+          Total: 0, // Add total count
         };
       }
-      
+
       // Update priority count
       if (priority === "High" || priority === "Medium" || priority === "Low") {
         transformedData[incidentType][priority] = item.count;
         transformedData[incidentType].Total += item.count;
       }
-    });
+    }
 
     return {
       detectionsource: transformedData,
@@ -94,6 +98,9 @@ export const getIncidentsDetectionSource = async (month, customerName, includeEs
 };
 
 // Export a wrapper function for escalated incidents
-export const getIncidentsDetectionSourceEscalation = async (month, customerName) => {
+export const getIncidentsDetectionSourceEscalation = async (
+  month,
+  customerName
+) => {
   return getIncidentsDetectionSource(month, customerName, true);
 };

@@ -21,7 +21,7 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
     try {
       const parsedFilters = JSON.parse(filters);
 
-      parsedFilters.forEach((filter) => {
+      for (const filter of parsedFilters) {
         const { column, value } = filter;
         const fieldMap = {
           id: "_id",
@@ -40,32 +40,32 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
 
         const dbField = fieldMap[column];
 
-        if (dbField) {
-          if (column === "status") {
-            const normalizedValue = value.trim().toLowerCase();
-            const statusCode = statusMap[normalizedValue];
+        if (!dbField) continue;
 
-            if (statusCode !== undefined) {
-              mongoFilters[dbField] = statusCode;
-            } else {
-              const possibleMatches = Object.keys(statusMap).filter((status) =>
-                status.toLowerCase().includes(normalizedValue)
-              );
+        if (column === "status") {
+          const normalizedValue = value.trim().toLowerCase();
+          const statusCode = statusMap[normalizedValue];
 
-              if (possibleMatches.length > 0) {
-                mongoFilters[dbField] = {
-                  $in: possibleMatches.map((match) => statusMap[match]),
-                };
-              } else {
-                console.log(`No status match found for "${value}"`);
-                mongoFilters[dbField] = -1;
-              }
-            }
+          if (statusCode !== undefined) {
+            mongoFilters[dbField] = statusCode;
           } else {
-            mongoFilters[dbField] = { $regex: value, $options: "i" };
+            const possibleMatches = Object.keys(statusMap).filter((status) =>
+              status.toLowerCase().includes(normalizedValue)
+            );
+
+            if (possibleMatches.length > 0) {
+              mongoFilters[dbField] = {
+                $in: possibleMatches.map((match) => statusMap[match]),
+              };
+            } else {
+              console.log(`No status match found for "${value}"`);
+              mongoFilters[dbField] = -1;
+            }
           }
+        } else {
+          mongoFilters[dbField] = { $regex: value, $options: "i" };
         }
-      });
+      }
     } catch (error) {
       console.error("Error parsing filters:", error);
     }
@@ -84,8 +84,8 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
   mongoFilters.customer_name = req.customerName;
 
   const tickets = await incidentTicketService.getIncidentTickets(
-    parseInt(page),
-    parseInt(limit),
+    Number.parseInt(page),
+    Number.parseInt(limit),
     mongoFilters
   );
 

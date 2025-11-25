@@ -2,8 +2,8 @@ import {
   BlobSASPermissions,
   StorageSharedKeyCredential,
   generateBlobSASQueryParameters,
+  BlobServiceClient,
 } from "@azure/storage-blob";
-import { BlobServiceClient } from "@azure/storage-blob";
 import mongoose from "mongoose";
 import logger from "../config/logger.js";
 
@@ -28,16 +28,16 @@ async function initializeReportsDBConnection() {
           socketTimeoutMS: 45000,
         }
       );
-      
-      reportsDBConnection.on('connected', () => {
+
+      reportsDBConnection.on("connected", () => {
         logger.info("✅ Reports database connected successfully");
       });
-      
-      reportsDBConnection.on('error', (err) => {
+
+      reportsDBConnection.on("error", (err) => {
         logger.error("❌ Reports database connection error:", err);
       });
-      
-      reportsDBConnection.on('disconnected', () => {
+
+      reportsDBConnection.on("disconnected", () => {
         logger.warn("⚠️ Reports database disconnected");
       });
     }
@@ -67,7 +67,7 @@ const customers = {
   // "hinomotorssalesthailand-hmst": "Hino Motors Sales Thailand HMST", // Keep this
   // // "log-scg-logistics-sentinel-hub": "SCG Logistics Sentinel Hub",
   // "pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
-  "pt-tokairika-indonesia": "PT Tokairika Indonesia",
+  //"pt-tokairika-indonesia": "PT Tokairika Indonesia",
   // "taiho-thailand": "Taiho Thailand",
   // toyotaacseautocsengineeringcoltdsoc: "Toyota ACSE Auto CS Engineering Co Ltd",
   // toyotaadmptastradaihatsumotorsoc: "Toyota ADM PT Astra Daihatsu Motor",
@@ -97,8 +97,10 @@ const customers = {
 
 // Helper function to get customer key from either key or display name
 function getCustomerKey(customerIdentifier) {
-  logger.info(`🔍 Looking up customer key for identifier: "${customerIdentifier}"`);
-  
+  logger.info(
+    `🔍 Looking up customer key for identifier: "${customerIdentifier}"`
+  );
+
   // If it's already a key (from token), return it
   if (
     customers[customerIdentifier] &&
@@ -111,12 +113,16 @@ function getCustomerKey(customerIdentifier) {
   // If it's a display name, return the corresponding key
   for (const [key, value] of Object.entries(customers)) {
     if (value === customerIdentifier) {
-      logger.info(`✅ Found reverse match: "${customerIdentifier}" -> "${key}"`);
+      logger.info(
+        `✅ Found reverse match: "${customerIdentifier}" -> "${key}"`
+      );
       return key;
     }
   }
 
-  logger.warn(`❌ No match found for customer identifier: "${customerIdentifier}"`);
+  logger.warn(
+    `❌ No match found for customer identifier: "${customerIdentifier}"`
+  );
   return null;
 }
 
@@ -164,9 +170,11 @@ const ReportStatusSchema = new mongoose.Schema({
 function getReportsStatusModel() {
   // Ensure the reports DB connection is initialized
   if (!reportsDBConnection) {
-    throw new Error("Reports database connection not initialized. Call initializeReportsDBConnection() first.");
+    throw new Error(
+      "Reports database connection not initialized. Call initializeReportsDBConnection() first."
+    );
   }
-  
+
   // Check if model is already registered with this connection
   if (reportsDBConnection.models.ReportStatus) {
     logger.info(`📋 Using existing ReportStatus model from reports DB`);
@@ -183,7 +191,9 @@ async function checkBlobExists(blobPath) {
     logger.info(`🔍 Checking blob existence: "${blobPath}"`);
 
     // Normalize path (remove duplicate slashes, trim)
-    const normalized = blobPath.replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
+    const normalized = blobPath
+      .replaceAll(/\/+/g, "/")
+      .replaceAll(/(^\/)|(\/$)/g, "");
 
     const encodedBlobPath = normalized
       .split("/")
@@ -219,7 +229,7 @@ async function getReportSasUrl(req, res) {
     logger.info(`🚀 getReportSasUrl called`);
     logger.info(`📥 Request params: ${JSON.stringify(req.params)}`);
     logger.info(`👤 Request customer: ${JSON.stringify(req.customerName)}`);
-    
+
     const { month, year } = req.params;
 
     // Get customer identifier from the authenticated request
@@ -246,7 +256,9 @@ async function getReportSasUrl(req, res) {
 
     // Validate parameters
     if (!month || !year) {
-      logger.error(`❌ Missing required parameters: month=${month}, year=${year}`);
+      logger.error(
+        `❌ Missing required parameters: month=${month}, year=${year}`
+      );
       return res
         .status(400)
         .json({ error: "Missing required parameters: month, year" });
@@ -257,7 +269,7 @@ async function getReportSasUrl(req, res) {
 
     // Initialize reports DB connection if needed
     await initializeReportsDBConnection();
-    
+
     // Get the ReportStatus model from reports DB
     const ReportStatus = getReportsStatusModel();
 
@@ -273,7 +285,9 @@ async function getReportSasUrl(req, res) {
     logger.info(`✅ Found report: ${JSON.stringify(report.toObject())}`);
 
     if (report.status !== "verified") {
-      logger.error(`❌ Report not ready for download. Status: "${report.status}"`);
+      logger.error(
+        `❌ Report not ready for download. Status: "${report.status}"`
+      );
       return res.status(400).json({
         error: "Report is not ready for download",
         status: report.status,
@@ -303,16 +317,16 @@ async function getReportSasUrl(req, res) {
     // THE CRITICAL FIX:
     // Parse the blob URL to extract the correct container and blob name
     const blobUrl = new URL(report.blobUrl);
-    const pathParts = blobUrl.pathname.split('/');
-    
+    const pathParts = blobUrl.pathname.split("/");
+
     // The first part after the hostname is the container name
     const containerName = pathParts[1];
-    
+
     // The rest is the blob path (including folders)
-    const blobName = pathParts.slice(2).join('/');
-    
+    const blobName = pathParts.slice(2).join("/");
+
     logger.info(`🔐 Container: "${containerName}", Blob: "${blobName}"`);
-    
+
     // Generate SAS token with the correct container and blob name
     const sasToken = generateBlobSASQueryParameters(
       {
@@ -352,7 +366,7 @@ async function getReportSasUrl(req, res) {
 async function getAvailableReportsForCustomer(req, res) {
   try {
     logger.info(`🚀 getAvailableReportsForCustomer called`);
-    
+
     // Get customer identifier from the authenticated request
     const customerIdentifier = req.customerName;
     logger.info(`🔑 Customer identifier from request: "${customerIdentifier}"`);
@@ -377,12 +391,14 @@ async function getAvailableReportsForCustomer(req, res) {
 
     // Initialize reports DB connection if needed
     await initializeReportsDBConnection();
-    
+
     // Get the ReportStatus model from reports DB
     const ReportStatus = getReportsStatusModel();
 
     // Find all verified reports for this customer
-    logger.info(`🔍 Searching for verified reports for customer: "${customerKey}"`);
+    logger.info(
+      `🔍 Searching for verified reports for customer: "${customerKey}"`
+    );
     const reports = await ReportStatus.find({
       customerKey,
       status: "verified",
@@ -446,7 +462,7 @@ async function debugReports(req, res) {
 
     // Initialize reports DB connection if needed
     await initializeReportsDBConnection();
-    
+
     // Get the ReportStatus model from reports DB
     const ReportStatus = getReportsStatusModel();
 
@@ -500,8 +516,8 @@ async function debugReports(req, res) {
       verifiedReports: verifiedReports.length,
       verifiedReportsWithBlob: verifiedReportsWithBlob.length,
       allReports: reportsWithBlobStatus,
-      verifiedReports: verifiedReports,
-      verifiedReportsWithBlob: verifiedReportsWithBlob,
+      //verifiedReports: verifiedReports,
+      //verifiedReportsWithBlob: verifiedReportsWithBlob,
     });
   } catch (error) {
     console.error("Debug error:", error);
@@ -521,7 +537,7 @@ async function clearTestReports(req, res) {
 
     // Initialize reports DB connection if needed
     await initializeReportsDBConnection();
-    
+
     // Get the ReportStatus model from reports DB
     const ReportStatus = getReportsStatusModel();
 
@@ -558,7 +574,7 @@ async function createTestReport(req, res) {
 
     // Initialize reports DB connection if needed
     await initializeReportsDBConnection();
-    
+
     // Get the ReportStatus model from reports DB
     const ReportStatus = getReportsStatusModel();
 
@@ -628,7 +644,7 @@ async function createMultipleTestReports(req, res) {
 
     // Initialize reports DB connection if needed
     await initializeReportsDBConnection();
-    
+
     // Get the ReportStatus model from reports DB
     const ReportStatus = getReportsStatusModel();
     const createdReports = [];
@@ -707,7 +723,7 @@ async function createManualTestReport(req, res) {
 
     // Initialize reports DB connection if needed
     await initializeReportsDBConnection();
-    
+
     // Get the ReportStatus model from reports DB
     const ReportStatus = getReportsStatusModel();
 
@@ -751,10 +767,14 @@ async function createManualTestReport(req, res) {
     console.log("Existing report:", existingReport);
 
     // Create or update the report
-    const savedReport = await ReportStatus.findOneAndUpdate({ reportId }, testReport, {
-      upsert: true,
-      new: true,
-    });
+    const savedReport = await ReportStatus.findOneAndUpdate(
+      { reportId },
+      testReport,
+      {
+        upsert: true,
+        new: true,
+      }
+    );
 
     console.log("Saved report:", savedReport);
 
@@ -778,56 +798,63 @@ async function createManualTestReport(req, res) {
 async function checkOtherDatabases(req, res) {
   try {
     console.log("=== CHECKING OTHER DATABASES ===");
-    
+
     const customerIdentifier = req.customerName;
     const customerKey = getCustomerKey(customerIdentifier);
-    
+
     // List of candidate databases to check
-    const candidateDatabases = ['reports_db', 'socwatchtower', 'test', 'sharddb'];
+    const candidateDatabases = [
+      "reports_db",
+      "socwatchtower",
+      "test",
+      "sharddb",
+    ];
     const results = {};
-    
+
     for (const dbName of candidateDatabases) {
       try {
         console.log(`\n--- Checking database: ${dbName} ---`);
-        
+
         // Temporarily switch to other database
         const otherDb = mongoose.connection.useDb(dbName);
-        
+
         // Get the 'reportstatuses' collection from that database
-        const collection = otherDb.collection('reportstatuses');
-        
+        const collection = otherDb.collection("reportstatuses");
+
         // Check if the collection exists and count documents for our customer
-        const count = await collection.countDocuments({ customerKey: customerKey });
-        
+        const count = await collection.countDocuments({
+          customerKey: customerKey,
+        });
+
         // If we find documents, get the details
         let reports = [];
         if (count > 0) {
-          reports = await collection.find({ customerKey: customerKey }).toArray();
+          reports = await collection
+            .find({ customerKey: customerKey })
+            .toArray();
         }
-        
+
         results[dbName] = {
           accessible: true,
           reportCount: count,
-          reports: reports
+          reports: reports,
         };
-        
+
         console.log(`Found ${count} reports for ${customerKey} in ${dbName}`);
-        
       } catch (error) {
         console.log(`Error accessing ${dbName}: ${error.message}`);
         results[dbName] = {
           accessible: false,
-          error: error.message
+          error: error.message,
         };
       }
     }
-    
+
     res.json({
       currentDatabase: mongoose.connection.name,
       customerKey,
-      results
+      results,
     });
-    
   } catch (error) {
     console.error("Error checking other databases:", error);
     res.status(500).json({ error: error.message });

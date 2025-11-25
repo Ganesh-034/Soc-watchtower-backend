@@ -17,5 +17,7 @@ export const getIncidentDetailsById = catchAsync(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, response, "Incident details fetched successfully"));
+    .json(
+      new ApiResponse(200, response, "Incident details fetched successfully")
+    );
 });

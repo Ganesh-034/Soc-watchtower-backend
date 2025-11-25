@@ -5,14 +5,16 @@ export const connectDB = async () => {
   try {
     // Check if MongoDB URI is configured
     if (!process.env.MONGODB_URI) {
-      logger.info("ℹ️ Database connection skipped (MongoDB not configured yet).");
+      logger.info(
+        "ℹ️ Database connection skipped (MongoDB not configured yet)."
+      );
       return;
     }
-    
+
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      dbName: process.env.MONGODB_DB_NAME, 
+      dbName: process.env.MONGODB_DB_NAME,
     });
 
     logger.info(`MongoDB Connected: ${conn.connection.host}`);

@@ -115,3 +115,6 @@ __tests__/tmp/
 tests/tmp/
 test-results/
 debug/
+
+.sonarline
+.scannerwork

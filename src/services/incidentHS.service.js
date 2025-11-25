@@ -37,12 +37,16 @@ export const getIncidentsHandlingStatus = async (
       Date.UTC(reportYear, reportMonth + 1, 0, 23, 59, 59, 999)
     );
 
-    const previousMonthStart = new Date(Date.UTC(reportYear, reportMonth - 1, 1));
+    const previousMonthStart = new Date(
+      Date.UTC(reportYear, reportMonth - 1, 1)
+    );
     const previousMonthEnd = new Date(
       Date.UTC(reportYear, reportMonth, 0, 23, 59, 59, 999)
     );
 
-    const twoMonthsAgoStart = new Date(Date.UTC(reportYear, reportMonth - 2, 1));
+    const twoMonthsAgoStart = new Date(
+      Date.UTC(reportYear, reportMonth - 2, 1)
+    );
     const twoMonthsAgoEnd = new Date(
       Date.UTC(reportYear, reportMonth - 1, 0, 23, 59, 59, 999)
     );
@@ -129,14 +133,14 @@ export const getIncidentsHandlingStatus = async (
     const aggregationResults = await collection.aggregate(pipeline).toArray();
 
     // ✅ Categorize results by month and status
-    aggregationResults.forEach((item) => {
-      if (!item.created_at || typeof item.status !== "number") return;
+    for (const item of aggregationResults) {
+      if (!item.created_at || typeof item.status !== "number") continue;
 
       const createdDate = new Date(item.created_at);
-      if (isNaN(createdDate.getTime())) return;
+      if (Number.isNaN(createdDate.getTime())) continue;
 
       const statusLabel = statusMap[item.status];
-      if (!statusLabel) return;
+      if (!statusLabel) continue;
 
       if (createdDate >= currentMonthStart && createdDate <= currentMonthEnd) {
         result.months[0].statuses[statusLabel]++;
@@ -151,7 +155,7 @@ export const getIncidentsHandlingStatus = async (
       ) {
         result.months[2].statuses[statusLabel]++;
       }
-    });
+    }
 
     return result;
   } catch (error) {

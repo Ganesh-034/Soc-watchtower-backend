@@ -37,12 +37,16 @@ export const getIncidentSeverity = async (
       Date.UTC(reportYear, reportMonth + 1, 0, 23, 59, 59, 999)
     );
 
-    const previousMonthStart = new Date(Date.UTC(reportYear, reportMonth - 1, 1));
+    const previousMonthStart = new Date(
+      Date.UTC(reportYear, reportMonth - 1, 1)
+    );
     const previousMonthEnd = new Date(
       Date.UTC(reportYear, reportMonth, 0, 23, 59, 59, 999)
     );
 
-    const twoMonthsAgoStart = new Date(Date.UTC(reportYear, reportMonth - 2, 1));
+    const twoMonthsAgoStart = new Date(
+      Date.UTC(reportYear, reportMonth - 2, 1)
+    );
     const twoMonthsAgoEnd = new Date(
       Date.UTC(reportYear, reportMonth - 1, 0, 23, 59, 59, 999)
     );
@@ -122,29 +126,39 @@ export const getIncidentSeverity = async (
     };
 
     // ✅ Process each incident
-    aggregationResults.forEach((item) => {
-      if (!item.created_at || !item.priority) return;
+    for (const item of aggregationResults) {
+      if (!item.created_at || !item.priority) continue;
 
       let createdDate;
       if (typeof item.created_at === "string") {
         createdDate = new Date(item.created_at);
-        if (isNaN(createdDate.getTime())) return;
+        if (Number.isNaN(createdDate.getTime())) continue;
       } else if (item.created_at instanceof Date) {
         createdDate = item.created_at;
       } else {
-        return;
+        continue;
       }
 
       let priorityKey;
       const priorityLower = item.priority.toString().trim().toLowerCase();
-      if (priorityLower.includes("low")) priorityKey = "low";
-      else if (priorityLower.includes("medium") || priorityLower.includes("med"))
+      if (priorityLower.includes("low")) {
+        priorityKey = "low";
+      } else if (
+        priorityLower.includes("medium") ||
+        priorityLower.includes("med")
+      ) {
         priorityKey = "medium";
-      else if (priorityLower.includes("high")) priorityKey = "high";
-      else if (Number(item.priority) === 1) priorityKey = "low";
-      else if (Number(item.priority) === 2) priorityKey = "medium";
-      else if (Number(item.priority) === 3) priorityKey = "high";
-      else return;
+      } else if (priorityLower.includes("high")) {
+        priorityKey = "high";
+      } else if (Number(item.priority) === 1) {
+        priorityKey = "low";
+      } else if (Number(item.priority) === 2) {
+        priorityKey = "medium";
+      } else if (Number(item.priority) === 3) {
+        priorityKey = "high";
+      } else {
+        continue;
+      }
 
       // ✅ Date-based categorization (UTC-safe)
       if (createdDate >= currentMonthStart && createdDate <= currentMonthEnd) {
@@ -163,7 +177,7 @@ export const getIncidentSeverity = async (
         result.months[2].priorities[priorityKey]++;
         result.total[priorityKey]++;
       }
-    });
+    }
 
     return result;
   } catch (error) {
