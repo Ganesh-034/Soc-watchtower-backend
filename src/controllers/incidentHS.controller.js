@@ -7,6 +7,11 @@ export const getIncidentsHandlingStatus = catchAsync(async (req, res) => {
   const incidentHSCounts = await incidentHSService.getIncidentsHandlingStatus(
     req.customerName
   );
+  
+  if (!incidentHSCounts || Object.keys(incidentHSCounts).length === 0) {
+    return res.status(204).end();
+  }
+  
   res.json(
     new ApiResponse(
       200,

@@ -1,4 +1,5 @@
 import Incident from "../models/incident.model.js";
+import { ApiError } from "../utils/ApiError.js";
 
 export const getIncidentsHandlingStatus = async (
   customerName,
@@ -7,9 +8,7 @@ export const getIncidentsHandlingStatus = async (
 ) => {
   try {
     if (!customerName) {
-      throw new Error(
-        "Customer name is required for fetching incident handling status data."
-      );
+      throw new ApiError(400, "Customer name is required for fetching incident handling status data.");
     }
 
     const collection = Incident.collection;
@@ -156,9 +155,13 @@ export const getIncidentsHandlingStatus = async (
     return result;
   } catch (error) {
     console.error("Error in getIncidentsHandlingStatus:", error);
-    throw new Error(
-      "Error fetching incident handling status data: " + error.message
-    );
+    
+    // Proper error handling with status codes
+    if (error instanceof ApiError) {
+      throw error; 
+    } else {
+      throw new ApiError(500, "Error fetching incident handling status data: " + error.message);
+    }
   }
 };
 

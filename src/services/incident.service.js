@@ -1,21 +1,23 @@
+// services/incident.service.js
 import Incident from "../models/incident.model.js";
+import { ApiError } from "../utils/ApiError.js";
 
 export const getTotalIncidents = async (customerName) => {
   try {
-    if (!customerName) {
-      throw new Error("Customer name is required");
+    // 400 Bad Request for invalid/missing input
+    if (typeof customerName !== "string" || !customerName.trim()) {
+      throw new ApiError(400, "customerName is required");
     }
 
+    const name = customerName.trim();
     const collection = Incident.collection;
 
     const totalCount = await collection.countDocuments({
-      customer_name: customerName,
+      customer_name: name,
     });
 
     const pipeline = [
-      {
-        $match: { customer_name: customerName },
-      },
+      { $match: { customer_name: name } },
       {
         $group: {
           _id: "$status",
@@ -30,12 +32,9 @@ export const getTotalIncidents = async (customerName) => {
     let closedCount = 0;
 
     statusCounts.forEach((item) => {
-      console.log("itemmmmmmmmmmITEMMMMMMMMMMMMMMMMMMMMMMMMMM",item);
       if (item._id === 2) openCount = item.count;
-      if (item._id === 5) closedCount = closedCount + item.count;
-      if (item._id === 4) closedCount = closedCount + item.count;
+      if (item._id === 4 || item._id === 5) closedCount += item.count;
     });
-    
 
     return {
       total: totalCount,
@@ -44,6 +43,10 @@ export const getTotalIncidents = async (customerName) => {
     };
   } catch (error) {
     console.error("Error in getTotalIncidents:", error);
-    throw new Error("Error fetching incident counts: " + error.message);
+
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(500, "Error fetching incident counts: " + error.message);
   }
 };

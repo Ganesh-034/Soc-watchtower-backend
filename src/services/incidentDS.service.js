@@ -1,16 +1,19 @@
 import Incident from "../models/incident.model.js";
+import { ApiError } from "../utils/ApiError.js";
 
 export const getIncidentsDetectionSource = async (month, customerName, includeEscalatedOnly = false) => {
-  try {
-    if (!month || !customerName) {
-      throw new Error(
-        "Both month and customerName are required for fetching detection source data."
-      );
-    }
+  // Parameter validation
+  if (!month) {
+    throw new ApiError(400, "Month parameter is required for fetching detection source data");
+  }
+  
+  if (!customerName) {
+    throw new ApiError(400, "Customer name is required for fetching detection source data");
+  }
 
+  try {
     const collection = Incident.collection;
-    
-    // Build the match condition dynamically
+  
     const matchCondition = {
       month: month,
       customer_name: customerName,
@@ -49,9 +52,7 @@ export const getIncidentsDetectionSource = async (month, customerName, includeEs
       },
     ];
 
-    const detectionsourceCounts = await collection
-      .aggregate(pipeline)
-      .toArray();
+    const detectionsourceCounts = await collection.aggregate(pipeline).toArray();
 
     // Transform the data to the expected format
     const transformedData = {};
@@ -71,11 +72,10 @@ export const getIncidentsDetectionSource = async (month, customerName, includeEs
           High: 0,
           Medium: 0,
           Low: 0,
-          Total: 0 // Add total count
+          Total: 0 
         };
       }
       
-      // Update priority count
       if (priority === "High" || priority === "Medium" || priority === "Low") {
         transformedData[incidentType][priority] = item.count;
         transformedData[incidentType].Total += item.count;
@@ -87,9 +87,9 @@ export const getIncidentsDetectionSource = async (month, customerName, includeEs
     };
   } catch (error) {
     console.error("Error in getIncidentsDetectionSource:", error);
-    throw new Error(
-      "Error fetching incident detection source data: " + error.message
-    );
+    
+    // 500 for other errors
+    throw new ApiError(500, `Error fetching incident detection source data: ${error.message}`);
   }
 };
 

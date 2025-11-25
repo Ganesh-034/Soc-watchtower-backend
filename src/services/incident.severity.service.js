@@ -1,4 +1,5 @@
 import Incident from "../models/incident.model.js";
+import { ApiError } from "../utils/ApiError.js";
 
 export const getIncidentSeverity = async (
   customerName,
@@ -7,9 +8,7 @@ export const getIncidentSeverity = async (
 ) => {
   try {
     if (!customerName) {
-      throw new Error(
-        "Customer name is required for fetching incident severity data."
-      );
+      throw new ApiError(400, "Customer name is required for fetching incident severity data");
     }
 
     const collection = Incident.collection;
@@ -31,7 +30,7 @@ export const getIncidentSeverity = async (
       reportYear = currentYear;
     }
 
-    // ✅ UTC-based month ranges
+    // UTC-based month ranges
     const currentMonthStart = new Date(Date.UTC(reportYear, reportMonth, 1));
     const currentMonthEnd = new Date(
       Date.UTC(reportYear, reportMonth + 1, 0, 23, 59, 59, 999)
@@ -72,12 +71,12 @@ export const getIncidentSeverity = async (
       month: "short",
     });
 
-    // ✅ Build the match condition dynamically
+    // Build the match condition dynamically
     const matchCondition = {
       customer_name: customerName,
     };
 
-    // ✅ Add escalation filter (case-insensitive)
+    // Add escalation filter (case-insensitive)
     if (includeEscalatedOnly) {
       matchCondition.customer_escalation = { $regex: /^yes$/i };
     }
@@ -94,7 +93,36 @@ export const getIncidentSeverity = async (
       },
     ];
 
+    // Execute the aggregation
     const aggregationResults = await collection.aggregate(pipeline).toArray();
+
+    // If no data found, you may want to indicate this for a potential 204 response
+    if (!aggregationResults || aggregationResults.length === 0) {
+      return {
+        customerName: customerName,
+        months: [
+          {
+            id: currentMonthId,
+            name: currentMonthName,
+            period: "Current Month",
+            priorities: { low: 0, medium: 0, high: 0 },
+          },
+          {
+            id: previousMonthId,
+            name: previousMonthName,
+            period: "Previous Month",
+            priorities: { low: 0, medium: 0, high: 0 },
+          },
+          {
+            id: twoMonthsAgoId,
+            name: twoMonthsAgoName,
+            period: "Two Months Ago",
+            priorities: { low: 0, medium: 0, high: 0 },
+          },
+        ],
+        total: { low: 0, medium: 0, high: 0 },
+      };
+    }
 
     const result = {
       customerName: customerName,
@@ -121,7 +149,7 @@ export const getIncidentSeverity = async (
       total: { low: 0, medium: 0, high: 0 },
     };
 
-    // ✅ Process each incident
+    // Process each incident
     aggregationResults.forEach((item) => {
       if (!item.created_at || !item.priority) return;
 
@@ -146,7 +174,7 @@ export const getIncidentSeverity = async (
       else if (Number(item.priority) === 3) priorityKey = "high";
       else return;
 
-      // ✅ Date-based categorization (UTC-safe)
+      // Date-based categorization (UTC-safe)
       if (createdDate >= currentMonthStart && createdDate <= currentMonthEnd) {
         result.months[0].priorities[priorityKey]++;
         result.total[priorityKey]++;
@@ -167,12 +195,16 @@ export const getIncidentSeverity = async (
 
     return result;
   } catch (error) {
+    if (error instanceof ApiError) {
+      throw error; 
+    }
+
     console.error("Error in getIncidentSeverity:", error);
-    throw new Error("Error fetching incident priorities: " + error.message);
+    throw new ApiError(500, `Error fetching incident priorities: ${error.message}`);
   }
 };
 
-// ✅ Wrapper for escalations
+// Wrapper for escalations
 export const getIncidentSeverityEscalation = async (
   customerName,
   isReport = false
