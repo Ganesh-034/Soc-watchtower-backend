@@ -213,7 +213,6 @@ async function checkBlobExists(blobPath) {
 }
 
 // Function to generate SAS URL for a specific report
-// Function to generate SAS URL for a specific report
 async function getReportSasUrl(req, res) {
   try {
     logger.info(`🚀 getReportSasUrl called`);
@@ -360,7 +359,7 @@ async function getAvailableReportsForCustomer(req, res) {
     if (!customerIdentifier) {
       logger.error(`❌ Customer information not available`);
       return res
-        .status(403)
+        .status(400)
         .json({ error: "Customer information not available" });
     }
 
@@ -369,7 +368,7 @@ async function getAvailableReportsForCustomer(req, res) {
 
     if (!customerKey) {
       logger.error(`❌ Customer not recognized: "${customerIdentifier}"`);
-      return res.status(403).json({ error: "Customer not recognized" });
+      return res.status(400).json({ error: "Customer not recognized" });
     }
 
     // Get display name
@@ -389,6 +388,11 @@ async function getAvailableReportsForCustomer(req, res) {
     }).sort({ year: -1, month: -1 });
 
     logger.info(`📊 Found ${reports.length} verified reports in database`);
+
+    if (reports.length === 0) {
+      logger.info(`📊 No reports found for customer: "${customerKey}"`);
+      return res.status(204).end();
+    }
 
     // Check which blobs actually exist
     logger.info(`🔍 Checking blob existence for ${reports.length} reports`);
