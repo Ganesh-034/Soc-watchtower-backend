@@ -18,40 +18,10 @@ import { generateTicketSummary } from "./ticketSummary.service.js";
 import { stripHtmlTags } from "../utils/sanitizeHtml.js";
 // Customer configuration
 const customers = {
-  // "ajinomoto-thailand(ajt)": "Ajinomoto Thailand",
-  // "pt.rknforge": "PT RKN Forge",
-  //"aji-sentinel4apc-prod": "Ajinomoto Philippines",
   "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
-  //"hinomotorssalesthailand-hmst": "Hino Motors Sales Thailand HMST", // Keep this
-  // // "log-scg-logistics-sentinel-hub": "SCG Logistics Sentinel Hub",
-  //"pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
-  //"pt-tokairika-indonesia": "PT Tokairika Indonesia",
-  // "taiho-thailand": "Taiho Thailand",
-  // toyotaacseautocsengineeringcoltdsoc: "Toyota ACSE Auto CS Engineering Co Ltd",
-  // toyotaadmptastradaihatsumotorsoc: "Toyota ADM PT Astra Daihatsu Motor",
-  // toyotaafpaichiforgephilippinesincsoc:
-  //   "Toyota AFP Aichi Forge Philippines Inc",
-  // toyotaaftaichiforgethailandsoc: "Toyota AFT Aichi Forge Thailand",
-  // toyotaakakawashimaindonesiasoc: "Toyota AKA Kawashima Indonesia",
-  // toyotafigplfutabaindtrgujaratpvtltdsoc:
-  //   "Toyota FIGPL Futaba Indtr Gujarat Pvt Ltd",
-  // toyotafmiautomtvcomponentspvtltdsoc: "Toyota FMI Automotv Components Pvt Ltd",
-  // toyotaftsiptftsautomotiveindonesiasoc:
-  //   "Toyota FTSI PT FTS Automotive Indonesia",
-  // toyotaftsthftsautomotivethailandcoltd:
-  //   "Toyota FTSTH FTS Automotive Thailand Co Ltd",
-  // toyotahmmmyhinomotorsmalaysiasoc: "Toyota HMMMY Hino Motors Malaysia",
-  // toyotahmmthinomotorsmnfcthailandltdsoc:
-  //   "Toyota HMMT Hino Motors Mnfc Thailand Ltd",
-  // toyotashirokiindonesiasoc: "Toyota Shiroki Indonesia",
-  // toyotatgastoyodagoseiasiasoc: "Toyota TGAS Toyoda Gosei Asia",
-  // toyotatgrttoyodagoseirubberthailandsoc:
-  //   "Toyota TGRT Toyoda Gosei Rubber Thailand",
-  // toyotatkttakebethailandcoltdsoc: "Toyota TKT Takebe Thailand Co Ltd",
-  // toyotatrttokairikathailandcoltdsoc: "Toyota TRT Tokairika Thailand Co Ltd",
-  // "tts-asia-internal-soc-workspace-test": "TTS Asia Internal",
-  // "ajinomoto-cambodia-ajc": "Ajinomoto Cambodia",
-  //"pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
+  "hinomotorssalesthailand-hmst": "Hino Motors Sales Thailand HMST", 
+  "pt-rknforge-indonesia":"PT-RKNForge-Indonesia",
+  "taiho-thailand": "Taiho Thailand",
 };
 
 // Azure Blob Storage configuration

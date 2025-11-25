@@ -1,83 +1,26 @@
-//   tickets.forEach(ticket => {
-//     // Count by priority
-//     if (ticket.priority && priorityCount.hasOwnProperty(ticket.priority)) {
-//       priorityCount[ticket.priority]++;
-//     }
-
-//     // Count by status
-//     if (ticket.status) {
-//       statusCount[ticket.status] = (statusCount[ticket.status] || 0) + 1;
-//     }
-//   });
-
-//   tickets.forEach(ticket => {
-//     // Count by system
-//     if (ticket.incidentType) {
-//       systemCount[ticket.incidentType] = (systemCount[ticket.incidentType] || 0) + 1;
-//     }
-
-//     // Count by status
-//     if (ticket.status) {
-//       statusCount[ticket.status] = (statusCount[ticket.status] || 0) + 1;
-//     }
-//   });
-
-// export async function generateExecutiveSummary(data, customerDisplayName) {
-//   try {
-//     // Configure Azure OpenAI credentials
-//     const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
-//     const apiKey = process.env.AZURE_OPENAI_KEY;
-//     const deploymentId = process.env.AZURE_OPENAI_DEPLOYMENT_ID;
-
-//     // Prompt with detailed ticket analysis
-//     const prompt = `
-//       Generate an executive summary for a security operations monthly report for ${customerDisplayName} for ${data.reportMonth}.
-//       Include the following key metrics from our charts and tables:
-
-//       - Incident by Severity chart shows a total of ${totalIncidents} incidents:
-//         * High severity: ${highSeverityCount}
-//         * Medium severity: ${mediumSeverityCount}
-//         * Low severity: ${lowSeverityCount}
-
-//       - Detection Source chart shows the top sources were: ${detectionSources.join(', ')}
-
-//       - Handling Status chart shows:
-//         * Resolved: ${resolvedCount}
-//         * Closed: ${closedCount}
-//         * Pending: ${pendingCount}
-//         * Open: ${openCount}
-
-//       - For Sub Status, the report shows the distribution of incidents by detailed status
-
-//       - Incident Tickets Analysis: ${incidentAnalysis.summary}
-
-//       - Health Tickets Analysis: ${healthAnalysis.summary}
-
-//       Write a professional executive summary of about 150 words that highlights these metrics.
-//       Focus on security operations for this specific customer, mentioning their name.
-//       Use concise, factual language suitable for a formal report.
-//       Do not include any text styling, formatting, or emphasis such as bold or italics.
-//     `;
-//     logger.info(`totallllllllllll ${totalIncidents}`);
-//     logger.info(`🧠 Calling Azure OpenAI for ${customerDisplayName} executive summary generation`);
-
-//     if (summary) {
-//       logger.info(`✅ Successfully generated executive summary for ${customerDisplayName}`);
-//       return summary;
-//     } else {
-//       logger.warn(`⚠️ Empty response from Azure OpenAI for ${customerDisplayName}`);
-//       return getDefaultExecutiveSummary(data, customerDisplayName);
-//     }
-//   } catch (error) {
-//     logger.error(`❌ Error generating executive summary for ${customerDisplayName}:`, error);
-//     return getDefaultExecutiveSummary(data, customerDisplayName);
-//   }
-// }
-
 import { AzureOpenAI } from "openai";
 import "@azure/openai/types";
 
 import logger from "../config/logger.js";
+
+function getDefaultExecutiveSummary(data, customerDisplayName) {
+  const severityMonths = data.severityChartLabels || [];
+  const currentMonthIndex = severityMonths.length - 1;
+  const highSeverityCount = data.severityChartData?.high?.[currentMonthIndex] || 0;
+  const mediumSeverityCount = data.severityChartData?.medium?.[currentMonthIndex] || 0;
+  const lowSeverityCount = data.severityChartData?.low?.[currentMonthIndex] || 0;
+  const totalIncidents = highSeverityCount + mediumSeverityCount + lowSeverityCount;
+  
+  // Analyze tickets for default summary
+  const incidentAnalysis = analyzeIncidentTickets(data.incidentTickets);
+  const healthAnalysis = analyzeHealthTickets(data.healthTickets);
+  //TO-CHANGE
+  /**Example
+   * • 0 incidents were reported for the month of October 2025, all in resolved state, with no detection sources identified.
+   * • There were 0 false positives and 0 true positives, with a severity breakdown showing High: 0, Medium: 0, Low: 0.
+   * • 0 health tickets were triggered on the dashboard for the month of October 2025. */
+  return `This executive summary covers security operations for ${customerDisplayName} during ${data.reportMonth}. The Global Security Operations Center has been actively monitoring and responding to security incidents. This month saw a total of ${totalIncidents} incidents, with ${highSeverityCount} high severity incidents that required immediate attention. ${incidentAnalysis.summary} ${healthAnalysis.summary} Our team has successfully resolved the majority of incidents within the SLA timeframe.`;
+}
 
 // Helper function to analyze incident tickets
 function analyzeIncidentTickets(tickets) {
