@@ -116,5 +116,7 @@ tests/tmp/
 test-results/
 debug/
 
+.sonarlint/
 .sonarline
 .scannerwork
+sonar-project.properties

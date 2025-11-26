@@ -1076,7 +1076,7 @@ async function generateMonthlyReportForCustomer(
     } else {
       const colorMap = {
         "SOC Investigating": "#70b5fa",
-        "Awaiting Customer Response": "#f2a150",
+        "Awaiting Customer": "#f2a150",
         "False Positive": "#00cc00",
         "True Positive": "#ff0000",
       };
@@ -1093,7 +1093,7 @@ async function generateMonthlyReportForCustomer(
 
       const desiredOrder = [
         "SOC Investigating",
-        "Awaiting Customer Response",
+        "Awaiting Customer",
         "False Positive",
         "True Positive",
       ];
@@ -1158,7 +1158,7 @@ async function generateMonthlyReportForCustomer(
     // Define the legend data for substatus chart
     const subStatusLegend = [
       { label: "SOC Investigating", color: "#70b5fa" },
-      { label: "Awaiting Customer Response", color: "#f2a150" },
+      { label: "Awaiting Customer", color: "#f2a150" },
       { label: "False Positive", color: "#00cc00" },
       { label: "True Positive", color: "#ff0000" },
     ];
@@ -1999,7 +1999,7 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
     } else {
       const colorMap = {
         "SOC Investigating": "#70b5fa",
-        "Awaiting Customer Response": "#f2a150",
+        "Awaiting Customer": "#f2a150",
         "False Positive": "#00cc00",
         "True Positive": "#ff0000",
       };
@@ -2016,7 +2016,7 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
 
       const desiredOrder = [
         "SOC Investigating",
-        "Awaiting Customer Response",
+        "Awaiting Customer",
         "False Positive",
         "True Positive",
       ];
@@ -2082,7 +2082,7 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
     // Define the legend data for substatus chart
     const subStatusLegend = [
       { label: "SOC Investigating", color: "#70b5fa" },
-      { label: "Awaiting Customer Response", color: "#f2a150" },
+      { label: "Awaiting Customer", color: "#f2a150" },
       { label: "False Positive", color: "#00cc00" },
       { label: "True Positive", color: "#ff0000" },
     ];
