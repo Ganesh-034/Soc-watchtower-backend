@@ -23,8 +23,8 @@ export const getIncidentDetails = async (incidentId, customerName) => {
         `Unauthorized access attempt: User from customer "${customerName}" tried to access incident ID "${incidentId}" which does not belong to them.`
       );
       throw new ApiError(
-        404,
-        "Incident not found or you do not have permission to view it."
+        400,
+        "Incident not found or you do not have permission to view it "
       );
     }
 
@@ -32,15 +32,15 @@ export const getIncidentDetails = async (incidentId, customerName) => {
 
     // 2️⃣ Prepare prompt for Azure OpenAI
     const prompt = `
-You'll get the SOC Ticket details in JSON format, your task is to understand the details provided to you and based on that generate a good summary on what happened, when happened and what was done basically a good summary for anyone, dont assume or recommend anything just summarize. Do NOT use any markdown formatting, bold, italics, asterisks, headings, or special characters. Provide plain text only.
+    You'll get the SOC Ticket details in JSON format, your task is to understand the details provided to you and based on that generate a good summary on what happened, when happened and what was done basically a good summary for anyone, dont assume or recommend anything just summarize. Do NOT use any markdown formatting, bold, italics, asterisks, headings, or special characters. Provide plain text only.
 
-Incident Details:
-${JSON.stringify(incident, null, 2)}
+    Incident Details:
+    ${JSON.stringify(incident, null, 2)}
     `;
 
     // 3️⃣ Send request to Azure OpenAI
-    const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT; // e.g. https://myopenai-resource.openai.azure.com
-    const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_ID; // e.g. "gpt-4o-mini"
+    const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT; 
+    const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_ID; 
     const apiKey = process.env.AZURE_OPENAI_KEY;
 
     if (!azureEndpoint || !deploymentName || !apiKey) {

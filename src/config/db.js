@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import logger from "./logger.js";
-
+ 
 export const connectDB = async () => {
   try {
     // Check if MongoDB URI is configured
@@ -16,7 +16,6 @@ export const connectDB = async () => {
       useUnifiedTopology: true,
       dbName: process.env.MONGODB_DB_NAME,
     });
-
     logger.info(`MongoDB Connected: ${conn.connection.host}`);
     return conn;
   } catch (error) {

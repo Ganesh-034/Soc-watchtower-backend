@@ -1,30 +1,3 @@
-//
-
-// export const getIncidentsSubStatus = async (month, customerName, includeEscalatedOnly = false) => {
-//   try {
-//     if (!month || !customerName) {
-//       throw new Error(
-//         "Both month and customerName are required for fetching sub-status data."
-//       );
-//     }
-
-//       return {
-//         _id: cleanedId,
-//         count: item.count,
-//       };
-//     });
-
-//     return {
-//       substatus: cleanedSubstatusCounts,
-//     };
-//   } catch (error) {
-//     console.error("Error in getIncidentsSubStatus:", error);
-//     throw new Error(
-//       "Error fetching incident sub-status data: " + error.message
-//     );
-//   }
-// };
-
 import Incident from "../models/incident.model.js";
 
 export const getIncidentsSubStatus = async (
@@ -34,9 +7,11 @@ export const getIncidentsSubStatus = async (
 ) => {
   try {
     if (!month || !customerName) {
-      throw new Error(
+      const error = new Error(
         "Both month and customerName are required for fetching sub-status data."
       );
+      error.statusCode = 400;
+      throw error;
     }
 
     const collection = Incident.collection;
@@ -100,12 +75,11 @@ export const getIncidentsSubStatus = async (
       substatus: cleanedSubstatusCounts,
     };
   } catch (error) {
-    console.error("Error in getIncidentsSubStatus:", error);
-    throw new Error(
-      "Error fetching incident sub-status data: " + error.message
-    );
-  }
-};
+      console.error("Error in getIncidentsSubStatus:", error);
+      error.statusCode = error.statusCode || 500; 
+      throw error;
+    }
+  };
 
 // NEW: Function specifically for report generation that excludes health incidents
 export const getIncidentsSubStatusForReport = async (
@@ -115,9 +89,11 @@ export const getIncidentsSubStatusForReport = async (
 ) => {
   try {
     if (!month || !customerName) {
-      throw new Error(
+      const error = new Error(
         "Both month and customerName are required for fetching sub-status data."
       );
+      error.statusCode = 400;
+      throw error;
     }
 
     const collection = Incident.collection;
@@ -126,7 +102,7 @@ export const getIncidentsSubStatusForReport = async (
     const matchCondition = {
       month: month,
       customer_name: customerName,
-      incident_type: { $ne: "Health Incident" }, // Exclude health incidents for reports
+      incident_type: { $ne: "Health Incident" }, 
     };
 
     // Add escalation filter if requested
@@ -183,9 +159,7 @@ export const getIncidentsSubStatusForReport = async (
     };
   } catch (error) {
     console.error("Error in getIncidentsSubStatusForReport:", error);
-    throw new Error(
-      "Error fetching incident sub-status data for report: " + error.message
-    );
+    error.statusCode = error.statusCode || 500;
   }
 };
 

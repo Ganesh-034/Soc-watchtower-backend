@@ -59,32 +59,26 @@ export async function generateTicketSummary(tickets, type, reportMonth) {
       Use natural grammar (singular/plural) and correct phrasing.
       Avoid extra commentary or introductions.
     `;
-    logger.info(
-      `🧠 Calling Azure OpenAI for ${prompt} ticket summary generation`
-    );
-    logger.info(
-      `🧠 Calling Azure OpenAI for ${type} ticket summary generation`
-    );
-    const response = await client.chat.completions.create({
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.4,
-      max_tokens: 100,
-    });
-
-    const summary = response.choices[0]?.message?.content?.trim();
-    if (summary) {
-      logger.info(`✅ Successfully generated ${type} ticket summary`);
-      return summary;
-    } else {
-      logger.warn(
-        `⚠️ Empty response from Azure OpenAI for ${type} ticket summary`
-      );
-      return getDefaultTicketSummary(tickets, type, reportMonth);
+        logger.info(`🧠 Ticket summary Azure OpenAI for ${prompt} ticket summary generation`);
+        logger.info(`🧠 Calling Azure OpenAI for ${type} ticket summary generation`);
+        const response = await client.chat.completions.create({
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.4,
+            max_tokens: 100,
+        });
+ 
+        const summary = response.choices[0]?.message?.content?.trim();
+        if (summary) {
+            logger.info(`✅ Successfully generated ${type} ticket summary`);
+            return summary;
+        } else {
+            logger.warn(`⚠️ Empty response from Azure OpenAI for ${type} ticket summary`);
+            return getDefaultTicketSummary(tickets, type, reportMonth);
+        }
+    } catch (error) {
+        logger.error(`❌ Error generating ${type} ticket summary:`, error);
+        return getDefaultTicketSummary(tickets, type, reportMonth);
     }
-  } catch (error) {
-    logger.error(`❌ Error generating ${type} ticket summary:`, error);
-    return getDefaultTicketSummary(tickets, type, reportMonth);
-  }
 }
 
 function getDefaultTicketSummary(tickets, type, reportMonth) {
