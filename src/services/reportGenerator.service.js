@@ -22,7 +22,7 @@ const customers = {
   // "pt.rknforge": "PT RKN Forge",
  //"aji-sentinel4apc-prod": "Ajinomoto Philippines",
   // "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
-  //"hinomotorssalesthailand-hmst": "Hino Motors Sales Thailand HMST", // Keep this
+  "Hino Motor- HMST": "Hino Motors Sales Thailand HMST", // Keep this
   // // "log-scg-logistics-sentinel-hub": "SCG Logistics Sentinel Hub",
 //"pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
    "pt-tokairika-indonesia": "PT Tokairika Indonesia",

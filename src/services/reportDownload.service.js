@@ -61,10 +61,9 @@ const customers = {
   //   toyotatsushoapacsoc: "Toyota Tsusho Asia Pacific",
   // "ajinomoto-thailand(ajt)": "Ajinomoto Thailand",
   // "hino motor- hmst": "Hino Motor Sales Thailand HMST", // can remove this
-  // "pt.rknforge": "PT RKN Forge",
+  // "pt.rknforge": "PT RKN Forge Indonesia",
   // "aji-sentinel4apc-prod": "Ajinomoto Philippines",
   // "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
-  // "hinomotorssalesthailand-hmst": "Hino Motors Sales Thailand HMST", // Keep this
   // // "log-scg-logistics-sentinel-hub": "SCG Logistics Sentinel Hub",
   // "pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
   "pt-tokairika-indonesia": "PT Tokairika Indonesia",
