@@ -5,8 +5,6 @@ import compression from "compression";
 import morgan from "morgan";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { notFound } from "./middlewares/notFound.js";
-
-// Routes
 import incidentRoutes from "./routes/incident.routes.js";
 import incidentTicketRoutes from "./routes/incidentTicket.routes.js";
 import incidentSeverityRoutes from "./routes/incident.severity.routes.js";
@@ -19,42 +17,33 @@ import incidentTicketReportRoutes from "./routes/incidentTicketReport.routes.js"
 import reportDownloadRoutes from "./routes/reportDownload.routes.js";
 
 const app = express();
-
 const allowedOrigins = [
-  "https://www.soc-watchtower.com",
-  "https://soc-watchtower.com",
-  "https://soc-watchtower-frontend.azurestaticapps.net"
+  "https://soc-watchtower-api.azure-api.net",
 ];
 
-// Disable ETag (no caching)
+//To disable server side caching
 app.disable("etag");
 
-// ✅ Security middleware
+// Middleware
 app.use(helmet());
-
-// ✅ CORS configuration
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // Allow Postman/cURL
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error(`CORS blocked for origin: ${origin}`));
-  },
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
-}));
-
-// ✅ Body parser
+    origin: function (origin, callback) {
+      // allow requests with no origin (like mobile apps, curl, Postman)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE"], // restrict methods
+    credentials: true, // if you need cookies/auth headers
+  }));
 app.use(express.json());
-
-// ✅ Compression
 app.use(compression());
-
-// ✅ Logging
 app.use(morgan("dev"));
 
-// ✅ Routes
+// Routes
 app.use("/api", incidentRoutes);
 app.use("/api", incidentTicketRoutes);
 app.use("/api", incidentSeverityRoutes);
@@ -62,15 +51,16 @@ app.use("/api", incidentDSRoutes);
 app.use("/api", incidentViewRoutes);
 app.use("/api", incidentHSRoutes);
 app.use("/api", incidentSSRoutes);
-app.use("/api/incidents", incidentRoutes);
-app.use("/api", incidentTicketReportRoutes);
-app.use("/api/reports", reportRoutes);
+app.use("/api/incidents", incidentRoutes); // Assuming this already exists
+app.use("/api", incidentTicketReportRoutes); // Assuming this already exists
+app.use("/api/reports", reportRoutes); // Add this line
 app.use("/api/reports", reportDownloadRoutes);
 
-// ✅ 404 handler
+// 404 handler
+
 app.use(notFound);
 
-// ✅ Global error handler
+// Global error handler
 app.use(errorHandler);
 
 export default app;
