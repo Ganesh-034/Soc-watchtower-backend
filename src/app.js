@@ -17,30 +17,23 @@ import incidentTicketReportRoutes from "./routes/incidentTicketReport.routes.js"
 import reportDownloadRoutes from "./routes/reportDownload.routes.js";
 
 const app = express();
-const allowedOrigins = [
-  "https://soc-watchtower-api.azure-api.net",
-  "https://www.soc-watchtower.com",
-  "https://soc-watchtower.com"
-];
 
 //To disable server side caching
 app.disable("etag");
 
+// Configure CORS options
+const corsOptions = {
+    origin: ['https://www.soc-watchtower.com', 'https://soc-watchtower.com'],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allowed methods
+    credentials: true, // Allow cookies to be sent
+    optionsSuccessStatus: 204 // Some legacy browsers choke on 204
+};
+
+// Use CORS with options
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 // Middleware
 app.use(helmet());
-app.use(cors({
-    origin: function (origin, callback) {
-      // allow requests with no origin (like mobile apps, curl, Postman)
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      } else {
-        return callback(new Error("Not allowed by CORS"));
-      }
-    },
-    methods: ["GET", "POST", "PUT", "DELETE"], // restrict methods
-    credentials: true, // if you need cookies/auth headers
-  }));
 app.use(express.json());
 app.use(compression());
 app.use(morgan("dev"));
@@ -59,7 +52,6 @@ app.use("/api/reports", reportRoutes); // Add this line
 app.use("/api/reports", reportDownloadRoutes);
 
 // 404 handler
-
 app.use(notFound);
 
 // Global error handler
