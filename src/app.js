@@ -19,6 +19,8 @@ import reportDownloadRoutes from "./routes/reportDownload.routes.js";
 const app = express();
 const allowedOrigins = [
   "https://soc-watchtower-api.azure-api.net",
+  "https://www.soc-watchtower.com",
+  "https://soc-watchtower.com"
 ];
 
 //To disable server side caching
