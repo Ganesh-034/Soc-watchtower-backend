@@ -18,7 +18,7 @@ import { generateTicketSummary } from "./ticketSummary.service.js";
 import { stripHtmlTags } from "../utils/sanitizeHtml.js";
 // Customer configuration
 const customers = {
-  "hino motor- hmst": "Hino Motor Sales Thailand HMST", 
+  "Hino Motor- HMST": "Hino Motor Sales Thailand HMST", 
   "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
   "pt-tokairika-indonesia": "PT Tokairika Indonesia",
   "taiho-thailand": "Taiho Thailand",
