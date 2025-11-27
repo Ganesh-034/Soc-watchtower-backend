@@ -17,6 +17,7 @@ import { generateExecutiveSummary } from "./executiveSummary.service.js";
 import { generateTicketSummary } from "./ticketSummary.service.js";
 import { stripHtmlTags } from "../utils/sanitizeHtml.js";
 // Customer configuration
+
 const customers = {
   "Hino Motor- HMST": "Hino Motor Sales Thailand HMST", 
   "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
