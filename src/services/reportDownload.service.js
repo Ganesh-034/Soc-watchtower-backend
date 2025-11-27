@@ -28,15 +28,15 @@ async function initializeReportsDBConnection() {
           socketTimeoutMS: 45000,
         }
       );
-      
+
       reportsDBConnection.on('connected', () => {
         logger.info("✅ Reports database connected successfully");
       });
-      
+
       reportsDBConnection.on('error', (err) => {
         logger.error("❌ Reports database connection error:", err);
       });
-      
+
       reportsDBConnection.on('disconnected', () => {
         logger.warn("⚠️ Reports database disconnected");
       });
@@ -58,46 +58,16 @@ const containerClient = blobServiceClient.getContainerClient(
 
 // Customer configuration - bidirectional mapping
 const customers = {
-  //   toyotatsushoapacsoc: "Toyota Tsusho Asia Pacific",
-  // "ajinomoto-thailand(ajt)": "Ajinomoto Thailand",
-  // "hino motor- hmst": "Hino Motor Sales Thailand HMST", // can remove this
-  // "pt.rknforge": "PT RKN Forge Indonesia",
-  // "aji-sentinel4apc-prod": "Ajinomoto Philippines",
-  // "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
-  // // "log-scg-logistics-sentinel-hub": "SCG Logistics Sentinel Hub",
-  // "pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
+  "hino motor- hmst": "Hino Motor Sales Thailand HMST", 
+  "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
   "pt-tokairika-indonesia": "PT Tokairika Indonesia",
-  // "taiho-thailand": "Taiho Thailand",
-  // toyotaacseautocsengineeringcoltdsoc: "Toyota ACSE Auto CS Engineering Co Ltd",
-  // toyotaadmptastradaihatsumotorsoc: "Toyota ADM PT Astra Daihatsu Motor",
-  // toyotaafpaichiforgephilippinesincsoc:
-  //   "Toyota AFP Aichi Forge Philippines Inc",
-  // toyotaaftaichiforgethailandsoc: "Toyota AFT Aichi Forge Thailand",
-  // toyotaakakawashimaindonesiasoc: "Toyota AKA Kawashima Indonesia",
-  // toyotafigplfutabaindtrgujaratpvtltdsoc:
-  //   "Toyota FIGPL Futaba Indtr Gujarat Pvt Ltd",
-  // toyotafmiautomtvcomponentspvtltdsoc: "Toyota FMI Automotv Components Pvt Ltd",
-  // toyotaftsiptftsautomotiveindonesiasoc:
-  //   "Toyota FTSI PT FTS Automotive Indonesia",
-  // toyotaftsthftsautomotivethailandcoltd:
-  //   "Toyota FTSTH FTS Automotive Thailand Co Ltd",
-  // toyotahmmmyhinomotorsmalaysiasoc: "Toyota HMMMY Hino Motors Malaysia",
-  // toyotahmmthinomotorsmnfcthailandltdsoc:
-  //   "Toyota HMMT Hino Motors Mnfc Thailand Ltd",
-  // toyotashirokiindonesiasoc: "Toyota Shiroki Indonesia",
-  // toyotatgastoyodagoseiasiasoc: "Toyota TGAS Toyoda Gosei Asia",
-  // toyotatgrttoyodagoseirubberthailandsoc:
-  //   "Toyota TGRT Toyoda Gosei Rubber Thailand",
-  // toyotatkttakebethailandcoltdsoc: "Toyota TKT Takebe Thailand Co Ltd",
-  // toyotatrttokairikathailandcoltdsoc: "Toyota TRT Tokairika Thailand Co Ltd",
-  // "tts-asia-internal-soc-workspace-test": "TTS Asia Internal",
-  // "ajinomoto-cambodia-ajc": "Ajinomoto Cambodia",
+  "taiho-thailand": "Taiho Thailand",
 };
 
 // Helper function to get customer key from either key or display name
 function getCustomerKey(customerIdentifier) {
   logger.info(`🔍 Looking up customer key for identifier: "${customerIdentifier}"`);
-  
+
   // If it's already a key (from token), return it
   if (
     customers[customerIdentifier] &&
@@ -165,7 +135,7 @@ function getReportsStatusModel() {
   if (!reportsDBConnection) {
     throw new Error("Reports database connection not initialized. Call initializeReportsDBConnection() first.");
   }
-  
+
   // Check if model is already registered with this connection
   if (reportsDBConnection.models.ReportStatus) {
     logger.info(`📋 Using existing ReportStatus model from reports DB`);
@@ -217,7 +187,7 @@ async function getReportSasUrl(req, res) {
     logger.info(`🚀 getReportSasUrl called`);
     logger.info(`📥 Request params: ${JSON.stringify(req.params)}`);
     logger.info(`👤 Request customer: ${JSON.stringify(req.customerName)}`);
-    
+
     const { month, year } = req.params;
 
     // Get customer identifier from the authenticated request
@@ -255,7 +225,7 @@ async function getReportSasUrl(req, res) {
 
     // Initialize reports DB connection if needed
     await initializeReportsDBConnection();
-    
+
     // Get the ReportStatus model from reports DB
     const ReportStatus = getReportsStatusModel();
 
@@ -302,15 +272,15 @@ async function getReportSasUrl(req, res) {
     // Parse the blob URL to extract the correct container and blob name
     const blobUrl = new URL(report.blobUrl);
     const pathParts = blobUrl.pathname.split('/');
-    
+
     // The first part after the hostname is the container name
     const containerName = pathParts[1];
-    
+
     // The rest is the blob path (including folders)
     const blobName = pathParts.slice(2).join('/');
-    
+
     logger.info(`🔐 Container: "${containerName}", Blob: "${blobName}"`);
-    
+
     // Generate SAS token with the correct container and blob name
     const sasToken = generateBlobSASQueryParameters(
       {
@@ -350,7 +320,7 @@ async function getReportSasUrl(req, res) {
 async function getAvailableReportsForCustomer(req, res) {
   try {
     logger.info(`🚀 getAvailableReportsForCustomer called`);
-    
+
     // Get customer identifier from the authenticated request
     const customerIdentifier = req.customerName;
     logger.info(`🔑 Customer identifier from request: "${customerIdentifier}"`);
@@ -375,7 +345,7 @@ async function getAvailableReportsForCustomer(req, res) {
 
     // Initialize reports DB connection if needed
     await initializeReportsDBConnection();
-    
+
     // Get the ReportStatus model from reports DB
     const ReportStatus = getReportsStatusModel();
 
@@ -449,7 +419,7 @@ async function debugReports(req, res) {
 
     // Initialize reports DB connection if needed
     await initializeReportsDBConnection();
-    
+
     // Get the ReportStatus model from reports DB
     const ReportStatus = getReportsStatusModel();
 
@@ -524,7 +494,7 @@ async function clearTestReports(req, res) {
 
     // Initialize reports DB connection if needed
     await initializeReportsDBConnection();
-    
+
     // Get the ReportStatus model from reports DB
     const ReportStatus = getReportsStatusModel();
 
@@ -561,7 +531,7 @@ async function createTestReport(req, res) {
 
     // Initialize reports DB connection if needed
     await initializeReportsDBConnection();
-    
+
     // Get the ReportStatus model from reports DB
     const ReportStatus = getReportsStatusModel();
 
@@ -631,7 +601,7 @@ async function createMultipleTestReports(req, res) {
 
     // Initialize reports DB connection if needed
     await initializeReportsDBConnection();
-    
+
     // Get the ReportStatus model from reports DB
     const ReportStatus = getReportsStatusModel();
     const createdReports = [];
@@ -710,7 +680,7 @@ async function createManualTestReport(req, res) {
 
     // Initialize reports DB connection if needed
     await initializeReportsDBConnection();
-    
+
     // Get the ReportStatus model from reports DB
     const ReportStatus = getReportsStatusModel();
 
@@ -781,41 +751,41 @@ async function createManualTestReport(req, res) {
 async function checkOtherDatabases(req, res) {
   try {
     console.log("=== CHECKING OTHER DATABASES ===");
-    
+
     const customerIdentifier = req.customerName;
     const customerKey = getCustomerKey(customerIdentifier);
-    
+
     // List of candidate databases to check
     const candidateDatabases = ['reports_db', 'socwatchtower', 'test', 'sharddb'];
     const results = {};
-    
+
     for (const dbName of candidateDatabases) {
       try {
         console.log(`\n--- Checking database: ${dbName} ---`);
-        
+
         // Temporarily switch to other database
         const otherDb = mongoose.connection.useDb(dbName);
-        
+
         // Get the 'reportstatuses' collection from that database
         const collection = otherDb.collection('reportstatuses');
-        
+
         // Check if the collection exists and count documents for our customer
         const count = await collection.countDocuments({ customerKey: customerKey });
-        
+
         // If we find documents, get the details
         let reports = [];
         if (count > 0) {
           reports = await collection.find({ customerKey: customerKey }).toArray();
         }
-        
+
         results[dbName] = {
           accessible: true,
           reportCount: count,
           reports: reports
         };
-        
+
         console.log(`Found ${count} reports for ${customerKey} in ${dbName}`);
-        
+
       } catch (error) {
         console.log(`Error accessing ${dbName}: ${error.message}`);
         results[dbName] = {
@@ -824,13 +794,13 @@ async function checkOtherDatabases(req, res) {
         };
       }
     }
-    
+
     res.json({
       currentDatabase: mongoose.connection.name,
       customerKey,
       results
     });
-    
+
   } catch (error) {
     console.error("Error checking other databases:", error);
     res.status(500).json({ error: error.message });
