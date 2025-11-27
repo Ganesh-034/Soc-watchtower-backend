@@ -17,13 +17,28 @@ import incidentTicketReportRoutes from "./routes/incidentTicketReport.routes.js"
 import reportDownloadRoutes from "./routes/reportDownload.routes.js";
 
 const app = express();
+const allowedOrigins = [
+  "http://localhost:5173",
+];
 
 //To disable server side caching
 app.disable("etag");
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+    origin: function (origin, callback) {
+      // allow requests with no origin (like mobile apps, curl, Postman)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE"], // restrict methods
+    credentials: true, // if you need cookies/auth headers
+  }));
 app.use(express.json());
 app.use(compression());
 app.use(morgan("dev"));
