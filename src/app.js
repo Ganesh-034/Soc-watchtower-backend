@@ -18,27 +18,43 @@ import reportDownloadRoutes from "./routes/reportDownload.routes.js";
 
 const app = express();
 
-//To disable server side caching
+// To disable server side caching
 app.disable("etag");
 
-// Configure CORS options
+// Allowed origins for CORS
+const allowedOrigins = [
+  'https://www.soc-watchtower.com',
+  'https://soc-watchtower.com',
+];
+
+// Configure CORS options with dynamic origin check
 const corsOptions = {
-    origin: ['https://www.soc-watchtower.com', 'https://soc-watchtower.com'],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Allowed methods
-    credentials: true, // Allow cookies to be sent
-    optionsSuccessStatus: 204 // Some legacy browsers choke on 204
+  origin: function(origin, callback) {
+    if (!origin) {
+      // Allow requests with no origin (like Postman or curl)
+      return callback(null, true);
+    }
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true,
+  optionsSuccessStatus: 204
 };
 
-// Use CORS with options
+// Use CORS middleware
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
-// Middleware
+
+// Security and utility middlewares
 app.use(helmet());
 app.use(express.json());
 app.use(compression());
 app.use(morgan("dev"));
 
-// Routes
+// API Routes
 app.use("/api", incidentRoutes);
 app.use("/api", incidentTicketRoutes);
 app.use("/api", incidentSeverityRoutes);
@@ -46,12 +62,12 @@ app.use("/api", incidentDSRoutes);
 app.use("/api", incidentViewRoutes);
 app.use("/api", incidentHSRoutes);
 app.use("/api", incidentSSRoutes);
-app.use("/api/incidents", incidentRoutes); // Assuming this already exists
-app.use("/api", incidentTicketReportRoutes); // Assuming this already exists
-app.use("/api/reports", reportRoutes); // Add this line
+app.use("/api/incidents", incidentRoutes);
+app.use("/api", incidentTicketReportRoutes);
+app.use("/api/reports", reportRoutes);
 app.use("/api/reports", reportDownloadRoutes);
 
-// 404 handler
+// 404 handler for unmatched routes
 app.use(notFound);
 
 // Global error handler
