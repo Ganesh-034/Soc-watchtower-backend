@@ -5,11 +5,8 @@ import {
   getReportData,
   checkReportsDBHealth,
   generateLast5MonthsReports,
-  getReportStatus,
-  retryFailedReports,
-  verifyReportsIntegrity,
 } from "../services/reportGenerator.service.js";
-import path from "path";
+import path from "node:path";
 import logger from "../config/logger.js";
 
 const router = express.Router();
@@ -18,12 +15,12 @@ const router = express.Router();
 router.get("/health", async (req, res) => {
   try {
     const health = await checkReportsDBHealth();
-    const statusCode = health.status === 'healthy' ? 200 : 503;
+    const statusCode = health.status === "healthy" ? 200 : 503;
     res.status(statusCode).json(health);
   } catch (error) {
     res.status(503).json({
-      status: 'unhealthy',
-      message: `Reports database health check error: ${error.message}`
+      status: "unhealthy",
+      message: `Reports database health check error: ${error.message}`,
     });
   }
 });
@@ -63,13 +60,12 @@ router.post("/generate/last5months", async (req, res) => {
     const results = await generateLast5MonthsReports();
     res.json({
       message: "Last 5 months report generation completed",
-      results
+      results,
     });
   } catch (error) {
     logger.error("Error generating last 5 months reports:", error);
     res.status(500).json({ error: "Failed to generate last 5 months reports" });
   }
 });
-
 
 export default router;
