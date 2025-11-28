@@ -52,6 +52,7 @@ export const attachCustomerInfo = asyncHandler(async (req, res, next) => {
   }
 
   const customerName = req.auth.customer_name;
+  const customeroid = req.auth.oid;
 
   if (!customerName) {
     // Log the full token for debugging purposes
@@ -64,8 +65,9 @@ export const attachCustomerInfo = asyncHandler(async (req, res, next) => {
 
   // Attach the customer name to the request for use in downstream controllers/services
   req.customerName = customerName;
+  req.customeroid = customeroid;
   console.log(
-    `Successfully authenticated user for customer: ${req.customerName}`
+    `Successfully authenticated user for customer: ${req.customerName} and ${req.customeroid}`
   );
 
   next();
