@@ -1,19 +1,29 @@
 import Incident from "../models/incident.model.js";
 import { ApiError } from "../utils/ApiError.js";
 
-export const getIncidentsDetectionSource = async (month, customerName, includeEscalatedOnly = false) => {
+export const getIncidentsDetectionSource = async (
+  month,
+  customerName,
+  includeEscalatedOnly = false
+) => {
   // Parameter validation
   if (!month) {
-    throw new ApiError(400, "Month parameter is required for fetching detection source data");
+    throw new ApiError(
+      400,
+      "Month parameter is required for fetching detection source data"
+    );
   }
-  
+
   if (!customerName) {
-    throw new ApiError(400, "Customer name is required for fetching detection source data");
+    throw new ApiError(
+      400,
+      "Customer name is required for fetching detection source data"
+    );
   }
 
   try {
     const collection = Incident.collection;
-  
+
     const matchCondition = {
       month: month,
       customer_name: customerName,
@@ -21,7 +31,7 @@ export const getIncidentsDetectionSource = async (month, customerName, includeEs
 
     // Add escalation filter if requested
     if (includeEscalatedOnly) {
-      matchCondition.customer_escalation = 'Yes';
+      matchCondition.customer_escalation = "Yes";
     }
 
     const pipeline = [
@@ -42,7 +52,7 @@ export const getIncidentsDetectionSource = async (month, customerName, includeEs
         $group: {
           _id: {
             incident_type: "$incident_type",
-            priority: "$priority"
+            priority: "$priority",
           },
           count: { $sum: 1 },
         },
@@ -52,30 +62,32 @@ export const getIncidentsDetectionSource = async (month, customerName, includeEs
       },
     ];
 
-    const detectionsourceCounts = await collection.aggregate(pipeline).toArray();
+    const detectionsourceCounts = await collection
+      .aggregate(pipeline)
+      .toArray();
 
     // Transform the data to the expected format
     const transformedData = {};
-    
-    detectionsourceCounts.forEach(item => {
+
+    detectionsourceCounts.forEach((item) => {
       let incidentType = item._id.incident_type || "Unknown";
-      
+
       // Replace "Unknown" with "Entra ID"
       if (incidentType === "Unknown") {
         incidentType = "Entra ID";
       }
-      
+
       const priority = item._id.priority || "Unknown";
-      
+
       if (!transformedData[incidentType]) {
         transformedData[incidentType] = {
           High: 0,
           Medium: 0,
           Low: 0,
-          Total: 0 
+          Total: 0,
         };
       }
-      
+
       if (priority === "High" || priority === "Medium" || priority === "Low") {
         transformedData[incidentType][priority] = item.count;
         transformedData[incidentType].Total += item.count;
@@ -87,13 +99,19 @@ export const getIncidentsDetectionSource = async (month, customerName, includeEs
     };
   } catch (error) {
     console.error("Error in getIncidentsDetectionSource:", error);
-    
+
     // 500 for other errors
-    throw new ApiError(500, `Error fetching incident detection source data: ${error.message}`);
+    throw new ApiError(
+      500,
+      `Error fetching incident detection source data: ${error.message}`
+    );
   }
 };
 
 // Export a wrapper function for escalated incidents
-export const getIncidentsDetectionSourceEscalation = async (month, customerName) => {
+export const getIncidentsDetectionSourceEscalation = async (
+  month,
+  customerName
+) => {
   return getIncidentsDetectionSource(month, customerName, true);
 };

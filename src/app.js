@@ -23,13 +23,13 @@ app.disable("etag");
 
 // Allowed origins for CORS
 const allowedOrigins = [
-  'https://www.soc-watchtower.com',
-  'https://soc-watchtower.com',
+  "https://www.soc-watchtower.com",
+  "https://soc-watchtower.com",
 ];
 
 // Configure CORS options with dynamic origin check
 const corsOptions = {
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     if (!origin) {
       // Allow requests with no origin (like Postman or curl)
       return callback(null, true);
@@ -37,12 +37,12 @@ const corsOptions = {
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error("Not allowed by CORS"));
     }
   },
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true,
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 204,
 };
 
 // Use CORS middleware

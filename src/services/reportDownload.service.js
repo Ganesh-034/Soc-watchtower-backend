@@ -28,15 +28,15 @@ async function initializeReportsDBConnection() {
         }
       );
 
-      reportsDBConnection.on('connected', () => {
+      reportsDBConnection.on("connected", () => {
         logger.info("✅ Reports database connected successfully");
       });
 
-      reportsDBConnection.on('error', (err) => {
+      reportsDBConnection.on("error", (err) => {
         logger.error("❌ Reports database connection error:", err);
       });
 
-      reportsDBConnection.on('disconnected', () => {
+      reportsDBConnection.on("disconnected", () => {
         logger.warn("⚠️ Reports database disconnected");
       });
     }
@@ -64,7 +64,9 @@ const customers = {
 };
 // Helper function to get customer key from either key or display name
 function getCustomerKey(customerIdentifier) {
-  logger.info(`🔍 Looking up customer key for identifier: "${customerIdentifier}"`);
+  logger.info(
+    `🔍 Looking up customer key for identifier: "${customerIdentifier}"`
+  );
 
   // If it's already a key (from token), return it
   if (
@@ -78,12 +80,16 @@ function getCustomerKey(customerIdentifier) {
   // If it's a display name, return the corresponding key
   for (const [key, value] of Object.entries(customers)) {
     if (value === customerIdentifier) {
-      logger.info(`✅ Found reverse match: "${customerIdentifier}" -> "${key}"`);
+      logger.info(
+        `✅ Found reverse match: "${customerIdentifier}" -> "${key}"`
+      );
       return key;
     }
   }
 
-  logger.warn(`❌ No match found for customer identifier: "${customerIdentifier}"`);
+  logger.warn(
+    `❌ No match found for customer identifier: "${customerIdentifier}"`
+  );
   return null;
 }
 
@@ -131,7 +137,9 @@ const ReportStatusSchema = new mongoose.Schema({
 function getReportsStatusModel() {
   // Ensure the reports DB connection is initialized
   if (!reportsDBConnection) {
-    throw new Error("Reports database connection not initialized. Call initializeReportsDBConnection() first.");
+    throw new Error(
+      "Reports database connection not initialized. Call initializeReportsDBConnection() first."
+    );
   }
 
   // Check if model is already registered with this connection
@@ -252,7 +260,9 @@ async function getReportSasUrl(req, res) {
 
     // Validate parameters
     if (!month || !year) {
-      logger.error(`❌ Missing required parameters: month=${month}, year=${year}`);
+      logger.error(
+        `❌ Missing required parameters: month=${month}, year=${year}`
+      );
       return res
         .status(400)
         .json({ error: "Missing required parameters: month, year" });
@@ -279,7 +289,9 @@ async function getReportSasUrl(req, res) {
     logger.info(`✅ Found report: ${JSON.stringify(report.toObject())}`);
 
     if (report.status !== "verified") {
-      logger.error(`❌ Report not ready for download. Status: "${report.status}"`);
+      logger.error(
+        `❌ Report not ready for download. Status: "${report.status}"`
+      );
       return res.status(400).json({
         error: "Report is not ready for download",
         status: report.status,
@@ -309,13 +321,13 @@ async function getReportSasUrl(req, res) {
     // THE CRITICAL FIX:
     // Parse the blob URL to extract the correct container and blob name
     const blobUrl = new URL(report.blobUrl);
-    const pathParts = blobUrl.pathname.split('/');
+    const pathParts = blobUrl.pathname.split("/");
 
     // The first part after the hostname is the container name
     const containerName = pathParts[1];
 
     // The rest is the blob path (including folders)
-    const blobName = pathParts.slice(2).join('/');
+    const blobName = pathParts.slice(2).join("/");
 
     logger.info(`🔐 Container: "${containerName}", Blob: "${blobName}"`);
 
@@ -370,7 +382,7 @@ async function getDirectSasUrl(req, res) {
 
     if (!month || !year) {
       return res.status(400).json({
-        error: "Missing required parameters: month, year"
+        error: "Missing required parameters: month, year",
       });
     }
 
@@ -383,8 +395,10 @@ async function getDirectSasUrl(req, res) {
 
     // Find the first PDF file in that folder
     let blobName = null;
-    for await (const blob of containerClient.listBlobsFlat({ prefix: folderPrefix })) {
-      if (blob.name.endsWith('.pdf')) {
+    for await (const blob of containerClient.listBlobsFlat({
+      prefix: folderPrefix,
+    })) {
+      if (blob.name.endsWith(".pdf")) {
         blobName = blob.name;
         break; // Found it, stop searching
       }
@@ -392,7 +406,7 @@ async function getDirectSasUrl(req, res) {
 
     if (!blobName) {
       return res.status(404).json({
-        error: `No PDF report found in folder: ${folderPrefix}`
+        error: `No PDF report found in folder: ${folderPrefix}`,
       });
     }
 
@@ -405,13 +419,13 @@ async function getDirectSasUrl(req, res) {
 
     // Parse the blob URL to extract the correct container and blob name
     const blobUrlObj = new URL(blobUrl);
-    const pathParts = blobUrlObj.pathname.split('/');
+    const pathParts = blobUrlObj.pathname.split("/");
 
     // The first part after the hostname is the container name
     const containerName = pathParts[1];
 
     // The rest is the blob path (including folders)
-    const fullBlobName = pathParts.slice(2).join('/');
+    const fullBlobName = pathParts.slice(2).join("/");
 
     logger.info(`🔐 Container: "${containerName}", Blob: "${fullBlobName}"`);
 
@@ -435,7 +449,7 @@ async function getDirectSasUrl(req, res) {
     logger.info(`🔗 Generated direct SAS URL for ${blobName}`);
 
     // Extract just the filename for the response
-    const fileName = blobName.split('/').pop();
+    const fileName = blobName.split("/").pop();
 
     res.json({
       downloadUrl: sasUrl,
@@ -484,7 +498,9 @@ async function getAvailableReportsForCustomer(req, res) {
     const ReportStatus = getReportsStatusModel();
 
     // Find all verified reports for this customer
-    logger.info(`🔍 Searching for verified reports for customer: "${customerKey}"`);
+    logger.info(
+      `🔍 Searching for verified reports for customer: "${customerKey}"`
+    );
     const reports = await ReportStatus.find({
       customerKey,
       status: "verified",
@@ -858,10 +874,14 @@ async function createManualTestReport(req, res) {
     console.log("Existing report:", existingReport);
 
     // Create or update the report
-    const savedReport = await ReportStatus.findOneAndUpdate({ reportId }, testReport, {
-      upsert: true,
-      new: true,
-    });
+    const savedReport = await ReportStatus.findOneAndUpdate(
+      { reportId },
+      testReport,
+      {
+        upsert: true,
+        new: true,
+      }
+    );
 
     console.log("Saved report:", savedReport);
 
@@ -890,7 +910,12 @@ async function checkOtherDatabases(req, res) {
     const customerKey = getCustomerKey(customerIdentifier);
 
     // List of candidate databases to check
-    const candidateDatabases = ['reports_db', 'socwatchtower', 'test', 'sharddb'];
+    const candidateDatabases = [
+      "reports_db",
+      "socwatchtower",
+      "test",
+      "sharddb",
+    ];
     const results = {};
 
     for (const dbName of candidateDatabases) {
@@ -901,30 +926,33 @@ async function checkOtherDatabases(req, res) {
         const otherDb = mongoose.connection.useDb(dbName);
 
         // Get the 'reportstatuses' collection from that database
-        const collection = otherDb.collection('reportstatuses');
+        const collection = otherDb.collection("reportstatuses");
 
         // Check if the collection exists and count documents for our customer
-        const count = await collection.countDocuments({ customerKey: customerKey });
+        const count = await collection.countDocuments({
+          customerKey: customerKey,
+        });
 
         // If we find documents, get the details
         let reports = [];
         if (count > 0) {
-          reports = await collection.find({ customerKey: customerKey }).toArray();
+          reports = await collection
+            .find({ customerKey: customerKey })
+            .toArray();
         }
 
         results[dbName] = {
           accessible: true,
           reportCount: count,
-          reports: reports
+          reports: reports,
         };
 
         console.log(`Found ${count} reports for ${customerKey} in ${dbName}`);
-
       } catch (error) {
         console.log(`Error accessing ${dbName}: ${error.message}`);
         results[dbName] = {
           accessible: false,
-          error: error.message
+          error: error.message,
         };
       }
     }
@@ -932,9 +960,8 @@ async function checkOtherDatabases(req, res) {
     res.json({
       currentDatabase: mongoose.connection.name,
       customerKey,
-      results
+      results,
     });
-
   } catch (error) {
     console.error("Error checking other databases:", error);
     res.status(500).json({ error: error.message });

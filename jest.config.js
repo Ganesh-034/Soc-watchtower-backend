@@ -1,18 +1,14 @@
 export default {
-  testEnvironment: 'node',
+  testEnvironment: "node",
 
   moduleNameMapper: {
-    '^(\\.{1,2}/.*)\\.js$': '$1'
+    "^(\\.{1,2}/.*)\\.js$": "$1",
   },
 
   transform: {},
 
-  collectCoverageFrom: [
-    'src/**/*.js',
-    '!src/tests/**',
-    '!src/models/**'
-  ],
+  collectCoverageFrom: ["src/**/*.js", "!src/tests/**", "!src/models/**"],
 
-  coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov', 'html']
+  coverageDirectory: "coverage",
+  coverageReporters: ["text", "lcov", "html"],
 };

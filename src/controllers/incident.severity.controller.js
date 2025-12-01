@@ -11,25 +11,34 @@ export const getIncidentSeverity = catchAsync(async (req, res) => {
   const incidentSeverityData = await incidentService.getIncidentSeverity(
     req.customerName
   );
-  
+
   // Check if we have any data
-  if (!incidentSeverityData || 
-      (Object.values(incidentSeverityData.total).reduce((sum, val) => sum + val, 0) === 0)) {
-    return res.status(204).json(
+  if (
+    !incidentSeverityData ||
+    Object.values(incidentSeverityData.total).reduce(
+      (sum, val) => sum + val,
+      0
+    ) === 0
+  ) {
+    return res
+      .status(204)
+      .json(
+        new ApiResponse(
+          204,
+          null,
+          "No incident severity data found for this customer"
+        )
+      );
+  }
+
+  // Return success with data
+  return res
+    .status(200)
+    .json(
       new ApiResponse(
-        204,
-        null,
-        "No incident severity data found for this customer"
+        200,
+        incidentSeverityData,
+        "Incident severity data fetched successfully"
       )
     );
-  }
-  
-  // Return success with data
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      incidentSeverityData,
-      "Incident severity data fetched successfully"
-    )
-  );
 });
