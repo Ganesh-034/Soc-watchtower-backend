@@ -8,7 +8,6 @@ import mongoose from "mongoose";
 import logger from "../config/logger.js";
 
 // Default connection (for other operations)
-// This is your existing connection
 const defaultConnection = mongoose.connection;
 
 // New dedicated connection for reports
@@ -58,12 +57,11 @@ const containerClient = blobServiceClient.getContainerClient(
 
 // Customer configuration - bidirectional mapping
 const customers = {
-  "Hino Motor- HMST": "Hino Motor Sales Thailand HMST", 
+  "Hino Motor- HMST": "Hino Motor Sales Thailand HMST",
   "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
-  "pt-tokairika-indonesia": "PT Tokairika Indonesia",
+  "PT.RKNForge": "PT RKN Forge Indonesia",
   "taiho-thailand": "Taiho Thailand",
 };
-
 // Helper function to get customer key from either key or display name
 function getCustomerKey(customerIdentifier) {
   logger.info(`🔍 Looking up customer key for identifier: "${customerIdentifier}"`);
@@ -159,7 +157,7 @@ async function checkBlobExists(blobPath) {
       .map((segment) => {
         if (!segment) return segment;
 
-        // If it looks already percent-encoded, don’t re-encode
+        // If it looks already percent-encoded, don't re-encode
         const looksEncoded =
           /%[0-9A-Fa-f]{2}/.test(segment) &&
           decodeURIComponent(segment) !== segment;
@@ -178,6 +176,46 @@ async function checkBlobExists(blobPath) {
   } catch (error) {
     logger.error(`❌ Error checking if blob exists: ${blobPath}`, error);
     return false;
+  }
+}
+
+// SOLUTION 1: Function to check if a report already exists (in database and blob storage)
+async function checkReportExists(customerKey, month, year) {
+  try {
+    // Initialize reports DB connection if needed
+    await initializeReportsDBConnection();
+
+    // Get the ReportStatus model from reports DB
+    const ReportStatus = getReportsStatusModel();
+
+    const reportId = `${customerKey}_${month}_${year}`;
+
+    // Check if report exists in database
+    const report = await ReportStatus.findOne({ reportId });
+
+    if (!report) {
+      logger.info(`📄 Report ${reportId} not found in database`);
+      return { exists: false, reason: "Not in database" };
+    }
+
+    // If report exists, check if blob exists
+    if (!report.blobPath) {
+      logger.warn(`⚠️ Report ${reportId} found in database but no blob path`);
+      return { exists: false, reason: "No blob path in database" };
+    }
+
+    const blobExists = await checkBlobExists(report.blobPath);
+
+    if (!blobExists) {
+      logger.warn(`⚠️ Report ${reportId} found in database but blob not found`);
+      return { exists: false, reason: "Blob not found" };
+    }
+
+    logger.info(`✅ Report ${reportId} exists in database and blob storage`);
+    return { exists: true, report };
+  } catch (error) {
+    logger.error(`❌ Error checking if report exists: ${error.message}`);
+    return { exists: false, reason: "Error checking" };
   }
 }
 
@@ -316,6 +354,102 @@ async function getReportSasUrl(req, res) {
     res.status(500).json({ error: "Failed to generate download URL" });
   }
 }
+
+// SOLUTION 2: Function to generate SAS URL directly from blob path (for your one-time manual upload)
+// This updated version finds the file automatically in the folder.
+async function getDirectSasUrl(req, res) {
+  try {
+    const customerIdentifier = req.customerName;
+    const customerKey = getCustomerKey(customerIdentifier);
+
+    if (!customerKey) {
+      return res.status(403).json({ error: "Customer not recognized" });
+    }
+
+    const { month, year } = req.params;
+
+    if (!month || !year) {
+      return res.status(400).json({
+        error: "Missing required parameters: month, year"
+      });
+    }
+
+    // Create the FOLDER path based on the expected structure
+    const monthShort = new Date(year, month - 1)
+      .toLocaleString("default", { month: "short" })
+      .toLowerCase();
+
+    const folderPrefix = `${customerKey}/${year}/${monthShort}/`;
+
+    // Find the first PDF file in that folder
+    let blobName = null;
+    for await (const blob of containerClient.listBlobsFlat({ prefix: folderPrefix })) {
+      if (blob.name.endsWith('.pdf')) {
+        blobName = blob.name;
+        break; // Found it, stop searching
+      }
+    }
+
+    if (!blobName) {
+      return res.status(404).json({
+        error: `No PDF report found in folder: ${folderPrefix}`
+      });
+    }
+
+    // Create blob URL
+    const blobUrl = `https://socwatchtowerreports.blob.core.windows.net/customerreports/${blobName}`;
+
+    // Create SAS token that's valid for 1 hour
+    const sasExpiresOn = new Date();
+    sasExpiresOn.setMinutes(sasExpiresOn.getMinutes() + 60);
+
+    // Parse the blob URL to extract the correct container and blob name
+    const blobUrlObj = new URL(blobUrl);
+    const pathParts = blobUrlObj.pathname.split('/');
+
+    // The first part after the hostname is the container name
+    const containerName = pathParts[1];
+
+    // The rest is the blob path (including folders)
+    const fullBlobName = pathParts.slice(2).join('/');
+
+    logger.info(`🔐 Container: "${containerName}", Blob: "${fullBlobName}"`);
+
+    // Generate SAS token with the correct container and blob name
+    const sasToken = generateBlobSASQueryParameters(
+      {
+        containerName: containerName,
+        blobName: fullBlobName,
+        permissions: BlobSASPermissions.parse("r"), // Read permission
+        expiresOn: sasExpiresOn,
+      },
+      new StorageSharedKeyCredential(
+        process.env.AZURE_STORAGE_ACCOUNT_NAME,
+        process.env.AZURE_STORAGE_ACCOUNT_KEY
+      )
+    );
+
+    // Construct SAS URL with the original blob URL
+    const sasUrl = `${blobUrl}?${sasToken}`;
+
+    logger.info(`🔗 Generated direct SAS URL for ${blobName}`);
+
+    // Extract just the filename for the response
+    const fileName = blobName.split('/').pop();
+
+    res.json({
+      downloadUrl: sasUrl,
+      fileName: fileName,
+      expiresOn: sasExpiresOn,
+      customerKey,
+      blobPath: blobName,
+    });
+  } catch (error) {
+    logger.error("❌ Error generating direct SAS URL:", error);
+    res.status(500).json({ error: "Failed to generate download URL" });
+  }
+}
+
 // Function to get all available reports for the authenticated user's customer
 async function getAvailableReportsForCustomer(req, res) {
   try {
@@ -817,4 +951,6 @@ export {
   createManualTestReport,
   checkOtherDatabases,
   initializeReportsDBConnection, // Export for potential initialization in app startup
+  checkReportExists, // For preventing duplicate generation
+  getDirectSasUrl, // For your one-time manual upload
 };
