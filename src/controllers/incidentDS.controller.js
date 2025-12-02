@@ -25,15 +25,6 @@ export const getIncidentsDetectionSource = catchAsync(async (req, res) => {
     req.customerName
   );
   
-  // 204 No Content
-  if (
-    !incidentDSCounts ||
-    !incidentDSCounts.detectionsource ||
-    Object.keys(incidentDSCounts.detectionsource).length === 0
-  ) {
-    return res.status(204).send();
-  }
-  
   // 200 Success with data
   return res.json(
     new ApiResponse(
