@@ -13,19 +13,19 @@ export const getCustomer = async (customerName) => {
     const customerMapping = {
       "Hino Motor- HMST": {
         displayName: "Hino Motor Sales Thailand HMST",
-        imageName: "customer_logo_1.png"
+        imageName: "customer_logo_1.webp"
       },
       "centralmotorwheel-thailand": {
         displayName: "Centralmotorwheel Thailand",
-        imageName: "customer_logo_2.png"
+        imageName: "customer_logo_2.webp"
       },
       "PT.RKNForge": {
         displayName: "PT RKN Forge Indonesia",
-        imageName: "customer_logo_3.png"
+        imageName: "customer_logo_3.webp"
       },
       "taiho-thailand": {
         displayName: "Taiho Thailand",
-        imageName: "customer_logo_4.jpg"
+        imageName: "customer_logo_4.webp"
       },
     };
     
