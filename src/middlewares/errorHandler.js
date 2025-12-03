@@ -1,4 +1,3 @@
-// middlewares/errorHandler.js
 export const errorHandler = (err, req, res, next) => {
   // express-jwt specific errors (e.g., "No authorization token was found", "invalid token")
   if (err && err.name === "UnauthorizedError") {

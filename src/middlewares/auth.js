@@ -1,5 +1,3 @@
-// middleware/auth.js
-// FIX: Use a named import for 'expressjwt' from 'express-jwt'
 import { expressjwt } from "express-jwt";
 import jwksRsa from "jwks-rsa";
 import { ApiError } from "../utils/ApiError.js";
@@ -9,7 +7,6 @@ dotenv.config();
 
 // Configuration for Azure AD
 const config = {
-  // IMPORTANT: Make sure these are correctly set in your .env file
   tenantId: process.env.AZURE_AD_TENANT_ID,
   clientId: process.env.AZURE_AD_CLIENT_ID,
 };
@@ -21,7 +18,6 @@ if (!config.tenantId || !config.clientId) {
 }
 
 // This middleware will verify the token and attach the decoded payload to req.auth
-// FIX: Use the imported function 'expressjwt' instead of 'jwt'
 export const authenticate = expressjwt({
   // Dynamically provide a signing key based on the kid in the header and the singing keys provided by the JWKS endpoint
   secret: jwksRsa.expressJwtSecret({
@@ -52,6 +48,7 @@ export const attachCustomerInfo = asyncHandler(async (req, res, next) => {
   }
 
   const customerName = req.auth.customer_name;
+  const customeroid = req.auth.oid;
 
   if (!customerName) {
     // Log the full token for debugging purposes
@@ -64,8 +61,9 @@ export const attachCustomerInfo = asyncHandler(async (req, res, next) => {
 
   // Attach the customer name to the request for use in downstream controllers/services
   req.customerName = customerName;
+  req.customeroid = customeroid;
   console.log(
-    `Successfully authenticated user for customer: ${req.customerName}`
+    `Successfully authenticated user for customer: ${req.customerName} and ${req.customeroid}`
   );
 
   next();

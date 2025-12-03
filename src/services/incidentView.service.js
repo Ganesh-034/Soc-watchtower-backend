@@ -3,13 +3,39 @@ import https from "node:https";
 import { ApiError } from "../utils/ApiError.js";
 import logger from "../config/logger.js";
 import Incident from "../models/incident.model.js";
+import UserCount from "../models/incident.model.view.js";  
 
-export const getIncidentDetails = async (incidentId, customerName) => {
+export const getIncidentDetails = async (incidentId, customerName, customeroid) => {
   try {
-    if (!incidentId || !customerName) {
+    if (!incidentId || !customerName || !customeroid) {
       throw new Error(
-        "Both incidentId and customerName are required for fetching incident details."
+        "IncidentId, customerName, and customeroid are required for fetching incident details."
       );
+    }
+
+    // Check daily usage limit
+    const today = new Date().toISOString().slice(0, 10);
+    
+    const userCountDoc = await UserCount.findOneAndUpdate(
+      { userOid: customeroid, date: today },
+      {
+        $inc: { count: 1 },
+        $setOnInsert: { createdAt: new Date().toISOString() },
+        $set: { updatedAt: new Date().toISOString() }
+      },
+      { upsert: true, new: true } // Return the updated document
+    );
+    
+    // Check if user has exceeded daily limit
+    if (userCountDoc.count > 5) {
+      
+      await UserCount.updateOne(
+        { userOid: customeroid, date: today },
+        { $inc: { count: -1 } }
+      );
+      
+      logger.warn(`User ${customeroid} has reached their daily AI generation limit of 5 requests`);
+      throw new ApiError(429, "Daily limit reached: Only 5 AI generations allowed per day");
     }
 
     // 1️⃣ Fetch the incident from MongoDB
@@ -39,8 +65,8 @@ export const getIncidentDetails = async (incidentId, customerName) => {
     `;
 
     // 3️⃣ Send request to Azure OpenAI
-    const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT; 
-    const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_ID; 
+    const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+    const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_ID;
     const apiKey = process.env.AZURE_OPENAI_KEY;
 
     if (!azureEndpoint || !deploymentName || !apiKey) {

@@ -6,6 +6,7 @@ import morgan from "morgan";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { notFound } from "./middlewares/notFound.js";
 import incidentRoutes from "./routes/incident.routes.js";
+import incidentcustomerRoutes from "./routes/incident.customer.routes.js";
 import incidentTicketRoutes from "./routes/incidentTicket.routes.js";
 import incidentSeverityRoutes from "./routes/incident.severity.routes.js";
 import incidentDSRoutes from "./routes/incidentDS.routes.js";
@@ -23,13 +24,13 @@ app.disable("etag");
 
 // Allowed origins for CORS
 const allowedOrigins = [
-  'https://www.soc-watchtower.com',
-  'https://soc-watchtower.com',
+  "https://www.soc-watchtower.com",
+  "https://soc-watchtower.com"
 ];
 
 // Configure CORS options with dynamic origin check
 const corsOptions = {
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     if (!origin) {
       // Allow requests with no origin (like Postman or curl)
       return callback(null, true);
@@ -37,12 +38,12 @@ const corsOptions = {
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error("Not allowed by CORS"));
     }
   },
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true,
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 204,
 };
 
 // Use CORS middleware
@@ -56,6 +57,7 @@ app.use(morgan("dev"));
 
 // API Routes
 app.use("/api", incidentRoutes);
+app.use("/api", incidentcustomerRoutes);
 app.use("/api", incidentTicketRoutes);
 app.use("/api", incidentSeverityRoutes);
 app.use("/api", incidentDSRoutes);

@@ -1,6 +1,7 @@
 import { ApiResponse } from "../utils/ApiResponse.js";
 import catchAsync from "../utils/catchAsync.js";
 import * as incidentService from "../services/incident.severity.service.js";
+import { ApiError } from "../utils/ApiError.js"; // Assuming you have this import
 
 export const getIncidentSeverity = catchAsync(async (req, res) => {
   // Check if customer name is provided
@@ -12,19 +13,7 @@ export const getIncidentSeverity = catchAsync(async (req, res) => {
     req.customerName
   );
   
-  // Check if we have any data
-  if (!incidentSeverityData || 
-      (Object.values(incidentSeverityData.total).reduce((sum, val) => sum + val, 0) === 0)) {
-    return res.status(204).json(
-      new ApiResponse(
-        204,
-        null,
-        "No incident severity data found for this customer"
-      )
-    );
-  }
-  
-  // Return success with data
+  // Return success with data (even if the data shows zero incidents)
   return res.status(200).json(
     new ApiResponse(
       200,

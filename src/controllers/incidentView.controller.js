@@ -12,16 +12,19 @@ export const getIncidentDetailsById = catchAsync(async (req, res) => {
 
   const response = await incidentViewService.getIncidentDetails(
     incidentId,
-    req.customerName
+    req.customerName,
+    req.customeroid, 
   );
 
   // If we have data, return 200 OK
   if (response && Object.keys(response).length > 0) {
     return res
       .status(200)
-      .json(new ApiResponse(200, response, "Incident details fetched successfully"));
+      .json(
+        new ApiResponse(200, response, "Incident details fetched successfully")
+      );
   }
-  
+
   // use 204 No Content
   return res.status(204).end();
 });
