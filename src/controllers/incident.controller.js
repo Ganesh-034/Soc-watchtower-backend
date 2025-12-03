@@ -8,9 +8,9 @@ export const getTotalIncidents = catchAsync(async (req, res, next) => {
   const counts = await incidentService.getTotalIncidents(customerName);
 
   // 204 No Content when no incidents
-  if (!counts.total) {
-    return res.status(204).send(); // No response body
-  }
+  // if (!counts.total) {
+  //   return res.status(204).send(); // No response body
+  // }
 
   // 200 OK with payload otherwise
   return res

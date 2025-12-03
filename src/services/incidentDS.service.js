@@ -71,10 +71,10 @@ export const getIncidentsDetectionSource = async (
 
     detectionsourceCounts.forEach((item) => {
       let incidentType = item._id.incident_type || "Unknown";
-
-      // Replace "Unknown" with "Entra ID"
+      
+      // Replace "Unknown" with "Others"
       if (incidentType === "Unknown") {
-        incidentType = "Entra ID";
+        incidentType = "Others";
       }
 
       const priority = item._id.priority || "Unknown";
