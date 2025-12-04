@@ -75,11 +75,11 @@ export const getIncidentsSubStatus = async (
       substatus: cleanedSubstatusCounts,
     };
   } catch (error) {
-      console.error("Error in getIncidentsSubStatus:", error);
-      error.statusCode = error.statusCode || 500; 
-      throw error;
-    }
-  };
+    console.error("Error in getIncidentsSubStatus:", error);
+    error.statusCode = error.statusCode || 500;
+    throw error;
+  }
+};
 
 // NEW: Function specifically for report generation that excludes health incidents
 export const getIncidentsSubStatusForReport = async (
@@ -102,7 +102,7 @@ export const getIncidentsSubStatusForReport = async (
     const matchCondition = {
       month: month,
       customer_name: customerName,
-      incident_type: { $ne: "Health Incident" }, 
+      incident_type: { $ne: "Health Incident" },
     };
 
     // Add escalation filter if requested

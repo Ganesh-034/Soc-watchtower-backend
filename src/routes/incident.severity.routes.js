@@ -6,5 +6,4 @@ const router = express.Router();
 router.use(authenticate, attachCustomerInfo);
 
 router.get("/incidents_by_severity", incidentController.getIncidentSeverity);
-
 export default router;

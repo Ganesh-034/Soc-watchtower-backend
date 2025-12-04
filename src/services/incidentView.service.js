@@ -65,8 +65,8 @@ export const getIncidentDetails = async (incidentId, customerName, customeroid) 
     `;
 
     // 3️⃣ Send request to Azure OpenAI
-    const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT; 
-    const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_ID; 
+    const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+    const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_ID;
     const apiKey = process.env.AZURE_OPENAI_KEY;
 
     if (!azureEndpoint || !deploymentName || !apiKey) {

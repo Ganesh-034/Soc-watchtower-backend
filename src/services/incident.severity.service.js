@@ -8,7 +8,10 @@ export const getIncidentSeverity = async (
 ) => {
   try {
     if (!customerName) {
-      throw new ApiError(400, "Customer name is required for fetching incident severity data");
+      throw new ApiError(
+        400,
+        "Customer name is required for fetching incident severity data"
+      );
     }
 
     const collection = Incident.collection;
@@ -36,12 +39,16 @@ export const getIncidentSeverity = async (
       Date.UTC(reportYear, reportMonth + 1, 0, 23, 59, 59, 999)
     );
 
-    const previousMonthStart = new Date(Date.UTC(reportYear, reportMonth - 1, 1));
+    const previousMonthStart = new Date(
+      Date.UTC(reportYear, reportMonth - 1, 1)
+    );
     const previousMonthEnd = new Date(
       Date.UTC(reportYear, reportMonth, 0, 23, 59, 59, 999)
     );
 
-    const twoMonthsAgoStart = new Date(Date.UTC(reportYear, reportMonth - 2, 1));
+    const twoMonthsAgoStart = new Date(
+      Date.UTC(reportYear, reportMonth - 2, 1)
+    );
     const twoMonthsAgoEnd = new Date(
       Date.UTC(reportYear, reportMonth - 1, 0, 23, 59, 59, 999)
     );
@@ -166,7 +173,10 @@ export const getIncidentSeverity = async (
       let priorityKey;
       const priorityLower = item.priority.toString().trim().toLowerCase();
       if (priorityLower.includes("low")) priorityKey = "low";
-      else if (priorityLower.includes("medium") || priorityLower.includes("med"))
+      else if (
+        priorityLower.includes("medium") ||
+        priorityLower.includes("med")
+      )
         priorityKey = "medium";
       else if (priorityLower.includes("high")) priorityKey = "high";
       else if (Number(item.priority) === 1) priorityKey = "low";
@@ -196,11 +206,14 @@ export const getIncidentSeverity = async (
     return result;
   } catch (error) {
     if (error instanceof ApiError) {
-      throw error; 
+      throw error;
     }
 
     console.error("Error in getIncidentSeverity:", error);
-    throw new ApiError(500, `Error fetching incident priorities: ${error.message}`);
+    throw new ApiError(
+      500,
+      `Error fetching incident priorities: ${error.message}`
+    );
   }
 };
 

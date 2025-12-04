@@ -6,11 +6,15 @@ import logger from "../config/logger.js";
 function getDefaultExecutiveSummary(data, customerDisplayName) {
   const severityMonths = data.severityChartLabels || [];
   const currentMonthIndex = severityMonths.length - 1;
-  const highSeverityCount = data.severityChartData?.high?.[currentMonthIndex] || 0;
-  const mediumSeverityCount = data.severityChartData?.medium?.[currentMonthIndex] || 0;
-  const lowSeverityCount = data.severityChartData?.low?.[currentMonthIndex] || 0;
-  const totalIncidents = highSeverityCount + mediumSeverityCount + lowSeverityCount;
-  
+  const highSeverityCount =
+    data.severityChartData?.high?.[currentMonthIndex] || 0;
+  const mediumSeverityCount =
+    data.severityChartData?.medium?.[currentMonthIndex] || 0;
+  const lowSeverityCount =
+    data.severityChartData?.low?.[currentMonthIndex] || 0;
+  const totalIncidents =
+    highSeverityCount + mediumSeverityCount + lowSeverityCount;
+
   // Analyze tickets for default summary
   const incidentAnalysis = analyzeIncidentTickets(data.incidentTickets);
   const healthAnalysis = analyzeHealthTickets(data.healthTickets);
@@ -210,13 +214,13 @@ export async function generateExecutiveSummary(data, customerDisplayName) {
     //   - Handling status: Resolved: ${resolvedCount}, Closed: ${closedCount}, Pending: ${pendingCount}, Open: ${openCount}
     //   - True Positive: ${truePositiveCount}, False Positive: ${falsePositiveCount}
     //   - Health Tickets: ${totalHealthTickets}
- 
+
     //   Format strictly as bullet points using "•".
     //   Each point should be one clear sentence. Use the following example style and tone:
     //   • 3 incidents were reported for the month of October 25, detected from O365 (5), AzureAD (3), and Defender (2).
     //   • 1 incident was True Positive and 2 were False Positive with High severity.
     //   • 0 health tickets got triggered on the dashboard for the month of October 25.
- 
+
     //   Keep numbers factual and avoid speculation or generic statements.
     // `;
     const prompt = `
@@ -235,10 +239,14 @@ export async function generateExecutiveSummary(data, customerDisplayName) {
 		
       Keep numbers factual and avoid speculation or generic statements.
     `;
-    
-logger.info(`🧠 Calling Azure OpenAI for ${prompt} executive summary generation`);
-    logger.info(`🧠 Calling Azure OpenAI for ${customerDisplayName} executive summary generation`);
- 
+
+    logger.info(
+      `🧠 Calling Azure OpenAI for ${prompt} executive summary generation`
+    );
+    logger.info(
+      `🧠 Calling Azure OpenAI for ${customerDisplayName} executive summary generation`
+    );
+
     const response = await client.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
       temperature: 0.4,

@@ -3,7 +3,6 @@ import catchAsync from "../utils/catchAsync.js";
 import * as incidentService from "../services/incident.service.js";
 
 export const getTotalIncidents = catchAsync(async (req, res, next) => {
-
   const customerName = req.customerName;
 
   const counts = await incidentService.getTotalIncidents(customerName);

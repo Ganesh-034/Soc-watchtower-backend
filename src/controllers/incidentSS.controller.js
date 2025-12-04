@@ -10,7 +10,7 @@ export const getIncidentsSubStatus = catchAsync(async (req, res) => {
   if (!month) {
     throw new ApiError(400, "Missing 'month' query parameter");
   }
-  
+
   // 422 Unprocessable Entity - Invalid format
   const monthFormatRegex = /^\d{4}-\d{2}$/;
   if (!monthFormatRegex.test(month)) {

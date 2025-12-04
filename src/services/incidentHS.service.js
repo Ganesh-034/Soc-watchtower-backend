@@ -8,7 +8,10 @@ export const getIncidentsHandlingStatus = async (
 ) => {
   try {
     if (!customerName) {
-      throw new ApiError(400, "Customer name is required for fetching incident handling status data.");
+      throw new ApiError(
+        400,
+        "Customer name is required for fetching incident handling status data."
+      );
     }
 
     const collection = Incident.collection;
@@ -159,12 +162,15 @@ export const getIncidentsHandlingStatus = async (
     return result;
   } catch (error) {
     console.error("Error in getIncidentsHandlingStatus:", error);
-    
+
     // Proper error handling with status codes
     if (error instanceof ApiError) {
-      throw error; 
+      throw error;
     } else {
-      throw new ApiError(500, "Error fetching incident handling status data: " + error.message);
+      throw new ApiError(
+        500,
+        "Error fetching incident handling status data: " + error.message
+      );
     }
   }
 };

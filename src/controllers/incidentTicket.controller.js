@@ -66,9 +66,9 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
       }
     } catch (error) {
       console.error("Error parsing filters:", error);
-      return res.status(400).json(
-        new ApiResponse(400, null, "Invalid filter format")
-      );
+      return res
+        .status(400)
+        .json(new ApiResponse(400, null, "Invalid filter format"));
     }
   }
 
@@ -84,9 +84,9 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
 
   // Check if customerName is available from middleware
   if (!req.customerName) {
-    return res.status(400).json(
-      new ApiResponse(400, null, "Customer information is required")
-    );
+    return res
+      .status(400)
+      .json(new ApiResponse(400, null, "Customer information is required"));
   }
 
   mongoFilters.customer_name = req.customerName;
@@ -97,29 +97,31 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
       parseInt(limit),
       mongoFilters
     );
-    
+
     // Handle 204 No Content when no tickets are found
     if (result.tickets && result.tickets.length === 0) {
       return res.status(204).end(); // 204 responses should not include a body
     }
-    
+
     // Return 200 OK with the tickets data
-    return res.status(200).json(
-      new ApiResponse(200, result, "Incident tickets fetched successfully")
-    );
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(200, result, "Incident tickets fetched successfully")
+      );
   } catch (error) {
     // Handle different error types
     if (error.statusCode === 400) {
-      return res.status(400).json(
-        new ApiResponse(400, null, error.message || "Bad request")
-      );
+      return res
+        .status(400)
+        .json(new ApiResponse(400, null, error.message || "Bad request"));
     } else {
       // Default to 500 Internal Server Error for unhandled errors
-      return res.status(500).json(
-        new ApiResponse(500, null, error.message || "Internal server error")
-      );
+      return res
+        .status(500)
+        .json(
+          new ApiResponse(500, null, error.message || "Internal server error")
+        );
     }
   }
 });
-
-
