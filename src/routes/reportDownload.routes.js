@@ -8,6 +8,7 @@ import {
   clearTestReports,
   createTestReport,
   createMultipleTestReports,
+  getDirectSasUrl,
   // createManualTestReport,
   //   advancedDatabaseDebug,
   // directQueryReports,
@@ -26,6 +27,7 @@ router.get("/sas-url/:month/:year", getReportSasUrl);
 router.get("/customer", getAvailableReportsForCustomer);
 //router.get('/debug/enhanced', enhancedDebugReports);
 // Debug and test routes
+router.get("/direct-sas/:month/:year", getDirectSasUrl);
 router.get("/debug", debugReports);
 router.get("/clear-test-reports", clearTestReports);
 router.get("/create-test-report", createTestReport);
