@@ -160,23 +160,10 @@ async function checkBlobExists(blobPath) {
     // Normalize path (remove duplicate slashes, trim)
     const normalized = blobPath.replace(/\/+/g, "/").replace(/^\/|\/$/g, "");
 
-    const encodedBlobPath = normalized
-      .split("/")
-      .map((segment) => {
-        if (!segment) return segment;
+    // DO NOT encode segments; Azure expects the raw blob name as stored
+    logger.info(`🔐 Using normalized blob path: "${normalized}"`);
 
-        // If it looks already percent-encoded, don't re-encode
-        const looksEncoded =
-          /%[0-9A-Fa-f]{2}/.test(segment) &&
-          decodeURIComponent(segment) !== segment;
-
-        return looksEncoded ? segment : encodeURIComponent(segment);
-      })
-      .join("/");
-
-    logger.info(`🔐 Encoded blob path: "${encodedBlobPath}"`);
-
-    const blobClient = containerClient.getBlobClient(encodedBlobPath);
+    const blobClient = containerClient.getBlobClient(normalized);
     const exists = await blobClient.exists();
 
     logger.info(`📦 Blob exists result: ${exists}`);
@@ -326,17 +313,16 @@ async function getReportSasUrl(req, res) {
     // The first part after the hostname is the container name
     const containerName = pathParts[1];
 
-    // The rest is the blob path (including folders)
-    const blobName = pathParts.slice(2).join("/");
+    // The rest is the blob path (including folders), decode if needed
+    const blobName = decodeURIComponent(pathParts.slice(2).join("/"));
 
     logger.info(`🔐 Container: "${containerName}", Blob: "${blobName}"`);
 
-    // Generate SAS token with the correct container and blob name
     const sasToken = generateBlobSASQueryParameters(
       {
-        containerName: containerName, // Use the extracted container name
-        blobName: blobName, // Use the extracted blob name (not encoded)
-        permissions: BlobSASPermissions.parse("r"), // Read permission
+        containerName: containerName,
+        blobName: blobName,
+        permissions: BlobSASPermissions.parse("r"),
         expiresOn: sasExpiresOn,
       },
       new StorageSharedKeyCredential(
@@ -345,7 +331,6 @@ async function getReportSasUrl(req, res) {
       )
     );
 
-    // Construct SAS URL with the original blob URL
     const sasUrl = `${report.blobUrl}?${sasToken}`;
     logger.info(`🔗 Generated SAS URL: ${sasUrl}`);
 
@@ -371,70 +356,76 @@ async function getReportSasUrl(req, res) {
 // This updated version finds the file automatically in the folder.
 async function getDirectSasUrl(req, res) {
   try {
+    logger.info("🚀 [getDirectSasUrl] Called");
+
     const customerIdentifier = req.customerName;
+    logger.info(`🔑 [getDirectSasUrl] Customer identifier: "${customerIdentifier}"`);
     const customerKey = getCustomerKey(customerIdentifier);
 
     if (!customerKey) {
+      logger.warn(`❌ [getDirectSasUrl] Customer not recognized: "${customerIdentifier}"`);
       return res.status(403).json({ error: "Customer not recognized" });
     }
 
     const { month, year } = req.params;
+    logger.info(`[getDirectSasUrl] Request params: month=${month}, year=${year}`);
 
     if (!month || !year) {
+      logger.warn(`❌ [getDirectSasUrl] Missing required parameters: month=${month}, year=${year}`);
       return res.status(400).json({
         error: "Missing required parameters: month, year",
       });
     }
 
-    // Create the FOLDER path based on the expected structure
+    // Create folder prefix based on expected structure
     const monthShort = new Date(year, month - 1)
       .toLocaleString("default", { month: "short" })
       .toLowerCase();
 
     const folderPrefix = `${customerKey}/${year}/${monthShort}/`;
+    logger.info(`🔍 [getDirectSasUrl] Searching for PDF in folder: ${folderPrefix}`);
 
     // Find the first PDF file in that folder
     let blobName = null;
-    for await (const blob of containerClient.listBlobsFlat({
-      prefix: folderPrefix,
-    })) {
+    for await (const blob of containerClient.listBlobsFlat({ prefix: folderPrefix })) {
+      logger.info(`🔍 [getDirectSasUrl] Found blob: ${blob.name}`);
       if (blob.name.endsWith(".pdf")) {
         blobName = blob.name;
-        break; // Found it, stop searching
+        logger.info(`✅ [getDirectSasUrl] PDF found: ${blobName}`);
+        break;
       }
     }
 
     if (!blobName) {
+      logger.warn(`❌ [getDirectSasUrl] No PDF found in folder: ${folderPrefix}`);
       return res.status(404).json({
         error: `No PDF report found in folder: ${folderPrefix}`,
       });
     }
 
-    // Create blob URL
-    const blobUrl = `https://socwatchtowerreports.blob.core.windows.net/customerreports/${blobName}`;
+    // Construct blob URL
+    const blobUrl = `https://${process.env.AZURE_STORAGE_ACCOUNT_NAME}.blob.core.windows.net/${process.env.AZURE_CONTAINER_NAME}/${blobName}`;
+    logger.info(`[getDirectSasUrl] Blob URL: ${blobUrl}`);
 
-    // Create SAS token that's valid for 1 hour
+    // SAS expiration time (1 hour)
     const sasExpiresOn = new Date();
     sasExpiresOn.setMinutes(sasExpiresOn.getMinutes() + 60);
 
-    // Parse the blob URL to extract the correct container and blob name
+    // Parse blob URL to extract container and blob name
     const blobUrlObj = new URL(blobUrl);
     const pathParts = blobUrlObj.pathname.split("/");
 
-    // The first part after the hostname is the container name
-    const containerName = pathParts[1];
+    const containerName = pathParts[1]; // should be your container name
+    const fullBlobName = decodeURIComponent(pathParts.slice(2).join("/")); // decode to match exact blob name
 
-    // The rest is the blob path (including folders)
-    const fullBlobName = pathParts.slice(2).join("/");
+    logger.info(`🔐 [getDirectSasUrl] Generating SAS for container: "${containerName}", blob: "${fullBlobName}"`);
 
-    logger.info(`🔐 Container: "${containerName}", Blob: "${fullBlobName}"`);
-
-    // Generate SAS token with the correct container and blob name
+    // Generate SAS token
     const sasToken = generateBlobSASQueryParameters(
       {
-        containerName: containerName,
+        containerName,
         blobName: fullBlobName,
-        permissions: BlobSASPermissions.parse("r"), // Read permission
+        permissions: BlobSASPermissions.parse("r"),
         expiresOn: sasExpiresOn,
       },
       new StorageSharedKeyCredential(
@@ -443,28 +434,40 @@ async function getDirectSasUrl(req, res) {
       )
     );
 
-    // Construct SAS URL with the original blob URL
     const sasUrl = `${blobUrl}?${sasToken}`;
+    logger.info(`🔗 [getDirectSasUrl] Generated direct SAS URL for ${blobName}`);
 
-    logger.info(`🔗 Generated direct SAS URL for ${blobName}`);
-
-    // Extract just the filename for the response
+    // Extract filename for response
     const fileName = blobName.split("/").pop();
+
+    logger.info(`[getDirectSasUrl] Responding with fileName: "${fileName}", expiresOn: ${sasExpiresOn}`);
 
     res.json({
       downloadUrl: sasUrl,
-      fileName: fileName,
+      fileName,
       expiresOn: sasExpiresOn,
       customerKey,
       blobPath: blobName,
     });
   } catch (error) {
-    logger.error("❌ Error generating direct SAS URL:", error);
+    logger.error("❌ [getDirectSasUrl] Error generating direct SAS URL:", error);
     res.status(500).json({ error: "Failed to generate download URL" });
   }
 }
 
 // Function to get all available reports for the authenticated user's customer
+// Helper function to get past N months (excluding current month)
+function getPastMonths(count = 5) {
+  const now = new Date();
+  const months = [];
+  for (let i = 1; i <= count; i++) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ month: date.getMonth() + 1, year: date.getFullYear() });
+  }
+  return months;
+}
+
+// Function to get available reports for the authenticated user's customer (past 5 months only)
 async function getAvailableReportsForCustomer(req, res) {
   try {
     logger.info(`🚀 getAvailableReportsForCustomer called`);
@@ -497,13 +500,22 @@ async function getAvailableReportsForCustomer(req, res) {
     // Get the ReportStatus model from reports DB
     const ReportStatus = getReportsStatusModel();
 
-    // Find all verified reports for this customer
+    // Get past 5 months (excluding current month)
+    const pastMonths = getPastMonths(5);
+
+    // Build query for those months/years
+    const orConditions = pastMonths.map(({ month, year }) => ({
+      month,
+      year,
+    }));
+
     logger.info(
-      `🔍 Searching for verified reports for customer: "${customerKey}"`
+      `🔍 Searching for verified reports for customer: "${customerKey}" in past 5 months`
     );
     const reports = await ReportStatus.find({
       customerKey,
       status: "verified",
+      $or: orConditions,
     }).sort({ year: -1, month: -1 });
 
     logger.info(`📊 Found ${reports.length} verified reports in database`);
@@ -901,72 +913,6 @@ async function createManualTestReport(req, res) {
   }
 }
 
-// Function to check other databases for customer data
-async function checkOtherDatabases(req, res) {
-  try {
-    console.log("=== CHECKING OTHER DATABASES ===");
-
-    const customerIdentifier = req.customerName;
-    const customerKey = getCustomerKey(customerIdentifier);
-
-    // List of candidate databases to check
-    const candidateDatabases = [
-      "reports_db",
-      "socwatchtower",
-      "test",
-      "sharddb",
-    ];
-    const results = {};
-
-    for (const dbName of candidateDatabases) {
-      try {
-        console.log(`\n--- Checking database: ${dbName} ---`);
-
-        // Temporarily switch to other database
-        const otherDb = mongoose.connection.useDb(dbName);
-
-        // Get the 'reportstatuses' collection from that database
-        const collection = otherDb.collection("reportstatuses");
-
-        // Check if the collection exists and count documents for our customer
-        const count = await collection.countDocuments({
-          customerKey: customerKey,
-        });
-
-        // If we find documents, get the details
-        let reports = [];
-        if (count > 0) {
-          reports = await collection
-            .find({ customerKey: customerKey })
-            .toArray();
-        }
-
-        results[dbName] = {
-          accessible: true,
-          reportCount: count,
-          reports: reports,
-        };
-
-        console.log(`Found ${count} reports for ${customerKey} in ${dbName}`);
-      } catch (error) {
-        console.log(`Error accessing ${dbName}: ${error.message}`);
-        results[dbName] = {
-          accessible: false,
-          error: error.message,
-        };
-      }
-    }
-
-    res.json({
-      currentDatabase: mongoose.connection.name,
-      customerKey,
-      results,
-    });
-  } catch (error) {
-    console.error("Error checking other databases:", error);
-    res.status(500).json({ error: error.message });
-  }
-}
 
 export {
   getReportSasUrl,
@@ -976,7 +922,6 @@ export {
   createTestReport,
   createMultipleTestReports,
   createManualTestReport,
-  checkOtherDatabases,
   initializeReportsDBConnection, // Export for potential initialization in app startup
   checkReportExists, // For preventing duplicate generation
   getDirectSasUrl, // For your one-time manual upload
