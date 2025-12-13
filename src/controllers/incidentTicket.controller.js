@@ -10,11 +10,25 @@ const statusMap = {
   escalated: 6,
 };
 
+/**
+ * Controller for GET /incident_ticket_table
+ *
+ * Fetches paginated incident tickets for the authenticated customer, with filtering and date range support.
+ *
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ *
+ * @returns {Object} 200 - Incident tickets fetched successfully
+ * @returns {null} 204 - No tickets found
+ * @returns {Object} 400 - Invalid filter format or missing customer info
+ * @returns {Object} 500 - Internal Server Error
+ */
 export const getIncidentTickets = catchAsync(async (req, res) => {
   const { page = 0, limit = 10, filters, startDate, endDate } = req.query;
 
   const mongoFilters = {};
 
+  // Parse filters if provided
   if (filters) {
     try {
       const parsedFilters = JSON.parse(filters);
@@ -56,7 +70,6 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
                 $in: possibleMatches.map((match) => statusMap[match]),
               };
             } else {
-              console.log(`No status match found for "${value}"`);
               mongoFilters[dbField] = -1;
             }
           }
@@ -65,13 +78,14 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
         }
       }
     } catch (error) {
-      console.error("Error parsing filters:", error);
+      // 400 Bad Request for invalid filter format
       return res
         .status(400)
         .json(new ApiResponse(400, null, "Invalid filter format"));
     }
   }
 
+  // Add date range filter if provided
   if (startDate || endDate) {
     mongoFilters.created_at = mongoFilters.created_at || {};
     if (startDate) {
@@ -84,6 +98,7 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
 
   // Check if customerName is available from middleware
   if (!req.customerName) {
+    // 400 Bad Request for missing customer info
     return res
       .status(400)
       .json(new ApiResponse(400, null, "Customer information is required"));
@@ -98,25 +113,25 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
       mongoFilters
     );
 
-    // Handle 204 No Content when no tickets are found
+    // 204 No Content when no tickets are found
     if (result.tickets && result.tickets.length === 0) {
-      return res.status(204).end(); // 204 responses should not include a body
+      return res.status(204).end();
     }
 
-    // Return 200 OK with the tickets data
+    // 200 OK with the tickets data
     return res
       .status(200)
       .json(
         new ApiResponse(200, result, "Incident tickets fetched successfully")
       );
   } catch (error) {
-    // Handle different error types
+    // 400 Bad Request for known errors
     if (error.statusCode === 400) {
       return res
         .status(400)
         .json(new ApiResponse(400, null, error.message || "Bad request"));
     } else {
-      // Default to 500 Internal Server Error for unhandled errors
+      // 500 Internal Server Error for unhandled errors
       return res
         .status(500)
         .json(

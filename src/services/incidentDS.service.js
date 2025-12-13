@@ -1,6 +1,19 @@
 import Incident from "../models/incident.model.js";
 import { ApiError } from "../utils/ApiError.js";
 
+/**
+ * Service: getIncidentsDetectionSource
+ *
+ * Fetches incident counts by detection source for a given month and customer.
+ *
+ * @param {string} month - Month in YYYY-MM format (required)
+ * @param {string} customerName - Name of the customer (required)
+ * @param {boolean} includeEscalatedOnly - If true, only include escalated incidents
+ *
+ * @returns {Object} - Incident counts by detection source
+ * @throws {ApiError} 400 - Missing required parameters
+ * @throws {ApiError} 500 - Error fetching incident detection source data
+ */
 export const getIncidentsDetectionSource = async (
   month,
   customerName,
@@ -71,8 +84,6 @@ export const getIncidentsDetectionSource = async (
 
     detectionsourceCounts.forEach((item) => {
       let incidentType = item._id.incident_type || "Unknown";
-      
-      // Replace "Unknown" with "Others"
       if (incidentType === "Unknown") {
         incidentType = "Others";
       }
@@ -108,7 +119,7 @@ export const getIncidentsDetectionSource = async (
   }
 };
 
-// Export a wrapper function for escalated incidents
+// Wrapper for escalated incidents
 export const getIncidentsDetectionSourceEscalation = async (
   month,
   customerName

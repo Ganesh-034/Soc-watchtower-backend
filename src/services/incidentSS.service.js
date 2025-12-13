@@ -1,5 +1,19 @@
 import Incident from "../models/incident.model.js";
+import { ApiError } from "../utils/ApiError.js";
 
+/**
+ * Service: getIncidentsSubStatus
+ *
+ * Fetches incident counts by sub-status for a given month and customer.
+ *
+ * @param {string} month - Month in YYYY-MM format (required)
+ * @param {string} customerName - Name of the customer (required)
+ * @param {boolean} includeEscalatedOnly - If true, only include escalated incidents
+ *
+ * @returns {Object} - Incident counts by sub-status
+ * @throws {ApiError} 400 - Missing required parameters
+ * @throws {ApiError} 500 - Error fetching incident sub-status data
+ */
 export const getIncidentsSubStatus = async (
   month,
   customerName,
@@ -7,11 +21,10 @@ export const getIncidentsSubStatus = async (
 ) => {
   try {
     if (!month || !customerName) {
-      const error = new Error(
+      throw new ApiError(
+        400,
         "Both month and customerName are required for fetching sub-status data."
       );
-      error.statusCode = 400;
-      throw error;
     }
 
     const collection = Incident.collection;
@@ -57,10 +70,7 @@ export const getIncidentsSubStatus = async (
     const cleanedSubstatusCounts = substatusCounts.map((item) => {
       if (!item._id) return item;
 
-      let cleanedId = item._id;
-
-      cleanedId = cleanedId.replaceAll("&nbsp;", " ");
-
+      let cleanedId = item._id.replaceAll("&nbsp;", " ");
       if (cleanedId.includes("(")) {
         cleanedId = cleanedId.split("(")[0].trim();
       }
@@ -76,12 +86,29 @@ export const getIncidentsSubStatus = async (
     };
   } catch (error) {
     console.error("Error in getIncidentsSubStatus:", error);
-    error.statusCode = error.statusCode || 500;
-    throw error;
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      500,
+      "Error fetching incident sub-status data: " + error.message
+    );
   }
 };
 
-// NEW: Function specifically for report generation that excludes health incidents
+/**
+ * Service: getIncidentsSubStatusForReport
+ *
+ * Fetches incident counts by sub-status for a given month and customer, excluding health incidents.
+ *
+ * @param {string} month - Month in YYYY-MM format (required)
+ * @param {string} customerName - Name of the customer (required)
+ * @param {boolean} includeEscalatedOnly - If true, only include escalated incidents
+ *
+ * @returns {Object} - Incident counts by sub-status (excluding health incidents)
+ * @throws {ApiError} 400 - Missing required parameters
+ * @throws {ApiError} 500 - Error fetching incident sub-status data
+ */
 export const getIncidentsSubStatusForReport = async (
   month,
   customerName,
@@ -89,11 +116,10 @@ export const getIncidentsSubStatusForReport = async (
 ) => {
   try {
     if (!month || !customerName) {
-      const error = new Error(
+      throw new ApiError(
+        400,
         "Both month and customerName are required for fetching sub-status data."
       );
-      error.statusCode = 400;
-      throw error;
     }
 
     const collection = Incident.collection;
@@ -140,10 +166,7 @@ export const getIncidentsSubStatusForReport = async (
     const cleanedSubstatusCounts = substatusCounts.map((item) => {
       if (!item._id) return item;
 
-      let cleanedId = item._id;
-
-      cleanedId = cleanedId.replaceAll("&nbsp;", " ");
-
+      let cleanedId = item._id.replaceAll("&nbsp;", " ");
       if (cleanedId.includes("(")) {
         cleanedId = cleanedId.split("(")[0].trim();
       }
@@ -159,16 +182,22 @@ export const getIncidentsSubStatusForReport = async (
     };
   } catch (error) {
     console.error("Error in getIncidentsSubStatusForReport:", error);
-    error.statusCode = error.statusCode || 500;
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      500,
+      "Error fetching incident sub-status data (report): " + error.message
+    );
   }
 };
 
-// Export a wrapper function for escalated incidents (for dashboard)
+// Wrapper for escalated incidents (for dashboard)
 export const getIncidentsSubStatusEscalation = async (month, customerName) => {
   return getIncidentsSubStatus(month, customerName, true);
 };
 
-// Export a wrapper function for escalated incidents (for reports)
+// Wrapper for escalated incidents (for reports)
 export const getIncidentsSubStatusEscalationForReport = async (
   month,
   customerName

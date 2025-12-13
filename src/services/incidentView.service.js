@@ -3,8 +3,22 @@ import https from "node:https";
 import { ApiError } from "../utils/ApiError.js";
 import logger from "../config/logger.js";
 import Incident from "../models/incident.model.js";
-import UserCount from "../models/incident.model.view.js";  
+import UserCount from "../models/incident.model.view.js";
 
+/**
+ * Service: getIncidentDetails
+ *
+ * Fetches incident details and AI summary for the given incident ID, customer name, and customer OID.
+ * Enforces daily AI generation limit per user.
+ *
+ * @param {string} incidentId - Incident ID (required)
+ * @param {string} customerName - Customer name (required)
+ * @param {string} customeroid - Customer OID (required)
+ * @returns {Object} - Incident details and summary
+ * @throws {ApiError} 400 - Missing required parameters or unauthorized access
+ * @throws {ApiError} 429 - Daily AI generation limit reached
+ * @throws {ApiError} 500 - Internal Server Error
+ */
 export const getIncidentDetails = async (incidentId, customerName, customeroid) => {
   try {
     if (!incidentId || !customerName || !customeroid) {
@@ -15,7 +29,7 @@ export const getIncidentDetails = async (incidentId, customerName, customeroid) 
 
     // Check daily usage limit
     const today = new Date().toISOString().slice(0, 10);
-    
+
     const userCountDoc = await UserCount.findOneAndUpdate(
       { userOid: customeroid, date: today },
       {
@@ -23,27 +37,26 @@ export const getIncidentDetails = async (incidentId, customerName, customeroid) 
         $setOnInsert: { createdAt: new Date().toISOString() },
         $set: { updatedAt: new Date().toISOString() }
       },
-      { upsert: true, new: true } // Return the updated document
+      { upsert: true, new: true }
     );
-    
-    // Check if user has exceeded daily limit
+
+    // 429 Too Many Requests if user has exceeded daily limit
     if (userCountDoc.count > 5) {
-      
       await UserCount.updateOne(
         { userOid: customeroid, date: today },
         { $inc: { count: -1 } }
       );
-      
       logger.warn(`User ${customeroid} has reached their daily AI generation limit of 5 requests`);
       throw new ApiError(429, "Daily limit reached: Only 5 AI generations allowed per day");
     }
 
-    // 1️⃣ Fetch the incident from MongoDB
+    // Fetch the incident from MongoDB
     const incident = await Incident.findOne({
       _id: incidentId,
       customer_name: customerName,
     });
 
+    // 400 Bad Request if incident not found or unauthorized
     if (!incident) {
       logger.warn(
         `Unauthorized access attempt: User from customer "${customerName}" tried to access incident ID "${incidentId}" which does not belong to them.`
@@ -56,7 +69,7 @@ export const getIncidentDetails = async (incidentId, customerName, customeroid) 
 
     logger.info(`Incident fetched for ID: ${incidentId}`);
 
-    // 2️⃣ Prepare prompt for Azure OpenAI
+    // Prepare prompt for Azure OpenAI
     const prompt = `
     You'll get the SOC Ticket details in JSON format, your task is to understand the details provided to you and based on that generate a good summary on what happened, when happened and what was done basically a good summary for anyone, dont assume or recommend anything just summarize. Do NOT use any markdown formatting, bold, italics, asterisks, headings, or special characters. Provide plain text only.
 
@@ -64,7 +77,7 @@ export const getIncidentDetails = async (incidentId, customerName, customeroid) 
     ${JSON.stringify(incident, null, 2)}
     `;
 
-    // 3️⃣ Send request to Azure OpenAI
+    // Send request to Azure OpenAI
     const azureEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
     const deploymentName = process.env.AZURE_OPENAI_DEPLOYMENT_ID;
     const apiKey = process.env.AZURE_OPENAI_KEY;
@@ -95,7 +108,6 @@ export const getIncidentDetails = async (incidentId, customerName, customeroid) 
     const summary =
       aiResponse.data.choices?.[0]?.message?.content || "No summary generated.";
 
-    // 4️⃣ Return both data and summary
     logger.info(`Summary generated for incident ID: ${incidentId}`);
 
     return {
