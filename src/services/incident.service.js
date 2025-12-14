@@ -1,3 +1,4 @@
+// services/incident.service.js
 import Incident from "../models/incident.model.js";
 import { ApiError } from "../utils/ApiError.js";
 
@@ -17,9 +18,7 @@ export const getTotalIncidents = async (customerName) => {
     const reportMonth = now.getUTCMonth();
 
     const monthStart = new Date(Date.UTC(reportYear, reportMonth, 1));
-    const monthEnd = new Date(
-      Date.UTC(reportYear, reportMonth + 1, 0, 23, 59, 59, 999)
-    );
+    const monthEnd = new Date(Date.UTC(reportYear, reportMonth + 1, 0, 23, 59, 59, 999));
 
     // ----- Single aggregation: normalize created_at + filter by month + compute totals -----
     const pipeline = [
