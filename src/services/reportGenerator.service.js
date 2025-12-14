@@ -1211,8 +1211,8 @@ async function generateMonthlyReportForCustomer(
       reportMonth
     );
     logger.info(`✅ Ticket summaries generated for ${customerDisplayName}`);
-    logger.info(`✅ eeeeeeeeeeeeeee ${data.incidentTicketSummary}`);
-    logger.info(`✅ ttttttttttttttttttttttt ${data.healthTicketSummary}`);
+    logger.info(`✅ Incident Ticket Summary: ${data.incidentTicketSummary}`);
+    logger.info(`✅ Health Ticket Summary ${data.healthTicketSummary}`);
 
     logger.info(
       `🧠 Generating executive summary with Azure OpenAI for ${customerDisplayName}...`
@@ -2391,11 +2391,11 @@ function scheduleReportVerification() {
 
 // Schedule: Run on 1st of every month at 00:00
 function scheduleMonthlyReport() {
-  schedule.scheduleJob("0 0 1 * *", () => {
+  schedule.scheduleJob("0 0 2 * *", () => {
     generateMonthlyReport();
   });
   logger.info(
-    "📅 Monthly report generation scheduled for 1st of every month at 00:00 for all customers (previous month)"
+    "📅 Monthly report generation scheduled for 2nd of every month at 00:00 for all customers (previous month)"
   );
 }
 

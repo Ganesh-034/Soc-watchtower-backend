@@ -496,73 +496,83 @@
         </div>
       </div>
 
-      <!-- 7th row: Incident Tables (Row 3) -->
-      <div class="grid-row">
-        <div class="grid-cell">
-          <div class="table-container">
-         <table class="table table-bordered" style="margin-top: 20px;">
-  <thead>
-    <tr>
-      <th>Affiliate</th>
-      <th>High</th>
-      <th>Medium</th>
-      <th>Low</th>
-    </tr>
-  </thead>
-  <tbody>
-    <% incidentSeverityData.forEach(function(item) { %>
-    <tr>
-      <td><%= item.affiliate %></td>
-      <td><%= item.high %></td>
-      <td><%= item.medium %></td>
-      <td><%= item.low %></td>
-    </tr>
-    <% }); %>
-  </tbody>
-</table>
-          </div>
-        </div>
-        <div class="grid-cell">
-          <div class="table-container">
-            <table class="table table-bordered" style="margin-top: 20px">
-              <thead>
-                <tr>
-                  <th>Affiliate</th>
-                  <% 
-                  // ✅ ENSURE WE ALWAYS HAVE DETECTION SOURCES FOR THE TABLE
-                  const tableDetectionSources = (detectionSources && detectionSources.length > 0) 
-                    ? detectionSources 
-                    : ['Active Directory', 'MDE', 'Entra ID', 'Firewall', 'O365'];
-                  %>
-                  <% tableDetectionSources.forEach(function(source) { %>
-                  <th><%= source %></th>
-                  <% }); %>
-                </tr>
-              </thead>
-              <tbody>
-                <% 
-                // ✅ ENSURE TABLE DATA HAS ALL SOURCES WITH DEFAULT VALUES
-                const tableDetectionData = incidentDetectionData.map(function(item) {
-                  const newItem = { affiliate: item.affiliate };
-                  tableDetectionSources.forEach(function(source) {
-                    newItem[source] = item[source] || 0;
-                  });
-                  return newItem;
-                });
-                %>
-                <% tableDetectionData.forEach(function(item) { %>
-                <tr>
-                  <td><%= item.affiliate %></td>
-                  <% tableDetectionSources.forEach(function(source) { %>
+    <!-- 7th row: Incident Tables (Row 3) -->
+  <div class="grid-row">
+  <div class="grid-cell">
+    <div class="table-container">
+      <table class="table table-bordered" style="margin-top: 20px;">
+        <thead>
+          <tr>
+            <th>Affiliate</th>
+            <th>High</th>
+            <th>Medium</th>
+            <th>Low</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% incidentSeverityData.forEach(function(item) { %>
+            <tr>
+              <td><%= item.affiliate %></td>
+              <td><%= item.high %></td>
+              <td><%= item.medium %></td>
+              <td><%= item.low %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="grid-cell">
+    <div class="table-container">
+      <table class="table table-bordered" style="margin-top: 20px">
+        <thead>
+          <tr>
+            <th>Affiliate</th>
+            <%
+              // Always define tableDetectionSources for the table
+              const tableDetectionSources = (detectionSources && detectionSources.length > 0)
+                ? detectionSources
+                : ['Active Directory', 'MDE', 'Entra ID', 'Firewall', 'O365'];
+            %>
+            <% tableDetectionSources.forEach(function(source) { %>
+              <th><%= source %></th>
+            <% }); %>
+          </tr>
+        </thead>
+        <%
+          // SAFELY define tableDetectionData here
+          const safeIncidentDetectionData = Array.isArray(incidentDetectionData) ? incidentDetectionData : [];
+          const tableDetectionData = safeIncidentDetectionData.map(function(item) {
+            const newItem = { affiliate: item.affiliate || 'N/A' };
+            tableDetectionSources.forEach(function(source) {
+              newItem[source] = item[source] || 0;
+            });
+            return newItem;
+          });
+        %>
+        <tbody>
+          <% if (tableDetectionData.length === 0) { %>
+            <tr>
+              <td>N/A</td>
+              <% tableDetectionSources.forEach(function(source) { %>
+                <td>0</td>
+              <% }); %>
+            </tr>
+          <% } else { %>
+            <% tableDetectionData.forEach(function(item) { %>
+              <tr>
+                <td><%= item.affiliate %></td>
+                <% tableDetectionSources.forEach(function(source) { %>
                   <td><%= item[source] || 0 %></td>
-                  <% }); %>
-                </tr>
                 <% }); %>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+              </tr>
+            <% }); %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
       <!-- 8th row: Handling Status Titles (Row 1) -->
       <div class="grid-row">

@@ -2,6 +2,17 @@
 import Incident from "../models/incident.model.js";
 import { ApiError } from "../utils/ApiError.js";
 
+/**
+ * Service: getTotalIncidents
+ *
+ * Fetches total, open, and closed incident counts for the current month for a customer.
+ *
+ * @param {string} customerName - Name of the customer (required)
+ *
+ * @returns {Object} - { total, open, closed }
+ * @throws {ApiError} 400 - Invalid or missing customerName
+ * @throws {ApiError} 500 - Error fetching incident counts
+ */
 export const getTotalIncidents = async (customerName) => {
   try {
     // 400 Bad Request for invalid/missing input
@@ -12,7 +23,7 @@ export const getTotalIncidents = async (customerName) => {
     const name = customerName.trim();
     const collection = Incident.collection;
 
-    // ----- Month boundaries (UTC): current month only -----
+    // Month boundaries (UTC): current month only
     const now = new Date();
     const reportYear = now.getUTCFullYear();
     const reportMonth = now.getUTCMonth();
@@ -20,11 +31,9 @@ export const getTotalIncidents = async (customerName) => {
     const monthStart = new Date(Date.UTC(reportYear, reportMonth, 1));
     const monthEnd = new Date(Date.UTC(reportYear, reportMonth + 1, 0, 23, 59, 59, 999));
 
-    // ----- Single aggregation: normalize created_at + filter by month + compute totals -----
+    // Aggregation pipeline
     const pipeline = [
       { $match: { customer_name: name } },
-
-      // Normalize created_at into a proper Date (handles string vs Date)
       {
         $addFields: {
           createdAt: {
@@ -42,36 +51,20 @@ export const getTotalIncidents = async (customerName) => {
           },
         },
       },
-
-      // Keep only incidents in the current month
-      {
-        $match: {
-          createdAt: { $gte: monthStart, $lte: monthEnd },
-        },
-      },
-
-      // Compute totals in one pass
+      { $match: { createdAt: { $gte: monthStart, $lte: monthEnd } } },
       {
         $group: {
           _id: null,
           total: { $sum: 1 },
-          open: {
-            $sum: {
-              $cond: [{ $eq: ["$status", 2] }, 1, 0],
-            },
-          },
-          closed: {
-            $sum: {
-              $cond: [{ $in: ["$status", [4, 5]] }, 1, 0],
-            },
-          },
+          open: { $sum: { $cond: [{ $eq: ["$status", 2] }, 1, 0] } },
+          closed: { $sum: { $cond: [{ $in: ["$status", [4, 5]] }, 1, 0] } },
         },
       },
     ];
 
     const [agg] = await collection.aggregate(pipeline).toArray();
 
-    // In case there are no incidents this month
+    // Return counts (0 if no incidents)
     return {
       total: agg?.total ?? 0,
       open: agg?.open ?? 0,

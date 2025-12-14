@@ -1,6 +1,19 @@
 import Incident from "../models/incident.model.js";
 import { ApiError } from "../utils/ApiError.js";
 
+/**
+ * Service: getIncidentsHandlingStatus
+ *
+ * Fetches incident counts by handling status for the last three months for a customer.
+ *
+ * @param {string} customerName - Name of the customer (required)
+ * @param {boolean} includeEscalatedOnly - If true, only include escalated incidents
+ * @param {boolean} isReport - If true, use previous month as the current month
+ *
+ * @returns {Object} - Incident counts by handling status
+ * @throws {ApiError} 400 - Missing customerName
+ * @throws {ApiError} 500 - Error fetching incident handling status data
+ */
 export const getIncidentsHandlingStatus = async (
   customerName,
   includeEscalatedOnly = false,
@@ -23,17 +36,15 @@ export const getIncidentsHandlingStatus = async (
     let reportMonth, reportYear;
 
     if (isReport) {
-      // For reports, use the previous month (the month the report is about)
       reportMonth = currentMonth - 1;
       reportYear = reportMonth < 0 ? currentYear - 1 : currentYear;
-      if (reportMonth < 0) reportMonth = 11; // December of previous year
+      if (reportMonth < 0) reportMonth = 11;
     } else {
-      // For dashboard, use the current month
       reportMonth = currentMonth;
       reportYear = currentYear;
     }
 
-    // ✅ Define UTC date boundaries
+    // UTC date boundaries
     const currentMonthStart = new Date(Date.UTC(reportYear, reportMonth, 1));
     const currentMonthEnd = new Date(
       Date.UTC(reportYear, reportMonth + 1, 0, 23, 59, 59, 999)
@@ -53,7 +64,7 @@ export const getIncidentsHandlingStatus = async (
       Date.UTC(reportYear, reportMonth - 1, 0, 23, 59, 59, 999)
     );
 
-    // ✅ Month identifiers and display names
+    // Month identifiers and display names
     const currentMonthId = `${reportYear}-${(reportMonth + 1)
       .toString()
       .padStart(2, "0")}`;
@@ -109,13 +120,13 @@ export const getIncidentsHandlingStatus = async (
       5: "Closed",
     };
 
-    // ✅ Build the match condition dynamically
+    // Build the match condition dynamically
     const matchCondition = {
       customer_name: customerName,
       status: { $in: [2, 3, 4, 5] },
     };
 
-    // ✅ Add escalation filter (case-insensitive)
+    // Add escalation filter (case-insensitive)
     if (includeEscalatedOnly) {
       matchCondition.customer_escalation = { $regex: /^yes$/i };
     }
@@ -134,7 +145,7 @@ export const getIncidentsHandlingStatus = async (
 
     const aggregationResults = await collection.aggregate(pipeline).toArray();
 
-    // ✅ Categorize results by month and status
+    // Categorize results by month and status
     for (const item of aggregationResults) {
       if (!item.created_at || typeof item.status !== "number") continue;
 
@@ -163,7 +174,6 @@ export const getIncidentsHandlingStatus = async (
   } catch (error) {
     console.error("Error in getIncidentsHandlingStatus:", error);
 
-    // Proper error handling with status codes
     if (error instanceof ApiError) {
       throw error;
     } else {
@@ -175,7 +185,7 @@ export const getIncidentsHandlingStatus = async (
   }
 };
 
-// ✅ Wrapper for escalated incidents
+// Wrapper for escalated incidents
 export const getIncidentsHandlingStatusEscalation = async (
   customerName,
   isReport = false
