@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import logger from "../config/logger.js";
 import Incident from "../models/incident.model.js";
 import UserCount from "../models/incident.model.view.js";
+import RolesCount from "../models/incident.model.view.roles.js"
 
 /**
  * Service: getIncidentDetails
@@ -18,7 +19,7 @@ import UserCount from "../models/incident.model.view.js";
  * @throws {ApiError} 400 - Missing required parameters or unauthorized access
  * @throws {ApiError} 429 - Daily AI generation limit reached
  * @throws {ApiError} 500 - Internal Server Error
- */
+ */ 
 export const getIncidentDetails = async (incidentId, customerName, customeroid) => {
   try {
     if (!incidentId || !customerName || !customeroid) {
@@ -27,29 +28,42 @@ export const getIncidentDetails = async (incidentId, customerName, customeroid) 
       );
     }
 
-    // Check daily usage limit
-    const today = new Date().toISOString().slice(0, 10);
-
-    const userCountDoc = await UserCount.findOneAndUpdate(
-      { userOid: customeroid, date: today },
-      {
-        $inc: { count: 1 },
-        $setOnInsert: { createdAt: new Date().toISOString() },
-        $set: { updatedAt: new Date().toISOString() }
-      },
-      { upsert: true, new: true }
-    );
-
-    // 429 Too Many Requests if user has exceeded daily limit
-    if (userCountDoc.count > 5) {
-      await UserCount.updateOne(
-        { userOid: customeroid, date: today },
-        { $inc: { count: -1 } }
-      );
-      logger.warn(`User ${customeroid} has reached their daily AI generation limit of 5 requests`);
-      throw new ApiError(429, "Daily limit reached: Only 5 AI generations allowed per day");
+    // Check customer role and access permission using RolesCount model
+    const roleData = await RolesCount.findOne({ userOid: customeroid }); 
+    
+    // Only apply rate limiting if role is not admin
+    let shouldApplyRateLimit = true;
+    
+    if (roleData && roleData.access === 'admin') {
+      shouldApplyRateLimit = false;
+      logger.info(`Admin user with OID ${customeroid} - bypassing rate limits`);
     }
 
+    // Apply rate limiting only if needed 
+    if (shouldApplyRateLimit) {
+      // Check daily usage limit
+      const today = new Date().toISOString().slice(0, 10);
+
+      const userCountDoc = await UserCount.findOneAndUpdate(
+        { userOid: customeroid, date: today },
+        {
+          $inc: { count: 1 },
+          $setOnInsert: { createdAt: new Date().toISOString() },
+          $set: { updatedAt: new Date().toISOString() }
+        },
+        { upsert: true, new: true }
+      );
+
+      // 429 Too Many Requests if user has exceeded daily limit
+      if (userCountDoc.count > 5) {
+        await UserCount.updateOne(
+          { userOid: customeroid, date: today },
+          { $inc: { count: -1 } }
+        );
+        logger.warn(`User ${customeroid} has reached their daily AI generation limit of 5 requests`);
+        throw new ApiError(429, "Daily limit reached: Only 5 AI generations allowed per day");
+      }
+    }
     // Fetch the incident from MongoDB
     const incident = await Incident.findOne({
       _id: incidentId,
