@@ -26,7 +26,6 @@ app.disable("etag");
 const allowedOrigins = [
   "https://www.soc-watchtower.com",
   "https://soc-watchtower.com",
-  "http://localhost:5173"
 ];
 
 // Configure CORS options with dynamic origin check
