@@ -1,3 +1,4 @@
+// services/incident.service.js
 import Incident from "../models/incident.model.js";
 import { ApiError } from "../utils/ApiError.js";
 
