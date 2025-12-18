@@ -11,7 +11,6 @@ router.use(authenticate, attachCustomerInfo);
  * Returns total, open, and closed incident counts for the current month for the authenticated customer.
  *
  * @header {string} Authorization - Bearer token (required)
- * @header {string} x-api-key - API key (required)
  * @query {string} customerName - Name of the customer (attached by middleware)
  *
  * @returns {Object} 200 - Incident counts fetched successfully

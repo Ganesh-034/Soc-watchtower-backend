@@ -11,7 +11,6 @@ router.use(authenticate, attachCustomerInfo);
  * Returns incident details and AI summary for the given incident ID, for the authenticated customer.
  *
  * @header {string} Authorization - Bearer token (required)
- * @header {string} x-api-key - API key (required)
  * @param {string} id - Incident ID (required, in URL path)
  * @returns {Object} 200 - Incident details and summary fetched successfully
  * @returns {Object} 204 - No incident details found for this ID/customer

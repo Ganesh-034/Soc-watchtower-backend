@@ -12,7 +12,6 @@ router.use(authenticate, attachCustomerInfo);
  * Returns paginated incident tickets for the authenticated customer, with filtering and date range support.
  *
  * @header {string} Authorization - Bearer token (required)
- * @header {string} x-api-key - API key (required)
  * @query {number} page - Page number (default: 0)
  * @query {number} limit - Page size (default: 10)
  * @query {string} filters - JSON string of filter objects

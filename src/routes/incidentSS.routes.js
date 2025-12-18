@@ -11,7 +11,6 @@ router.use(authenticate, attachCustomerInfo);
  * Returns incident counts by sub-status for a given month and customer.
  *
  * @header {string} Authorization - Bearer token (required)
- * @header {string} x-api-key - API key (required)
  * @query {string} month - Month in YYYY-MM format (required)
  * @query {string} customerName - Name of the customer (attached by middleware)
  *

@@ -22,7 +22,6 @@ router.use(authenticate, attachCustomerInfo);
  * @returns {Object} 401 - Unauthorized
  * @returns {Object} 403 - Forbidden
  * @returns {Object} 404 - Customer not found
- * @returns {Object} 415 - Unsupported Media Type
  * @returns {Object} 500 - Internal Server Error
  */
 router.get("/customer_details", incidentcustomerController.getCustomer);

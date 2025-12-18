@@ -11,7 +11,6 @@ router.use(authenticate, attachCustomerInfo);
  * Returns incident counts by severity for the last three months for the authenticated customer.
  *
  * @header {string} Authorization - Bearer token (required)
- * @header {string} x-api-key - API key (required)
  * @query {string} customerName - Name of the customer (attached by middleware)
  *
  * @returns {Object} 200 - Incident severity data fetched successfully
