@@ -20,7 +20,7 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
       const parsedFilters = JSON.parse(filters);
 
       for (const filter of parsedFilters) {
-        const { column, value } = filter;
+        const { column, values } = filter;
         const fieldMap = {
           id: "_id",
           subject: "subject",
@@ -37,31 +37,30 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
         };
 
         const dbField = fieldMap[column];
-
         if (!dbField) continue;
 
         if (column === "status") {
-          const normalizedValue = value.trim().toLowerCase();
-          const statusCode = statusMap[normalizedValue];
+          const normalizedValues = values.map(v => v.trim().toLowerCase());
+          const statusCodes = normalizedValues
+            .map(v => statusMap[v])
+            .filter(code => code !== undefined);
 
-          if (statusCode !== undefined) {
-            mongoFilters[dbField] = statusCode;
+          if (statusCodes.length === 1) {
+            mongoFilters[dbField] = statusCodes[0];
+          } else if (statusCodes.length > 1) {
+            mongoFilters[dbField] = { $in: statusCodes };
           } else {
-            const possibleMatches = Object.keys(statusMap).filter((status) =>
-              status.toLowerCase().includes(normalizedValue)
-            );
-
-            if (possibleMatches.length > 0) {
-              mongoFilters[dbField] = {
-                $in: possibleMatches.map((match) => statusMap[match]),
-              };
-            } else {
-              console.log(`No status match found for "${value}"`);
-              mongoFilters[dbField] = -1;
-            }
+            mongoFilters[dbField] = -1;
           }
         } else {
-          mongoFilters[dbField] = { $regex: value, $options: "i" };
+          if (values.length === 1) {
+            mongoFilters[dbField] = { $regex: values[0], $options: "i" };
+          } else if (values.length > 1) {
+            mongoFilters.$or = mongoFilters.$or || [];
+            for (const val of values) {
+              mongoFilters.$or.push({ [dbField]: { $regex: val, $options: "i" } });
+            }
+          }
         }
       }
     } catch (error) {

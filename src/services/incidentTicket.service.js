@@ -1,5 +1,19 @@
 import Incident from "../models/incident.model.js";
+import { ApiError } from "../utils/ApiError.js";
 
+/**
+ * Service: getIncidentTickets
+ *
+ * Fetches paginated incident tickets for a customer, with filtering and sorting.
+ *
+ * @param {number} page - Page number (default: 0)
+ * @param {number} limit - Page size (default: 10)
+ * @param {Object} filters - MongoDB filter object (must include customer_name)
+ *
+ * @returns {Object} - Paginated tickets and metadata
+ * @throws {ApiError} 400 - Missing customer_name filter
+ * @throws {ApiError} 500 - Error fetching incident tickets
+ */
 export const getIncidentTickets = async (
   page = 0,
   limit = 10,
@@ -7,7 +21,8 @@ export const getIncidentTickets = async (
 ) => {
   try {
     if (!filters.customer_name) {
-      throw new Error(
+      throw new ApiError(
+        400,
         "Customer name filter is required for fetching tickets. This is a security violation."
       );
     }
@@ -16,6 +31,7 @@ export const getIncidentTickets = async (
 
     const totalCount = await Incident.countDocuments(filters);
 
+    // Sort direction: if created_at is filtered, sort ascending, else descending
     const sortDirection = filters.created_at ? 1 : -1;
 
     const tickets = await Incident.find(filters)
@@ -54,10 +70,22 @@ export const getIncidentTickets = async (
     };
   } catch (error) {
     console.error("Error in getIncidentTickets:", error);
-    throw new Error("Error fetching incident tickets: " + error.message);
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      500,
+      "Error fetching incident tickets: " + error.message
+    );
   }
 };
 
+/**
+ * Maps status code to status string.
+ *
+ * @param {number} statusCode - Status code
+ * @returns {string} - Status string
+ */
 function mapStatus(statusCode) {
   if (statusCode === null || statusCode === undefined) {
     return "NA";

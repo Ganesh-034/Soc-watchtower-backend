@@ -1,5 +1,19 @@
 import { ApiError } from "../utils/ApiError.js";
-
+/**
+ * Service: getCustomer
+ *
+ * Fetch customer details by name.
+ *
+ * Validates the input, checks if the customer exists in the mapping,
+ * and returns display name and image information.
+ *
+ * @param {string} customerName - Name of the customer to fetch details for (required)
+ *
+ * @returns {Object} - Customer details { customerName, displayName, imageName }
+ * @throws {ApiError} 400 - Invalid or missing customerName
+ * @throws {ApiError} 404 - Customer not found
+ * @throws {ApiError} 500 - Error fetching customer information
+ */
 export const getCustomer = async (customerName) => {
   try {
     // 400 Bad Request for invalid/missing input

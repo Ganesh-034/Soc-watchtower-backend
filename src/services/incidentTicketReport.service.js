@@ -1,4 +1,5 @@
 import Incident from "../models/incident.model.js";
+import { ApiError } from "../utils/ApiError.js";
 
 // Helper function to format ticket data
 const formatTicket = (ticket) => ({
@@ -26,7 +27,6 @@ const formatTicket = (ticket) => ({
 // Helper function to map status codes to readable strings
 function mapStatus(statusCode) {
   if (statusCode == null) return "NA";
-
   const statusMap = {
     2: "Open",
     3: "Pending",
@@ -38,9 +38,16 @@ function mapStatus(statusCode) {
 }
 
 // Regex for November 2025 (matches strings like "2025-11-05T06:04:53Z")
-const november2025Regex = /^2025-09/;
+const november2025Regex = /^2025-11/;
 
-// Route 1: Get all Health incidents with customer escalation in November 2025
+/**
+ * Service: getHealthEscalationIncidents
+ * 
+ * Fetches all 'Health Incident' tickets with customer escalation for November 2025.
+ * 
+ * @returns {Object} - Tickets and meta info
+ * @throws {ApiError} 500 - Error fetching health escalation incidents
+ */
 export const getHealthEscalationIncidents = async () => {
   try {
     const filters = {
@@ -51,7 +58,6 @@ export const getHealthEscalationIncidents = async () => {
     };
 
     const tickets = await Incident.find(filters).sort({ created_at: 1 }).lean();
-
     const formattedTickets = tickets.map(formatTicket);
 
     return {
@@ -62,13 +68,21 @@ export const getHealthEscalationIncidents = async () => {
     };
   } catch (error) {
     console.error("Error in getHealthEscalationIncidents:", error);
-    throw new Error(
+    throw new ApiError(
+      500,
       "Error fetching health escalation incidents: " + error.message
     );
   }
 };
 
-// Route 2: Get all non-Health incidents with customer escalation in November 2025
+/**
+ * Service: getNonHealthEscalationIncidents
+ * 
+ * Fetches all non-'Health Incident' tickets with customer escalation for November 2025.
+ * 
+ * @returns {Object} - Tickets and meta info
+ * @throws {ApiError} 500 - Error fetching non-health escalation incidents
+ */
 export const getNonHealthEscalationIncidents = async () => {
   try {
     const filters = {
@@ -79,7 +93,6 @@ export const getNonHealthEscalationIncidents = async () => {
     };
 
     const tickets = await Incident.find(filters).sort({ created_at: 1 }).lean();
-
     const formattedTickets = tickets.map(formatTicket);
 
     return {
@@ -90,7 +103,8 @@ export const getNonHealthEscalationIncidents = async () => {
     };
   } catch (error) {
     console.error("Error in getNonHealthEscalationIncidents:", error);
-    throw new Error(
+    throw new ApiError(
+      500,
       "Error fetching non-health escalation incidents: " + error.message
     );
   }
