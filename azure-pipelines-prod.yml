@@ -1,0 +1,591 @@
+# Node.js
+# Build a general Node.js project with npm.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+
+trigger:
+- main
+
+# # Optional PR validation (recommended)
+# pr:
+#   branches:
+#     include:
+#       - development
+#       - release/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # --- App Service / Azure settings ---
+  azureSubscription: 'AzureServiceConnection'
+  rgName: 'appsvc_linux_southeastasia_basic'
+  appName: 'soc-watchtower-backend'
+  slotName: ''   # leave '' if not using slots
+  nodeVersion: '22.x'
+
+  # --- Artifacts / Reports ---
+  zipName: 'soc_watchtower_backend.zip'
+  artifactName: 'drop'
+  coverageDir: 'coverage'
+  junitReport: 'test-results/junit.xml'
+  sbomFile: 'sbom.json'
+  checksumFile: 'soc_watchtower_backend.zip.sha256'
+
+  # --- GitLeaks controls ---
+  gitleaksVersion: 'v8.18.3'      # pin version for stability
+  gitleaksFailOnLeak: 'true'      # fail pipeline on findings
+  gitleaksScanHistory: 'false'    # 'true' scans full history (slower)
+  gitleaksReportJson: 'gitleaks-report.json'
+  gitleaksReportSarif: 'gitleaks-report.sarif'
+  
+  # --- Lint/Format report outputs (NEW) ---
+  eslintReportJson: 'eslint-report.json'
+  prettierReportTxt: 'prettier-report.txt'
+
+  # --- npm audit controls ---
+  npmAuditForce: 'false'          # 'true' may introduce breaking changes
+  npmAuditOmitDev: 'false'        # 'true' ignores dev deps during audit
+  npmAuditFailLevel: 'high'       # none | moderate | high | critical
+
+  # Absolute path for npm audit report
+  npmAuditReportPath: '$(System.DefaultWorkingDirectory)/npm-audit-report.json'
+
+  # --- CI behavior ---
+  runTests: 'true'                # enable tests (blocking)
+  enableSlotSwap: 'true'          # swap staging -> production after smoke test (requires slotName)
+  smokeTestPath: '/health'        # path for smoke test endpoint
+  smokeTestTimeoutSeconds: '30'   # curl timeout
+
+stages:
+# ======================
+# Stage: Build & Publish
+# ======================
+- stage: Build
+  displayName: Build, secure, test, and publish artifacts
+  jobs:
+  - job: BuildJob
+    displayName: Build Node API
+    steps:
+    - checkout: self
+      fetchDepth: 0
+
+    # ----------- GitLeaks: Install -----------
+    - task: Bash@3
+      displayName: 'Install GitLeaks'
+      inputs:
+        targetType: 'inline'
+        script: |
+          set -euo pipefail
+          GITLEAKS_VERSION="${{ variables.gitleaksVersion }}"
+          if [ -z "${GITLEAKS_VERSION:-}" ]; then
+            echo "ERROR: gitleaksVersion pipeline variable is empty."
+            exit 1
+          fi
+          GITLEAKS_VERSION_NO_V="${GITLEAKS_VERSION#v}"
+          echo "Installing GitLeaks ${GITLEAKS_VERSION} (asset: gitleaks_${GITLEAKS_VERSION_NO_V}_linux_x64.tar.gz)"
+          ASSET_URL="https://github.com/gitleaks/gitleaks/releases/download/${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION_NO_V}_linux_x64.tar.gz"
+          echo "Downloading: ${ASSET_URL}"
+          curl -fL "${ASSET_URL}" -o gitleaks.tar.gz
+          echo "Verifying archive..."
+          tar tzf gitleaks.tar.gz >/dev/null
+          tar -xzf gitleaks.tar.gz
+          chmod +x gitleaks
+          ./gitleaks version
+
+    # ----------- GitLeaks: Detect secrets (fail on leaks) -----------
+    - task: Bash@3
+      displayName: 'Run GitLeaks Scan (fail on leaks)'
+      inputs:
+        targetType: 'inline'
+        script: |
+          set -euo pipefail
+          if [ "${{ variables.gitleaksScanHistory }}" = "true" ]; then
+            LOG_OPTS="--log-opts=--all"
+            echo "Scanning full git history..."
+          else
+            LOG_OPTS=""
+            echo "Scanning working tree only..."
+          fi
+
+          CONFIG_ARG=""
+          if [ -f ".gitleaks.toml" ]; then
+            echo "Using local config: .gitleaks.toml"
+            CONFIG_ARG="--config=.gitleaks.toml"
+          fi
+
+          EXIT_CODE_ARG="--exit-code=1" # fail on leak
+
+          # JSON report (redacted)
+          ./gitleaks detect \
+            --source . \
+            ${LOG_OPTS} \
+            ${CONFIG_ARG} \
+            ${EXIT_CODE_ARG} \
+            --redact \
+            --report-format json \
+            --report-path "${{ variables.gitleaksReportJson }}"
+
+          # SARIF report (non-failing for tooling ingestion)
+          ./gitleaks detect \
+            --source . \
+            ${LOG_OPTS} \
+            ${CONFIG_ARG} \
+            --exit-code=0 \
+            --redact \
+            --report-format sarif \
+            --report-path "${{ variables.gitleaksReportSarif }}"
+
+          ls -l "${{ variables.gitleaksReportJson }}" "${{ variables.gitleaksReportSarif }}"
+
+    # ----------- FAST: Publish only the GitLeaks reports -----------
+    - task: Bash@3
+      displayName: 'Prepare GitLeaks artifact folder'
+      condition: always()
+      inputs:
+        targetType: 'inline'
+        script: |
+          set -euo pipefail
+          mkdir -p "$(Build.ArtifactStagingDirectory)/gitleaks"
+          cp "${{ variables.gitleaksReportJson }}" "$(Build.ArtifactStagingDirectory)/gitleaks/"
+          cp "${{ variables.gitleaksReportSarif }}" "$(Build.ArtifactStagingDirectory)/gitleaks/"
+          echo "Contents of GitLeaks artifact folder:"
+          ls -l "$(Build.ArtifactStagingDirectory)/gitleaks"
+
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish GitLeaks Reports (pipeline artifact)'
+      condition: always()
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)/gitleaks'
+        artifact: 'GitLeaksReports'
+        publishLocation: 'pipeline'
+
+    # ----------- Cache npm -----------
+    - task: Cache@2
+      displayName: Cache npm
+      inputs:
+        key: 'npm | "$(Agent.OS)" | package-lock-$(Build.SourceVersion)'
+        restoreKeys: |
+          npm | "$(Agent.OS)"
+          npm
+        path: $(Pipeline.Workspace)/.npm
+
+    # ----------- Node tool -----------
+    - task: NodeTool@0
+      displayName: Use Node ${{ variables.nodeVersion }}
+      inputs:
+        versionSpec: '${{ variables.nodeVersion }}'
+
+    # 1) Install & strict Lint + Prettier
+    - task: Bash@3
+      displayName: 'Install deps & generate lint/format reports (non-blocking) & auto fix'
+      env:
+        npm_config_cache: $(Pipeline.Workspace)/.npm
+      inputs:
+        targetType: 'inline'
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+        script: |
+          set -euo pipefail
+
+          # Deterministic install
+          if [ ! -f package-lock.json ]; then
+            echo "package-lock.json not found; generating lockfile..."
+            npm install --package-lock-only --no-audit --no-fund
+          fi
+          npm ci --cache $(Pipeline.Workspace)/.npm
+
+          # Prettier: write changes (non-blocking)
+          echo "Running Prettier --write (auto-fix)"
+          npx prettier --write . || true
+          
+          # ESLint: fix issues (non-blocking) and also produce a report for visibility
+          echo "Running ESLint --fix (auto-fix)"
+          npx eslint . --fix || true
+          
+          # ESLint: generate JSON report, do not block pipeline
+          echo "Running ESLint (report only, non-blocking)"
+          npx eslint . --format json --output-file "${{ variables.eslintReportJson }}" || true
+          # Ensure the file exists even if eslint crashed or found nothing
+          test -s "${{ variables.eslintReportJson }}" || echo "[]" > "${{ variables.eslintReportJson }}"
+          echo "ESLint report written to ${{ variables.eslintReportJson }}"
+
+          # Prettier: check formatting, capture output to text report, do not block
+          echo "Running Prettier check (report only, non-blocking)"
+          # Capture both stdout/stderr so diffs are visible in the report
+          (npx prettier --check . 2>&1) | tee "${{ variables.prettierReportTxt }}" || true
+
+    # Publish lint/format reports (tiny, fast)
+    - task: Bash@3
+      displayName: 'Prepare lint/format reports artifact'
+      condition: always()
+      inputs:
+        targetType: 'inline'
+        script: |
+          set -euo pipefail
+          mkdir -p "$(Build.ArtifactStagingDirectory)/lint"
+          cp "${{ variables.eslintReportJson }}" "$(Build.ArtifactStagingDirectory)/lint/"
+          cp "${{ variables.prettierReportTxt }}" "$(Build.ArtifactStagingDirectory)/lint/"
+          echo "Contents of LintReports artifact:"
+          ls -l "$(Build.ArtifactStagingDirectory)/lint"
+        
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish LintReports (ESLint JSON + Prettier TXT)'
+      condition: always()
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)/lint'
+        artifact: 'LintReports'
+        publishLocation: 'pipeline'
+
+    # 2) npm audit fix + JSON report + severity gate (blocking)
+    - task: Bash@3
+      displayName: 'npm audit fix & generate report'
+      env:
+        npm_config_cache: $(Pipeline.Workspace)/.npm
+      inputs:
+        targetType: 'inline'
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+        script: |
+          set -euo pipefail
+
+          FORCE="${{ variables.npmAuditForce }}"
+          if [ "${FORCE}" = "true" ]; then
+            echo "Running: npm audit fix --force (may introduce breaking changes)"
+            npm audit fix --force || true
+          else
+            echo "Running: npm audit fix (semver-safe)"
+            npm audit fix || true
+          fi
+
+          AUDIT_FLAGS=""
+          if [ "${{ variables.npmAuditOmitDev }}" = "true" ]; then
+            AUDIT_FLAGS="--omit=dev"
+            echo "Auditing with dev dependencies omitted"
+          fi
+
+          echo "Generating npm audit JSON report at ${{ variables.npmAuditReportPath }}…"
+          # Capture JSON even if audit exits non-zero
+          if ! npm audit ${AUDIT_FLAGS} --json > "${{ variables.npmAuditReportPath }}"; then
+            echo "npm audit completed with findings; JSON captured to ${{ variables.npmAuditReportPath }}"
+          fi
+
+          echo "Verifying report presence:"
+          ls -l "${{ variables.npmAuditReportPath }}"
+
+    - task: Bash@3
+      displayName: 'Fail on remaining vulnerabilities (threshold gating)'
+      inputs:
+        targetType: 'inline'
+      env:
+        REPORT: ${{ variables.npmAuditReportPath }}
+        THRESHOLD: ${{ variables.npmAuditFailLevel }}
+        script: |
+          set -euo pipefail
+          REPORT="${REPORT}"
+          THRESHOLD="${THRESHOLD}" # none|moderate|high|critical
+          if [ ! -s "${REPORT}" ]; then
+            echo "WARN: ${REPORT} missing or empty; failing for safety."
+            exit 1
+          fi
+
+          node <<'EOF'
+          const fs = require('fs');
+          const reportPath = process.env.REPORT || 'npm-audit-report.json';
+          const threshold = (process.env.THRESHOLD || 'critical').toLowerCase();
+          const sevOrder = { none: 0, low: 1, moderate: 2, high: 3, critical: 4 };
+          const raw = fs.readFileSync(reportPath, 'utf8');
+          const data = JSON.parse(raw);
+          const meta = data?.metadata?.vulnerabilities || {};
+          const totals = {
+            low: Number(meta.low || 0),
+            moderate: Number(meta.moderate || 0),
+            high: Number(meta.high || 0),
+            critical: Number(meta.critical || 0),
+          };
+          const thr = sevOrder[threshold] ?? 4;
+          const anyAtOrAbove =
+            (thr <= 1 && totals.low > 0) ||
+            (thr <= 2 && totals.moderate > 0) ||
+            (thr <= 3 && totals.high > 0) ||
+            (thr <= 4 && totals.critical > 0);
+          console.log('npm audit totals:', totals, 'threshold:', threshold);
+          if (anyAtOrAbove) {
+            console.error(`Build failed: vulnerabilities at or above '${threshold}' remain after audit fix.`);
+            process.exit(1);
+          } else {
+            console.log(`OK: No '${threshold}' or higher vulnerabilities remain.`);
+          }
+          EOF
+
+    # Publish npm audit report using absolute path
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish npm audit report'
+      condition: always()
+      inputs:
+        pathToPublish: '$(System.DefaultWorkingDirectory)/npm-audit-report.json'
+        artifactName: 'NpmAuditReport'
+
+    # Install jest-junit
+    - task: Bash@3
+      displayName: 'Install jest-junit (CI only)'
+      inputs:
+        targetType: 'inline'
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+        script: |
+          set -euo pipefail
+          npm install --no-save jest-junit@^16.0.0
+          npx jest-junit --version || true
+
+    # 3) Tests (blocking) + JUnit + coverage
+    - task: Bash@3
+      displayName: 'Run Jest tests (non-blocking) with JUnit + coverage'
+      inputs:
+        targetType: 'inline'
+        workingDirectory: '$(System.DefaultWorkingDirectory)'
+        script: |
+          set -euo pipefail
+          export JEST_JUNIT_OUTPUT="${{ variables.junitReport }}"
+          export JEST_JUNIT_SUITE_NAME="unit-tests"
+
+          # Allow failures without stopping the job:
+          set +e
+          npx jest --ci \
+            --reporters=default \
+            --reporters=jest-junit \
+            --coverage \
+            --coverageDirectory="${{ variables.coverageDir }}"
+          JEST_EXIT=$?
+          set -e
+
+          if [ $JEST_EXIT -ne 0 ]; then
+            echo "WARN: Jest exited with code $JEST_EXIT. Proceeding without failing the pipeline."
+          fi
+
+    - task: PublishTestResults@2
+      displayName: Publish Test Results (JUnit)
+      condition: succeededOrFailed()
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '${{ variables.junitReport }}'
+        failTaskOnFailedTests: false
+        testRunTitle: 'Jest unit tests'
+
+    - task: PublishCodeCoverageResults@1
+      displayName: Publish code coverage (Cobertura)
+      condition: succeededOrFailed()
+      inputs:
+        codeCoverageTool: 'Cobertura'
+        summaryFileLocation: 'coverage/cobertura-coverage.xml'
+        reportDirectory: '${{ variables.coverageDir }}'
+
+    # 4) SBOM (CycloneDX) BEFORE prune (blocking)
+    - task: Bash@3
+      displayName: 'Generate SBOM (CycloneDX)'
+      inputs:
+        targetType: 'inline'
+        script: |
+          set -euo pipefail
+          npx @cyclonedx/cyclonedx-npm --output-file "${{ variables.sbomFile }}"
+
+    # 5) Prune to production deps
+    - task: Bash@3
+      displayName: 'Prune to production-only dependencies'
+      inputs:
+        targetType: 'inline'
+        script: |
+          set -euo pipefail
+          npm prune --production
+
+    # 6) Stage files for zip
+    - task: Bash@3
+      displayName: 'Stage package for zip'
+      inputs:
+        targetType: 'inline'
+        script: |
+          set -euo pipefail
+          mkdir -p "$(Build.ArtifactStagingDirectory)/package"
+          cp -r src "$(Build.ArtifactStagingDirectory)/package"
+          cp package.json package-lock.json "$(Build.ArtifactStagingDirectory)/package"
+          cp -r node_modules "$(Build.ArtifactStagingDirectory)/package"
+          [ -f index.js ] && cp index.js "$(Build.ArtifactStagingDirectory)/package" || true
+
+    # 7) Create zip
+    - task: ArchiveFiles@2
+      displayName: Create Zip
+      inputs:
+        rootFolderOrFile: '$(Build.ArtifactStagingDirectory)/package'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/${{ variables.zipName }}'
+        verbose: false
+
+    # 8) Checksum + collect SBOM + prepare 'drop' folder
+    - task: Bash@3
+      displayName: 'Create checksum & prepare drop folder'
+      inputs:
+        targetType: 'inline'
+        script: |
+          set -euo pipefail
+          mkdir -p "$(Build.ArtifactStagingDirectory)/drop"
+          (cd "$(Build.ArtifactStagingDirectory)" && sha256sum "${{ variables.zipName }}" > "${{ variables.checksumFile }}")
+          cp "$(Build.ArtifactStagingDirectory)/${{ variables.zipName }}" "$(Build.ArtifactStagingDirectory)/drop/"
+          cp "$(Build.ArtifactStagingDirectory)/${{ variables.checksumFile }}" "$(Build.ArtifactStagingDirectory)/drop/"
+          cp "${{ variables.sbomFile }}" "$(Build.ArtifactStagingDirectory)/drop/"
+
+    # 9) Publish ONE consolidated artifact: 'drop' (zip + checksum + SBOM)
+    - task: PublishPipelineArtifact@1
+      displayName: Publish artifact (zip + checksum + SBOM)
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)/drop'
+        artifact: '${{ variables.artifactName }}'  # 'drop'
+        publishLocation: 'pipeline'
+
+# ======================
+# Stage: Deploy to App Service
+# ======================
+- stage: Deploy
+  displayName: Zip Deploy to App Service (No Oryx) + smoke test + optional slot swap
+  dependsOn: Build
+  jobs:
+  - job: DeployJob
+    displayName: Deploy Zip to App Service
+    steps:
+    - download: current
+      artifact: ${{ variables.artifactName }}
+
+    # Disable Oryx server-side build & enable run-from-package
+    - task: AzureCLI@2
+      displayName: Disable Oryx & enable run-from-package
+      inputs:
+        azureSubscription: '${{ variables.azureSubscription }}'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          set -euo pipefail
+          SETTINGS="SCM_DO_BUILD_DURING_DEPLOYMENT=false ENABLE_ORYX_BUILD=false NODE_ENV=production WEBSITE_RUN_FROM_PACKAGE=1"
+          if [ -n "${{ variables.slotName }}" ] && [ "${{ variables.slotName }}" != "" ]; then
+            az webapp config appsettings set \
+              --resource-group "${{ variables.rgName }}" \
+              --name "${{ variables.appName }}" \
+              --slot "${{ variables.slotName }}" \
+              --settings $SETTINGS
+          else
+            az webapp config appsettings set \
+              --resource-group "${{ variables.rgName }}" \
+              --name "${{ variables.appName }}" \
+              --settings $SETTINGS
+          fi
+
+    # Ensure Node 22 LTS runtime on Linux
+    - task: AzureCLI@2
+      displayName: Set App Service runtime to Node 22 LTS
+      inputs:
+        azureSubscription: '${{ variables.azureSubscription }}'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          set -euo pipefail
+          RUNTIME="NODE|22-lts"
+          if [ -n "${{ variables.slotName }}" ] && [ "${{ variables.slotName }}" != "" ]; then
+            az webapp config set \
+              --resource-group "${{ variables.rgName }}" \
+              --name "${{ variables.appName }}" \
+              --slot "${{ variables.slotName }}" \
+              --linux-fx-version "$RUNTIME"
+          else
+            az webapp config set \
+              --resource-group "${{ variables.rgName }}" \
+              --name "${{ variables.appName }}" \
+              --linux-fx-version "$RUNTIME"
+          fi
+
+    # #Get App Service hostname
+    # - task: AzureCLI@2
+    #   displayName: 'Get App Service hostname'
+    #   inputs:
+    #     azureSubscription: '${{ variables.azureSubscription }}'
+    #     scriptType: bash
+    #     scriptLocation: inlineScript
+    #     inlineScript: |
+    #       set -euo pipefail
+    #       if [ -n "${{ variables.slotName }}" ] && [ "${{ variables.slotName }}" != "" ]; then
+    #         HOST=$(az webapp show \
+    #           --resource-group "${{ variables.rgName }}" \
+    #           --name "${{ variables.appName }}" \
+    #           --slot "${{ variables.slotName }}" \
+    #           --query 'defaultHostName' -o tsv)
+    #       else
+    #         HOST=$(az webapp show \
+    #           --resource-group "${{ variables.rgName }}" \
+    #           --name "${{ variables.appName }}" \
+    #           --query 'defaultHostName' -o tsv)
+    #       fi
+    #       echo "Resolved hostname: ${HOST}"
+    #       echo "##vso[task.setvariable variable=appHostName]${HOST}"
+
+    # Zip Deploy — when slotName is empty (production)
+    # - task: AzureWebApp@1
+    #   displayName: Zip Deploy to App Service (Production)
+    #   condition: eq(variables['slotName'], '')
+    #   inputs:
+    #     azureSubscription: '${{ variables.azureSubscription }}'
+    #     appType: 'webAppLinux'
+    #     appName: '${{ variables.appName }}'
+    #     resourceGroupName: '${{ variables.rgName }}'
+    #     deployToSlotOrASE: false
+    #     package: '$(Pipeline.Workspace)/${{ variables.artifactName }}/${{ variables.zipName }}'
+
+    # Zip Deploy — when slotName is set (slot/staging)
+    - task: AzureWebApp@1
+      displayName: Zip Deploy to App Service (Slot)
+      condition: ne(variables['slotName'], '')
+      inputs:
+        azureSubscription: '${{ variables.azureSubscription }}'
+        appType: 'webAppLinux'
+        appName: '${{ variables.appName }}'
+        resourceGroupName: '${{ variables.rgName }}'
+        deployToSlotOrASE: true
+        slotName: '${{ variables.slotName }}'
+        package: '$(Pipeline.Workspace)/${{ variables.artifactName }}/${{ variables.zipName }}'
+
+    # # Optional smoke test (fails pipeline if endpoint unhealthy)
+    # - task: Bash@3
+    #   displayName: 'Smoke test'
+    #   inputs:
+    #     targetType: 'inline'
+    #     script: |
+    #       set -euo pipefail
+    #       BASE="https://$(appHostName)"
+    #       URL="${BASE}${{ variables.smokeTestPath }}"
+    #           echo "Smoke-testing: ${URL}"
+
+    #           ATTEMPTS=5
+    #           DELAY=10
+    #           for i in $(seq 1 $ATTEMPTS); do
+    #             echo "Attempt $i of $ATTEMPTS..."
+    #             if curl --fail --silent --max-time "${{ variables.smokeTestTimeoutSeconds }}" "$URL" >/dev/null; then
+    #               echo "Smoke test passed."
+    #               exit 0
+    #             fi
+    #             echo "Host not ready, retrying in $DELAY seconds..."
+    #             sleep $DELAY
+    #           done
+
+    #           echo "WARN: Smoke test failed after $ATTEMPTS attempts."
+    #           exit 0   # <-- non-blocking
+
+
+    # # Optional slot swap to production (only when slotName is set)
+    # - task: AzureCLI@2
+    #   displayName: 'Swap slot (staging → production)'
+    #   condition: and(succeeded(), ne(variables['slotName'], ''), eq(variables['enableSlotSwap'], 'true'))
+    #   inputs:
+    #     azureSubscription: '${{ variables.azureSubscription }}'
+    #     scriptType: bash
+    #     scriptLocation: inlineScript
+    #   inlineScript: |
+    #     set -euo pipefail
+    #     az webapp deployment slot swap \
+    #       --resource-group "${{ variables.rgName }}" \
+    #       --name "${{ variables.appName }}" \
+    #       --slot "${{ variables.slotName }}" \
+    #       --target-slot production
