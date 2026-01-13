@@ -4,7 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import logger from "../config/logger.js";
 import Incident from "../models/incident.model.js";
 import UserCount from "../models/incident.model.view.js";
-import RolesCount from "../models/incident.model.view.roles.js"
+import RolesCount from "../models/incident.model.view.roles.js";
 
 /**
  * Service: getIncidentDetails
@@ -85,7 +85,16 @@ export const getIncidentDetails = async (incidentId, customerName, customeroid) 
 
     // Prepare prompt for Azure OpenAI
     const prompt = `
-    You'll get the SOC Ticket details in JSON format, your task is to understand the details provided to you and based on that generate a good summary on what happened, when happened and what was done basically a good summary for anyone, dont assume or recommend anything just summarize. Do NOT use any markdown formatting, bold, italics, asterisks, headings, or special characters. Provide plain text only.
+   You will receive SOC ticket details in JSON format. Your task is to clearly understand the details provided and generate a concise summary in a professional tone that explains:
+- What happened
+- When it happened
+- Key details (such as account, IP address, priority, incident type, escalation status, and any other important context)
+- What was done (resolution status and actions taken)
+ 
+Important rules:
+1. If escalation is mentioned, describe it as initiated internally by the agent or team based on severity or the nature of the incident. Never imply or state that the customer escalated the issue.
+2. Include all relevant information without unnecessary repetition.
+3. Do NOT use markdown formatting, bold, italics, asterisks, headings, or special characters. Provide plain text only.
 
     Incident Details:
     ${JSON.stringify(incident, null, 2)}
