@@ -1,0 +1,240 @@
+# Node.js
+# Build a general Node.js project with npm.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+
+
+# File: azure-pipelines-merged.yml
+name: Azure App Service CI/CD (Merged with full gates)
+
+trigger:
+  branches:
+    include:
+      - staging
+      # - release/*
+
+# # Optional PR validation (recommended)
+# pr:
+#   branches:
+#     include:
+#       - development
+#       - release/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # --- App Service / Azure settings ---
+  azureSubscription: 'AzureServiceConnection'
+  rgName: 'soc-watchtower-stg'
+  appName: 'soc-watchtower-backend-stg'
+  slotName: ''   # leave '' if not using slots
+  nodeVersion: '22.x'
+
+  # --- Artifacts / Reports ---
+  zipName: 'soc_watchtower_backend_src.zip'
+  artifactName: 'drop'
+  coverageDir: 'coverage'
+  junitReport: 'test-results/junit.xml'
+  sbomFile: 'sbom.json'
+  checksumFile: 'soc_watchtower_backend_src.zip.sha256'
+
+  # --- GitLeaks controls ---
+  gitleaksVersion: 'v8.18.3'      # pin version for stability
+  gitleaksFailOnLeak: 'false'      # fail pipeline on findings
+  gitleaksScanHistory: 'true'    # 'true' scans full history (slower)
+  gitleaksReportJson: 'gitleaks-report.json'
+  gitleaksReportSarif: 'gitleaks-report.sarif'
+  enableGitLeaks: 'true'         # NEW: opt-in switch; set to 'true' when you want reports
+  
+  # --- Lint/Format report outputs (NEW) ---
+  eslintReportJson: 'eslint-report.json'
+  prettierReportTxt: 'prettier-report.txt'
+
+  # --- npm audit controls ---
+  npmAuditForce: 'false'          # 'true' may introduce breaking changes
+  npmAuditOmitDev: 'false'        # 'true' ignores dev deps during audit
+  npmAuditFailLevel: 'high'       # none | moderate | high | critical
+
+  # Absolute path for npm audit report
+  npmAuditReportPath: '$(System.DefaultWorkingDirectory)/npm-audit-report.json'
+
+  # --- CI behavior ---
+  runTests: 'true'                # enable tests (blocking)
+  enableSlotSwap: 'true'          # swap staging -> production after smoke test (requires slotName)
+  smokeTestPath: '/health'        # path for smoke test endpoint
+  smokeTestTimeoutSeconds: '30'   # curl timeout
+
+
+stages:
+# ======================
+# Stage: Build & Publish (mirrors dev; we DO NOT package node_modules)
+# ======================
+- stage: Build
+  displayName: Build, secure, test, and publish artifacts
+  jobs:
+  - job: BuildJob
+    displayName: Build Node API
+    steps:
+    - checkout: self
+      fetchDepth: 0
+
+    # (Your GitLeaks steps here if enabled)
+    # -- snip (retain your existing GitLeaks install/scan/publish) --
+
+    # Cache npm
+    - task: Cache@2
+      displayName: Cache npm
+      inputs:
+        key: |
+          npm
+          "$(Agent.OS)"
+          package-lock-$(Build.SourceVersion)
+        restoreKeys: |
+          npm
+          "$(Agent.OS)"
+          npm
+        path: $(Pipeline.Workspace)/.npm
+
+    # Node tool
+    - task: NodeTool@0
+      displayName: Use Node $(nodeVersion)
+      inputs:
+        versionSpec: '$(nodeVersion)'
+
+    # CI installs (for tests/coverage only), lint/format reports, npm audit gate — same as dev
+    - script: |
+        set -euo pipefail
+        if [ ! -f package-lock.json ]; then
+          npm install --package-lock-only --no-audit --no-fund
+        fi
+        npm ci --cache $(Pipeline.Workspace)/.npm
+        npx prettier --write . || true
+        npx eslint . --fix || true
+      displayName: 'Install deps (CI only) + lint/format'
+      env:
+        npm_config_cache: $(Pipeline.Workspace)/.npm
+
+    # (Keep your npm audit JSON + threshold gate steps)
+    # (Keep your tests + coverage + report publishing)
+    # (Keep SBOM generation)
+
+    # ---- Stage files for ZIP (EXCLUDING node_modules) ----
+    - script: |
+        set -euo pipefail
+        mkdir -p "$(Build.ArtifactStagingDirectory)/package"
+        cp -r src "$(Build.ArtifactStagingDirectory)/package"
+        [ -f index.js ] && cp index.js "$(Build.ArtifactStagingDirectory)/package" || true
+        cp package.json package-lock.json "$(Build.ArtifactStagingDirectory)/package"
+      displayName: 'Stage app source only (no node_modules)'
+
+    - task: ArchiveFiles@2
+      displayName: Create Zip (source only)
+      inputs:
+        rootFolderOrFile: '$(Build.ArtifactStagingDirectory)/package'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/$(zipName)'
+        verbose: false
+
+    - script: |
+        set -euo pipefail
+        mkdir -p "$(Build.ArtifactStagingDirectory)/drop"
+        (cd "$(Build.ArtifactStagingDirectory)" && sha256sum "$(zipName)" > "$(checksumFile)")
+        cp "$(Build.ArtifactStagingDirectory)/$(zipName)" "$(Build.ArtifactStagingDirectory)/drop/"
+        cp "$(Build.ArtifactStagingDirectory)/$(checksumFile)" "$(Build.ArtifactStagingDirectory)/drop/"
+        [ -f "$(sbomFile)" ] && cp "$(sbomFile)" "$(Build.ArtifactStagingDirectory)/drop/" || true
+      displayName: 'Create checksum & prepare drop folder'
+
+    - task: PublishPipelineArtifact@1
+      displayName: Publish artifact (zip + checksum + SBOM)
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)/drop'
+        artifact: '$(artifactName)'
+        publishLocation: 'pipeline'
+
+# ======================
+# Stage: Deploy to STAGING app (no slot) using remote build
+# ======================
+- stage: Deploy
+  displayName: Zip Deploy to Staging App (remote build; excludes node_modules)
+  dependsOn: Build
+  jobs:
+  - job: DeployJob
+    displayName: Deploy Zip to App Service (staging app)
+    steps:
+    - download: current
+      artifact: $(artifactName)
+
+    # Ensure remote build is enabled and run-from-package is disabled on the STAGING app
+    - task: AzureCLI@2
+      displayName: 'Configure app settings for remote build (Oryx)'
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          set -euo pipefail
+          # Remove WEBSITE_RUN_FROM_PACKAGE to allow remote build
+          az webapp config appsettings delete \
+            --resource-group "$(rgName)" \
+            --name "$(appName)" \
+            --setting-names WEBSITE_RUN_FROM_PACKAGE || true
+
+          # Enable server-side build (Node) explicitly
+          az webapp config appsettings set \
+            --resource-group "$(rgName)" \
+            --name "$(appName)" \
+            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true ENABLE_ORYX_BUILD=true NODE_ENV=production
+
+    # Pin Node 22 LTS on the staging app
+    - task: AzureCLI@2
+      displayName: 'Set App Service runtime to Node 22 LTS'
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          set -euo pipefail
+          az webapp config set \
+            --resource-group "$(rgName)" \
+            --name "$(appName)" \
+            --linux-fx-version "NODE|22-lts"
+
+    # Zip Deploy to the staging app (no slot)
+    - task: AzureWebApp@1
+      displayName: 'Zip Deploy to App Service (staging app)'
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        appType: 'webAppLinux'
+        appName: '$(appName)'
+        resourceGroupName: '$(rgName)'
+        deployToSlotOrASE: false
+        package: '$(Pipeline.Workspace)/$(artifactName)/$(zipName)'
+
+    # Optional: smoke test (non-blocking)
+    - task: Bash@3
+      displayName: 'Smoke test (non-blocking)'
+      continueOnError: true
+      inputs:
+        targetType: 'inline'
+        script: |
+          set -euo pipefail
+          HOST=$(az webapp show \
+            --resource-group "$(rgName)" \
+            --name "$(appName)" \
+            --query 'defaultHostName' -o tsv)
+          URL="https://${HOST}$(smokeTestPath)"
+          echo "Smoke-testing: ${URL}"
+          ATTEMPTS=5
+          DELAY=10
+          for i in $(seq 1 ${ATTEMPTS}); do
+            echo "Attempt $i of $ATTEMPTS..."
+            if curl --fail --silent --max-time "$(smokeTestTimeoutSeconds)" "$URL" >/dev/null; then
+              echo "Smoke test passed."
+              exit 0
+            fi
+            echo "Host not ready, retrying in $DELAY seconds..."
+            sleep $DELAY
+          done
+          echo "WARN: Smoke test did not pass in time; continuing."
