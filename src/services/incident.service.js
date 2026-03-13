@@ -56,7 +56,7 @@ export const getTotalIncidents = async (customerName) => {
         $group: {
           _id: null,
           total: { $sum: 1 },
-          open: { $sum: { $cond: [{ $eq: ["$status", 2] }, 1, 0] } },
+          open: { $sum: { $cond: [{ $in: ["$status", [2, 6]] }, 1, 0] } },
           closed: { $sum: { $cond: [{ $in: ["$status", [4, 5]] }, 1, 0] } },
         },
       },

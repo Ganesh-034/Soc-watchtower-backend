@@ -486,6 +486,213 @@ function mapStatus(statusCode) {
   return statusMap[statusCode] || `Unknown (${statusCode})`;
 }
 
+// =============================================================================
+// NEW HELPERS FROM CODE 2 (For "All Incidents" Logic)
+// =============================================================================
+
+// Helper to get UTC month window (used for precise date filtering)
+function getMonthWindowUTC(year, month /* 1-based */) {
+  const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+  const nextStart = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
+  return { start, nextStart };
+}
+
+// Function to get Health Incidents (ALL) - for Hino
+const getHealthIncidentsAll = async (customerName, month, year) => {
+  try {
+    const { start, nextStart } = getMonthWindowUTC(year, month);
+    const filters = {
+      customer_name: customerName,
+      incident_type: "Health Incident",
+      $expr: {
+        $and: [
+          { $gte: [{ $toDate: "$created_at" }, start] },
+          { $lt: [{ $toDate: "$created_at" }, nextStart] },
+        ],
+      },
+    };
+    const tickets = await Incident.find(filters).sort({ created_at: 1 }).lean();
+    const formattedTickets = tickets.map(formatTicket);
+    logger.info(
+      `🎫 Fetched ${formattedTickets.length} health (ALL) tickets for ${customerName} (${month}/${year}).`
+    );
+    return formattedTickets;
+  } catch (error) {
+    logger.error("Error in getHealthIncidentsAll:", error);
+    throw new Error("Error fetching health (ALL) incidents: " + error.message);
+  }
+};
+
+// Function to get Non-Health Incidents (ALL) - for Hino
+const getNonHealthIncidentsAll = async (customerName, month, year) => {
+  try {
+    const { start, nextStart } = getMonthWindowUTC(year, month);
+    const filters = {
+      customer_name: customerName,
+      incident_type: { $ne: "Health Incident" },
+      $expr: {
+        $and: [
+          { $gte: [{ $toDate: "$created_at" }, start] },
+          { $lt: [{ $toDate: "$created_at" }, nextStart] },
+        ],
+      },
+    };
+    const tickets = await Incident.find(filters).sort({ created_at: 1 }).lean();
+    const formattedTickets = tickets.map(formatTicket);
+    logger.info(
+      `🎫 Fetched ${formattedTickets.length} non-health (ALL) tickets for ${customerName} (${month}/${year}).`
+    );
+    return formattedTickets;
+  } catch (error) {
+    logger.error("Error in getNonHealthIncidentsAll:", error);
+    throw new Error(
+      "Error fetching non-health (ALL) incidents: " + error.message
+    );
+  }
+};
+
+// Function to filter health incidents from severity (ALL mode - UTC window)
+const filterHealthIncidentsFromSeverityAll = async (
+  customerKey,
+  sortedMonths
+) => {
+  try {
+    const filteredMonths = JSON.parse(JSON.stringify(sortedMonths));
+    for (
+      let monthIndex = 0;
+      monthIndex < filteredMonths.length;
+      monthIndex++
+    ) {
+      const month = filteredMonths[monthIndex];
+      const monthId = month.id;
+      const [year, monthNum] = monthId.split("-").map((part) => parseInt(part));
+      const { start, nextStart } = getMonthWindowUTC(year, monthNum);
+
+      const healthIncidents = await Incident.find({
+        customer_name: customerKey,
+        incident_type: "Health Incident",
+        customer_escalation: { $regex: /^yes$/i },
+        created_at: { $gte: start, $lt: nextStart },
+      }).lean();
+      const healthCounts = { high: 0, medium: 0, low: 0 };
+      healthIncidents.forEach((incident) => {
+        const priorityLower = (incident.priority || "")
+          .toString()
+          .trim()
+          .toLowerCase();
+        if (priorityLower.includes("high") || Number(incident.priority) === 3) {
+          healthCounts.high++;
+        } else if (
+          priorityLower.includes("medium") ||
+          priorityLower.includes("med") ||
+          Number(incident.priority) === 2
+        ) {
+          healthCounts.medium++;
+        } else if (priorityLower.includes("low") || Number(incident.priority) === 1) {
+          healthCounts.low++;
+        }
+      });
+      month.priorities.high = Math.max(0, month.priorities.high - healthCounts.high);
+      month.priorities.medium = Math.max(0, month.priorities.medium - healthCounts.medium);
+      month.priorities.low = Math.max(0, month.priorities.low - healthCounts.low);
+    }
+    return filteredMonths;
+  } catch (error) {
+    logger.error(
+      `Error filtering health incidents from severity data (ALL mode): ${error.message}`
+    );
+    return sortedMonths;
+  }
+};
+
+// Function to filter health incidents from handling status (ALL mode - UTC window)
+const filterHealthIncidentsFromHandlingStatusAll = async (
+  customerKey,
+  sortedHsMonths
+) => {
+  try {
+    const filteredHsMonths = JSON.parse(JSON.stringify(sortedHsMonths));
+    for (
+      let monthIndex = 0;
+      monthIndex < filteredHsMonths.length;
+      monthIndex++
+    ) {
+      const month = filteredHsMonths[monthIndex];
+      const monthId = month.id;
+      const [year, monthNum] = monthId.split("-").map((part) => parseInt(part));
+      const { start, nextStart } = getMonthWindowUTC(year, monthNum);
+      const healthIncidents = await Incident.find({
+        customer_name: customerKey,
+        incident_type: "Health Incident",
+        customer_escalation: { $regex: /^yes$/i },
+        created_at: { $gte: start, $lt: nextStart },
+      }).lean();
+      const healthCounts = { Pending: 0, Resolved: 0, Closed: 0 };
+      healthIncidents.forEach((incident) => {
+        const statusCode = incident.status;
+        if (statusCode === 3) healthCounts.Pending++;
+        else if (statusCode === 4) healthCounts.Resolved++;
+        else if (statusCode === 5) healthCounts.Closed++;
+      });
+      month.statuses.Pending = Math.max(
+        0,
+        (month.statuses.Pending || 0) - healthCounts.Pending
+      );
+      month.statuses.Resolved = Math.max(
+        0,
+        (month.statuses.Resolved || 0) - healthCounts.Resolved
+      );
+      month.statuses.Closed = Math.max(0, (month.statuses.Closed || 0) - healthCounts.Closed);
+    }
+    return filteredHsMonths;
+  } catch (error) {
+    logger.error(`Error filtering health incidents from handling status data (ALL mode): ${error.message}`);
+    return sortedHsMonths;
+  }
+};
+
+// Function to filter health incidents from sub-status (ALL mode - UTC window)
+const filterHealthIncidentsFromSubStatusAll = async (
+  customerKey,
+  subStatusData,
+  month,
+  year
+) => {
+  try {
+    const filteredSubStatusData = JSON.parse(JSON.stringify(subStatusData));
+    const { start, nextStart } = getMonthWindowUTC(year, month);
+
+    const healthIncidents = await Incident.find({
+      customer_name: customerKey,
+      incident_type: "Health Incident",
+      customer_escalation: { $regex: /^yes$/i },
+      created_at: { $gte: start, $lt: nextStart },
+    }).lean();
+
+    const healthCounts = {};
+    healthIncidents.forEach((incident) => {
+      const sub = incident.incident_sub_status || "Unknown";
+      healthCounts[sub] = (healthCounts[sub] || 0) + 1;
+    });
+
+    filteredSubStatusData.forEach((item) => {
+      const statusName = item._id;
+      if (healthCounts[statusName]) {
+        item.count = Math.max(0, item.count - healthCounts[statusName]);
+      }
+    });
+
+    return filteredSubStatusData;
+  } catch (error) {
+    logger.error(`Error filtering health incidents from sub-status data (ALL mode): ${error.message}`);
+    return subStatusData;
+  }
+};
+
+// =============================================================================
+// END NEW HELPERS
+// =============================================================================
+
 // Function to get Health Escalation Incidents
 const getHealthEscalationIncidents = async (customerName, month, year) => {
   try {
@@ -716,24 +923,33 @@ async function generateMonthlyReportForCustomer(
     // Format month for API calls
     const formattedMonth = `${reportDate.getFullYear()}-${String(reportDate.getMonth() + 1).padStart(2, "0")}`;
 
-    // Fetch real incident severity data
-    logger.info(
-      `🔍 Fetching incident severity data for customer: ${customerKey}`
-    );
-    const incidentSeverityResponse =
-      await incidentService.getIncidentSeverityEscalation(customerKey, true);
+    // =======================================================================
+    // START: LOGIC FOR "Hino Motor- HMST" TO SHOW ALL INCIDENTS
+    // =======================================================================
+    const useAllIncidents = customerKey === "Hino Motor- HMST";
 
-    // Fetch real incident detection source data for specified month
     logger.info(
-      `🔍 Fetching incident detection source data for customer: ${customerKey}, month: ${formattedMonth}`
+      `🔍 Fetching incident severity data for customer: ${customerKey} (useAllIncidents=${useAllIncidents})`
     );
-    const incidentDSResponse =
-      await incidentDSService.getIncidentsDetectionSourceEscalation(
-        formattedMonth,
-        customerKey
-      );
 
-    // Fetch previous month data
+    const incidentSeverityResponse = useAllIncidents
+      ? await incidentService.getIncidentSeverity(customerKey, false, true)
+      : await incidentService.getIncidentSeverityEscalation(customerKey, true);
+
+    logger.info(
+      `🔍 Fetching incident detection source data for customer: ${customerKey}, month: ${formattedMonth} (useAllIncidents=${useAllIncidents})`
+    );
+    const incidentDSResponse = useAllIncidents
+      ? await incidentDSService.getIncidentsDetectionSource(
+          formattedMonth,
+          customerKey,
+          false
+        )
+      : await incidentDSService.getIncidentsDetectionSourceEscalation(
+          formattedMonth,
+          customerKey
+        );
+
     const prevMonth = new Date(
       reportDate.getFullYear(),
       reportDate.getMonth() - 1,
@@ -742,7 +958,6 @@ async function generateMonthlyReportForCustomer(
       .toISOString()
       .slice(0, 7);
 
-    // Fetch two months ago data
     const twoMonthsAgo = new Date(
       reportDate.getFullYear(),
       reportDate.getMonth() - 2,
@@ -751,25 +966,36 @@ async function generateMonthlyReportForCustomer(
       .toISOString()
       .slice(0, 7);
 
-    // Fetch incident handling status data
     logger.info(
-      `🔍 Fetching incident handling status data for customer: ${customerKey}`
+      `🔍 Fetching incident handling status data for customer: ${customerKey} (useAllIncidents=${useAllIncidents})`
     );
-    const incidentHSResponse =
-      await incidentHSService.getIncidentsHandlingStatusEscalation(
-        customerKey,
-        true
-      );
+    const incidentHSResponse = useAllIncidents
+      ? await incidentHSService.getIncidentsHandlingStatus(
+          customerKey,
+          false,
+          true
+        )
+      : await incidentHSService.getIncidentsHandlingStatusEscalation(
+          customerKey,
+          true
+        );
 
-    // Fetch incident sub-status data for specified month
     logger.info(
-      `🔍 Fetching incident sub-status data for customer: ${customerKey}, month: ${formattedMonth}`
+      `🔍 Fetching incident sub-status data for customer: ${customerKey}, month: ${formattedMonth} (useAllIncidents=${useAllIncidents})`
     );
-    const incidentSSResponse =
-      await incidentSSService.getIncidentsSubStatusEscalationForReport(
-        formattedMonth,
-        customerKey
-      );
+    const incidentSSResponse = useAllIncidents
+      ? await incidentSSService.getIncidentsSubStatusForReport(
+          formattedMonth,
+          customerKey,
+          false
+        )
+      : await incidentSSService.getIncidentsSubStatusEscalationForReport(
+          formattedMonth,
+          customerKey
+        );
+    // =======================================================================
+    // END: LOGIC FOR "Hino Motor- HMST"
+    // =======================================================================
 
     logger.info(
       `🔍 Raw sub-status response for ${customerKey}:`,
@@ -805,6 +1031,7 @@ async function generateMonthlyReportForCustomer(
     });
 
     // Filter out health incidents from severity data
+    // Original logic (Escalation/Regex)
     const filterHealthIncidentsFromSeverity = async (
       customerKey,
       sortedMonths
@@ -879,10 +1106,12 @@ async function generateMonthlyReportForCustomer(
     logger.info(
       `🔍 Filtering health incidents from severity data for ${customerKey}...`
     );
-    const filteredSortedMonths = await filterHealthIncidentsFromSeverity(
-      customerKey,
-      sortedMonths
-    );
+    
+    // CHOOSE FILTER FUNCTION BASED ON CUSTOMER
+    const filteredSortedMonths = await (useAllIncidents
+      ? filterHealthIncidentsFromSeverityAll(customerKey, sortedMonths)
+      : filterHealthIncidentsFromSeverity(customerKey, sortedMonths));
+
     logger.info(
       `✅ Filtered health incidents from severity data for ${customerKey}`
     );
@@ -952,6 +1181,7 @@ async function generateMonthlyReportForCustomer(
       return periodOrder[a.period] - periodOrder[b.period];
     });
 
+    // Original Logic (Escalation)
     const filterHealthIncidentsFromHandlingStatus = async (
       customerKey,
       sortedHsMonths
@@ -1009,10 +1239,12 @@ async function generateMonthlyReportForCustomer(
     logger.info(
       `🔍 Filtering health incidents from handling status data for ${customerKey}...`
     );
-    const filteredHsMonths = await filterHealthIncidentsFromHandlingStatus(
-      customerKey,
-      sortedHsMonths
-    );
+
+    // CHOOSE FILTER FUNCTION BASED ON CUSTOMER
+    const filteredHsMonths = await (useAllIncidents
+      ? filterHealthIncidentsFromHandlingStatusAll(customerKey, sortedHsMonths)
+      : filterHealthIncidentsFromHandlingStatus(customerKey, sortedHsMonths));
+
     logger.info(
       `✅ Filtered health incidents from handling status data for ${customerKey}`
     );
@@ -1020,8 +1252,12 @@ async function generateMonthlyReportForCustomer(
     const handlingStatusChartLabels = filteredHsMonths.map(
       (month) => month.name
     );
+
+    // If useAllIncidents, include Escalated in Pending (as per Code 2)
     const handlingStatusChartData = {
-      pending: filteredHsMonths.map((month) => month.statuses.Pending || 0),
+      pending: filteredHsMonths.map(
+        (month) => (month.statuses.Pending || 0) + (useAllIncidents ? (month.statuses.Escalated || 0) : 0)
+      ),
       resolved: filteredHsMonths.map(
         (month) => (month.statuses.Resolved || 0) + (month.statuses.Closed || 0)
       ),
@@ -1031,35 +1267,29 @@ async function generateMonthlyReportForCustomer(
       {
         affiliate: "Current Month",
         pending:
-          filteredHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Pending || 0,
+          (filteredHsMonths.find((m) => m.period === "Current Month")?.statuses.Pending || 0) + 
+          (useAllIncidents ? (filteredHsMonths.find((m) => m.period === "Current Month")?.statuses.Escalated || 0) : 0),
         resolved:
-          (filteredHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Resolved || 0) +
-          (filteredHsMonths.find((m) => m.period === "Current Month")?.statuses
-            .Closed || 0),
+          (filteredHsMonths.find((m) => m.period === "Current Month")?.statuses.Resolved || 0) +
+          (filteredHsMonths.find((m) => m.period === "Current Month")?.statuses.Closed || 0),
       },
       {
         affiliate: "Previous Month",
         pending:
-          filteredHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Pending || 0,
+          (filteredHsMonths.find((m) => m.period === "Previous Month")?.statuses.Pending || 0) + 
+          (useAllIncidents ? (filteredHsMonths.find((m) => m.period === "Previous Month")?.statuses.Escalated || 0) : 0),
         resolved:
-          (filteredHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Resolved || 0) +
-          (filteredHsMonths.find((m) => m.period === "Previous Month")?.statuses
-            .Closed || 0),
+          (filteredHsMonths.find((m) => m.period === "Previous Month")?.statuses.Resolved || 0) +
+          (filteredHsMonths.find((m) => m.period === "Previous Month")?.statuses.Closed || 0),
       },
       {
         affiliate: "Two Months Ago",
         pending:
-          filteredHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Pending || 0,
+          (filteredHsMonths.find((m) => m.period === "Two Months Ago")?.statuses.Pending || 0) + 
+          (useAllIncidents ? (filteredHsMonths.find((m) => m.period === "Two Months Ago")?.statuses.Escalated || 0) : 0),
         resolved:
-          (filteredHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Resolved || 0) +
-          (filteredHsMonths.find((m) => m.period === "Two Months Ago")?.statuses
-            .Closed || 0),
+          (filteredHsMonths.find((m) => m.period === "Two Months Ago")?.statuses.Resolved || 0) +
+          (filteredHsMonths.find((m) => m.period === "Two Months Ago")?.statuses.Closed || 0),
       },
     ];
 
@@ -1070,12 +1300,22 @@ async function generateMonthlyReportForCustomer(
     logger.info(
       `🔍 Filtering health incidents from sub-status data for ${customerKey}...`
     );
-    const filteredSubStatusData = await filterHealthIncidentsFromSubStatus(
-      customerKey,
-      filteredSubstatus,
-      reportDate.getMonth() + 1,
-      reportDate.getFullYear()
-    );
+    
+    // CHOOSE FILTER FUNCTION BASED ON CUSTOMER
+    const filteredSubStatusData = await (useAllIncidents
+      ? filterHealthIncidentsFromSubStatusAll(
+          customerKey,
+          filteredSubstatus,
+          reportDate.getMonth() + 1,
+          reportDate.getFullYear()
+        )
+      : filterHealthIncidentsFromSubStatus(
+          customerKey,
+          filteredSubstatus,
+          reportDate.getMonth() + 1,
+          reportDate.getFullYear()
+        ));
+    
     logger.info(
       `✅ Filtered health incidents from sub-status data for ${customerKey}`
     );
@@ -1152,17 +1392,30 @@ async function generateMonthlyReportForCustomer(
       "🎫 Fetching real data for incident and health ticket tables..."
     );
 
-    const incidentTicketsData = await getNonHealthEscalationIncidents(
-      customerKey,
-      reportDate.getMonth() + 1,
-      reportDate.getFullYear()
-    );
+    // CHOOSE TICKET FETCH FUNCTION BASED ON CUSTOMER
+    const incidentTicketsData = useAllIncidents
+      ? await getNonHealthIncidentsAll(
+          customerKey,
+          reportDate.getMonth() + 1,
+          reportDate.getFullYear()
+        )
+      : await getNonHealthEscalationIncidents(
+          customerKey,
+          reportDate.getMonth() + 1,
+          reportDate.getFullYear()
+        );
 
-    const healthTicketsData = await getHealthEscalationIncidents(
-      customerKey,
-      reportDate.getMonth() + 1,
-      reportDate.getFullYear()
-    );
+    const healthTicketsData = useAllIncidents
+      ? await getHealthIncidentsAll(
+          customerKey,
+          reportDate.getMonth() + 1,
+          reportDate.getFullYear()
+        )
+      : await getHealthEscalationIncidents(
+          customerKey,
+          reportDate.getMonth() + 1,
+          reportDate.getFullYear()
+        );
 
     logger.info(
       `✅ Fetched ${incidentTicketsData.length} incident tickets and ${healthTicketsData.length} health tickets.`
@@ -1361,7 +1614,7 @@ async function generateMonthlyReportForCustomer(
     return { blobUrl, blobPath, reportId, checksum };
   } catch (error) {
     logger.error(
-      `❌ Error generating report for ${customerDisplayName} (${reportDate.getMonth() + 1}/${reportDate.getFullYear()}):`,
+      `❌ Error generating report for ${customerDisplayName} (${reportDate.getMonth() + 1}/${reportDate.getFullYear()})`,
       error
     );
 
@@ -2262,8 +2515,7 @@ async function retryFailedReports(req, res) {
           reportId: report.reportId,
           customerKey: report.customerKey,
           customerDisplayName: report.customerDisplayName,
-          month: report.month,
-          year: report.year,
+          month: report.year,
           status: "failed",
           error: error.message,
         });
@@ -2391,7 +2643,10 @@ function scheduleReportVerification() {
 
 // Schedule: Run on 1st of every month at 00:00
 function scheduleMonthlyReport() {
-  schedule.scheduleJob("0 0 2 * *", () => {
+  // Default to "0 0 2 * *" (2nd of every month at 00:00) if not set in .env
+  const cronSchedule = process.env.MONTHLY_REPORT_CRON || "0 0 5 * *";
+
+  schedule.scheduleJob(cronSchedule, () => {
     generateMonthlyReport();
   });
   logger.info(

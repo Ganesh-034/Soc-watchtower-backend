@@ -40,10 +40,10 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
         if (!dbField) continue;
 
         if (column === "status") {
-          const normalizedValues = values.map(v => v.trim().toLowerCase());
+          const normalizedValues = values.map((v) => v.trim().toLowerCase());
           const statusCodes = normalizedValues
-            .map(v => statusMap[v])
-            .filter(code => code !== undefined);
+            .map((v) => statusMap[v])
+            .filter((code) => code !== undefined);
 
           if (statusCodes.length === 1) {
             mongoFilters[dbField] = statusCodes[0];
@@ -71,14 +71,56 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
     }
   }
 
+  // FIX: Date Filtering Logic
+  // The inputs are timezone-shifted (e.g., "Jan 1 00:00 Local" becomes "Dec 31 18:30 UTC").
+  // To match the Chart (which counts by UTC Month), we must ignore the input times
+  // and force the range to the full UTC month boundaries.
   if (startDate || endDate) {
-    mongoFilters.created_at = mongoFilters.created_at || {};
-    if (startDate) {
-      mongoFilters.created_at.$gte = startDate;
-    }
-    if (endDate) {
-      mongoFilters.created_at.$lte = endDate;
-    }
+    // 1. Parse the input to determine the Target Month (using endDate as the primary anchor)
+    const dateInput = endDate || startDate; 
+    const targetDate = new Date(dateInput);
+
+    // 2. Calculate strict UTC Month Boundaries
+    // getUTCFullYear() and getUTCMonth() ensure we calculate based on the UTC date of the input string
+    const year = targetDate.getUTCFullYear();
+    const month = targetDate.getUTCMonth();
+
+    // Start of month (1st day, 00:00:00.000 UTC)
+    const start = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
+
+    // End of month (Last day, 23:59:59.999 UTC)
+    // Date.UTC(year, month + 1, 0) gives the last day of the current month
+    const end = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
+
+    // 3. Apply Filter using same DB field parsing logic as Chart Service
+    const dbDateField = {
+      $cond: [
+        { $eq: [{ $type: "$created_at" }, "date"] },
+        "$created_at",
+        {
+          $dateFromString: {
+            dateString: "$created_at",
+            onError: null,
+            onNull: null,
+          },
+        },
+      ],
+    };
+
+    mongoFilters.$expr = {
+      $let: {
+        vars: {
+          date: dbDateField,
+        },
+        in: {
+          $and: [
+            { $ne: ["$$date", null] }, // Exclude invalid dates
+            { $gte: ["$$date", start] },
+            { $lte: ["$$date", end] },
+          ],
+        },
+      },
+    };
   }
 
   // Check if customerName is available from middleware
@@ -99,7 +141,7 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
 
     // Handle 204 No Content when no tickets are found
     if (result.tickets && result.tickets.length === 0) {
-      return res.status(204).end(); // 204 responses should not include a body
+      return res.status(204).end();
     }
 
     // Return 200 OK with the tickets data
