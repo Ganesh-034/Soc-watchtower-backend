@@ -96,19 +96,22 @@ export const getIncidentsHandlingStatus = async (
           id: currentMonthId,
           name: currentMonthName,
           period: "Current Month",
-          statuses: { Open: 0, Pending: 0, Resolved: 0, Closed: 0 },
+          // Added Escalated: 0
+          statuses: { Open: 0, Pending: 0, Resolved: 0, Closed: 0, Escalated: 0 },
         },
         {
           id: previousMonthId,
           name: previousMonthName,
           period: "Previous Month",
-          statuses: { Open: 0, Pending: 0, Resolved: 0, Closed: 0 },
+          // Added Escalated: 0
+          statuses: { Open: 0, Pending: 0, Resolved: 0, Closed: 0, Escalated: 0 },
         },
         {
           id: twoMonthsAgoId,
           name: twoMonthsAgoName,
           period: "Two Months Ago",
-          statuses: { Open: 0, Pending: 0, Resolved: 0, Closed: 0 },
+          // Added Escalated: 0
+          statuses: { Open: 0, Pending: 0, Resolved: 0, Closed: 0, Escalated: 0 },
         },
       ],
     };
@@ -118,12 +121,14 @@ export const getIncidentsHandlingStatus = async (
       3: "Pending",
       4: "Resolved",
       5: "Closed",
+      6: "Escalated", // Added status 6
     };
 
     // Build the match condition dynamically
     const matchCondition = {
       customer_name: customerName,
-      status: { $in: [2, 3, 4, 5] },
+      // Added 6 to the $in array
+      status: { $in: [2, 3, 4, 5, 6] },
     };
 
     // Add escalation filter (case-insensitive)
@@ -155,18 +160,30 @@ export const getIncidentsHandlingStatus = async (
       const statusLabel = statusMap[item.status];
       if (!statusLabel) continue;
 
+      let monthIndex = -1;
+
       if (createdDate >= currentMonthStart && createdDate <= currentMonthEnd) {
-        result.months[0].statuses[statusLabel]++;
+        monthIndex = 0;
       } else if (
         createdDate >= previousMonthStart &&
         createdDate <= previousMonthEnd
       ) {
-        result.months[1].statuses[statusLabel]++;
+        monthIndex = 1;
       } else if (
         createdDate >= twoMonthsAgoStart &&
         createdDate <= twoMonthsAgoEnd
       ) {
-        result.months[2].statuses[statusLabel]++;
+        monthIndex = 2;
+      }
+
+      if (monthIndex !== -1) {
+        // Increment the specific status (e.g., Escalated)
+        result.months[monthIndex].statuses[statusLabel]++;
+
+        // If status is Escalated (6), also include it in the Pending count
+        if (item.status === 6) {
+          result.months[monthIndex].statuses["Pending"]++;
+        }
       }
     }
 
