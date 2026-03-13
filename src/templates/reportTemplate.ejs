@@ -1264,7 +1264,7 @@ if (subStatusCtx) {
   // Define all 4 substatus categories with their exact colors
   const allSubStatuses = [
     { label: "SOC Investigating", color: "#70b5fa" }, // Dark blue
-    { label: "Awaiting Customer Response", color: "#f2a150" }, // Orange
+    { label: "Awaiting Customer", color: "#f2a150" }, // Orange
     { label: "False Positive", color: "#70db70" }, // Green
     { label: "True Positive", color: "#f08080" }  // Red
   ];
@@ -1272,7 +1272,7 @@ if (subStatusCtx) {
   // Always use all 4 categories as labels - this ensures they appear on x-axis
   const labels = defaultSubStatusCategories || [
     'SOC Investigating',
-    'Awaiting Customer Response',
+    'Awaiting Customer',
     'False Positive',
     'True Positive'
   ];
