@@ -18,7 +18,7 @@ pool:
 
 variables:
   # --- App Service / Azure settings ---
-  azureSubscription: 'AzureServiceConnection'
+  azureSubscription: 'AzureServiceConnectionProd'
   rgName: 'appsvc_linux_southeastasia_basic'
   appName: 'soc-watchtower-backend'
 
