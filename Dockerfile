@@ -49,7 +49,8 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true
 # Install only production deps
 COPY package*.json ./
 # If your package-lock.json is committed (recommended), npm ci is deterministic
-RUN npm ci --omit=dev
+# RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Copy application source
 COPY . .
