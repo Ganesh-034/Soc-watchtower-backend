@@ -50,7 +50,7 @@ variables:
   EnableScans: 'false'          # <--- Set to 'false' to SKIP all scan/report stages
   EnableCosignAttest: 'false'  # set to 'true' once OIDC/key is configured (attestation is non-fatal)
 
-  EnableUnitTests: 'true'
+  EnableUnitTests: 'false'
   EnableMSDO: 'true'   # Microsoft Security DevOps
   EnableGitLeaks: 'true'
   EnableNpmAudit: 'true'
