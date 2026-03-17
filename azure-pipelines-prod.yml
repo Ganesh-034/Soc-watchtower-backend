@@ -95,9 +95,9 @@ stages:
 
     - bash: |
         set -euo pipefail
-        rm -rf node_modules
+        # rm -rf node_modules
         # regenerate lockfile only, without modifying node_modules footprint on agent
-        npm install --package-lock-only
+        # npm install --package-lock-only
         git status --porcelain
       displayName: "Regenerate package-lock.json for overrides"
 
