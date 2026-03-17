@@ -1,7 +1,10 @@
-# Node 22 runtime (Debian Bookworm slim)
+
+# Node 22 runtime
 FROM node:22-bookworm-slim
 
-# Keep OS packages current and install Chromium deps for Puppeteer
+WORKDIR /app
+
+# Install system dependencies for Puppeteer (optional)
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
@@ -38,11 +41,10 @@ RUN set -eux; \
       libxrender1 \
       libxss1 \
       libxtst6 \
-      wget \
-      xdg-utils \
-      # optional: locales for PDF/text rendering
-      locales \
     ; rm -rf /var/lib/apt/lists/*
+
+# Avoid downloading chromium in production image
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 # Install only production deps
 COPY package*.json ./
@@ -61,4 +63,4 @@ ENV NODE_ENV=production
 EXPOSE 5000
 
 # Start the server (matches your package.json "start": "node src/server.js")
-CMD ["npm", "run", "start"]
+CMD ["npm", "start"]
