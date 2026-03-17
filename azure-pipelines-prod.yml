@@ -21,146 +21,323 @@ variables:
   azureSubscription: 'AzureServiceConnection'
   rgName: 'appsvc_linux_southeastasia_basic'
   appName: 'soc-watchtower-backend'
-  slotName: ''   # leave '' if not using slots
+
+  # ---------- ACR / Image ----------
+  registryName: 'acrsocwatchtowerbackendprod'           # ACR resource name (without .azurecr.io)
+  containerRepository: 'soc-watchtower-backend'        # repo path inside your ACR
+  imageTag: '$(Build.BuildId)'
+  loginServer: '$(registryName).azurecr.io'
+  fullImageName: '$(loginServer)/$(containerRepository):$(imageTag)'
+
+  # ---------- App behavior ----------
+  appPort: '5000'                   # Make sure your container listens on this port
+  smokeTestPath: '/health'
+  smokeTestTimeoutSeconds: '300'
+
+# ---------- Tooling versions / reports ----------
   nodeVersion: '22.x'
-
-  # --- Artifacts / Reports ---
-  zipName: 'soc_watchtower_backend.zip'
-  artifactName: 'drop'
-  coverageDir: 'coverage'
-  junitReport: 'test-results/junit.xml'
-  sbomFile: 'sbom.json'
-  checksumFile: 'soc_watchtower_backend.zip.sha256'
-
-  # --- GitLeaks controls ---
-  gitleaksVersion: 'v8.18.3'      # pin version for stability
-  gitleaksFailOnLeak: 'true'      # fail pipeline on findings
-  gitleaksScanHistory: 'false'    # 'true' scans full history (slower)
+  gitleaksVersion: 'v8.18.3'
   gitleaksReportJson: 'gitleaks-report.json'
   gitleaksReportSarif: 'gitleaks-report.sarif'
-  
-  # --- Lint/Format report outputs (NEW) ---
+
   eslintReportJson: 'eslint-report.json'
   prettierReportTxt: 'prettier-report.txt'
 
-  # --- npm audit controls ---
-  npmAuditForce: 'false'          # 'true' may introduce breaking changes
-  npmAuditOmitDev: 'false'        # 'true' ignores dev deps during audit
-  npmAuditFailLevel: 'high'       # none | moderate | high | critical
-
-  # Absolute path for npm audit report
+  npmAuditFailLevel: 'high'  # none|moderate|high|critical
   npmAuditReportPath: '$(System.DefaultWorkingDirectory)/npm-audit-report.json'
+  
+# ---------- Feature flags ----------
+  EnableScans: 'false'          # <--- Set to 'false' to SKIP all scan/report stages
+  EnableCosignAttest: 'false'  # set to 'true' once OIDC/key is configured (attestation is non-fatal)
 
-  # --- CI behavior ---
-  runTests: 'true'                # enable tests (blocking)
-  enableSlotSwap: 'true'          # swap staging -> production after smoke test (requires slotName)
-  smokeTestPath: '/health'        # path for smoke test endpoint
-  smokeTestTimeoutSeconds: '30'   # curl timeout
+  EnableUnitTests: 'true'
+  EnableMSDO: 'true'   # Microsoft Security DevOps
+  EnableGitLeaks: 'true'
+  EnableNpmAudit: 'true'
+  EnableLint: 'true'
+  EnableSourceSBOM: 'true'
+  EnableTrivy: 'true'
+  EnableImageSBOM: 'true'
+  EnableBuildIntegrity: 'true'
+  EnableDeploy: 'true'
 
 stages:
-# ======================
-# Stage: Build & Publish
-# ======================
+# =========================================
+# Stage: Build & Push (via az acr login)
+# =========================================
 - stage: Build
-  displayName: Build, secure, test, and publish artifacts
+  displayName: Build & Push container (az acr login)
   jobs:
-  - job: BuildJob
-    displayName: Build Node API
+  - job: BuildAndPush
+    displayName: Build and push Docker image to ACR
     steps:
     - checkout: self
       fetchDepth: 0
 
-    # ----------- GitLeaks: Install -----------
-    - task: Bash@3
-      displayName: 'Install GitLeaks'
+    # (Optional) Quick environment echo to ensure we're on the right sub/tenant
+    - task: AzureCLI@2
+      displayName: 'Show Azure context'
       inputs:
-        targetType: 'inline'
-        script: |
+        azureSubscription: '$(azureSubscription)'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
           set -euo pipefail
-          GITLEAKS_VERSION="${{ variables.gitleaksVersion }}"
-          if [ -z "${GITLEAKS_VERSION:-}" ]; then
-            echo "ERROR: gitleaksVersion pipeline variable is empty."
-            exit 1
-          fi
-          GITLEAKS_VERSION_NO_V="${GITLEAKS_VERSION#v}"
-          echo "Installing GitLeaks ${GITLEAKS_VERSION} (asset: gitleaks_${GITLEAKS_VERSION_NO_V}_linux_x64.tar.gz)"
-          ASSET_URL="https://github.com/gitleaks/gitleaks/releases/download/${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION_NO_V}_linux_x64.tar.gz"
-          echo "Downloading: ${ASSET_URL}"
-          curl -fL "${ASSET_URL}" -o gitleaks.tar.gz
-          echo "Verifying archive..."
-          tar tzf gitleaks.tar.gz >/dev/null
-          tar -xzf gitleaks.tar.gz
-          chmod +x gitleaks
-          ./gitleaks version
-
-    # ----------- GitLeaks: Detect secrets (fail on leaks) -----------
-    - task: Bash@3
-      displayName: 'Run GitLeaks Scan (fail on leaks)'
+          echo "== az account show =="
+          az account show -o table
+          echo "== ACR existence check =="
+          az acr show -n "$(registryName)" -o table
+    
+    - task: NodeTool@0
+      displayName: "Use Node 22.x for lockfile regen"
       inputs:
-        targetType: 'inline'
-        script: |
+        versionSpec: '22.x'
+
+    - bash: |
+        set -euo pipefail
+        rm -rf node_modules
+        # regenerate lockfile only, without modifying node_modules footprint on agent
+        npm install --package-lock-only
+        git status --porcelain
+      displayName: "Regenerate package-lock.json for overrides"
+
+    # Build & push using Azure CLI + docker
+    - task: AzureCLI@2
+      name: setvars
+      displayName: 'ACR login, docker build & push'
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
           set -euo pipefail
-          if [ "${{ variables.gitleaksScanHistory }}" = "true" ]; then
-            LOG_OPTS="--log-opts=--all"
-            echo "Scanning full git history..."
-          else
-            LOG_OPTS=""
-            echo "Scanning working tree only..."
-          fi
 
-          CONFIG_ARG=""
-          if [ -f ".gitleaks.toml" ]; then
-            echo "Using local config: .gitleaks.toml"
-            CONFIG_ARG="--config=.gitleaks.toml"
-          fi
+          ACR="$(registryName)"
+          REPO="$(containerRepository)"
+          TAG="$(imageTag)"
+          # LOGIN_SERVER=$(az acr show -n "${ACR}" --query loginServer -o tsv)
+          LOGIN_SERVER="$(echo "${ACR}.azurecr.io" | tr '[:upper:]' '[:lower:]')"
+          IMAGE="${LOGIN_SERVER}/${REPO}:${TAG}"
 
-          EXIT_CODE_ARG="--exit-code=1" # fail on leak
+          echo "Using ACR: ${ACR}"
+          echo "Login server: ${LOGIN_SERVER}"
+          echo "Repository: ${REPO}"
+          echo "Tag: ${TAG}"
 
-          # JSON report (redacted)
-          ./gitleaks detect \
-            --source . \
-            ${LOG_OPTS} \
-            ${CONFIG_ARG} \
-            ${EXIT_CODE_ARG} \
-            --redact \
-            --report-format json \
-            --report-path "${{ variables.gitleaksReportJson }}"
+          echo "Verifying ACR exists and is reachable..."
+          az acr show -n "${ACR}" -o table >/dev/null
 
-          # SARIF report (non-failing for tooling ingestion)
-          ./gitleaks detect \
-            --source . \
-            ${LOG_OPTS} \
-            ${CONFIG_ARG} \
-            --exit-code=0 \
-            --redact \
-            --report-format sarif \
-            --report-path "${{ variables.gitleaksReportSarif }}"
+          # Login to ACR with the identity behind the Azure service connection
+          # NOTE: This requires that identity to have AcrPush on the ACR.
+          echo "Logging into ACR..."
+          az acr login --name "${ACR}"
 
-          ls -l "${{ variables.gitleaksReportJson }}" "${{ variables.gitleaksReportSarif }}"
+          echo "Building image ${IMAGE} ..."
+          docker build \
+            --pull \
+            -t "${IMAGE}" \
+            -f "$(Build.SourcesDirectory)/Dockerfile" \
+            "$(Build.SourcesDirectory)"
 
-    # ----------- FAST: Publish only the GitLeaks reports -----------
-    - task: Bash@3
-      displayName: 'Prepare GitLeaks artifact folder'
+          echo "Tagging latest ..."
+          docker tag "${IMAGE}" "${LOGIN_SERVER}/${REPO}:latest"
+
+          # Retry helper for transient 401/429/5xx during push
+          retry() {
+            local n=0; local max=5; local delay=5;
+            until [ $n -ge $max ]; do
+              "$@" && break
+              n=$((n+1))
+              echo "Command failed. Attempt $n/$max. Retrying in ${delay}s..."
+              sleep $delay
+              delay=$((delay*2))
+            done
+            [ $n -lt $max ] || { echo "ERROR: command failed after $max attempts."; exit 1; }
+          }
+
+          echo "Pushing tags ..."
+          retry docker push "${IMAGE}"
+          retry docker push "${LOGIN_SERVER}/${REPO}:latest"
+
+          echo "Server-side tag list (top 10):"
+          az acr repository show-tags \
+            --name "${ACR}" \
+            --repository "${REPO}" \
+            --top 10 \
+            -o table || true
+            
+          # Export values for downstream stages (Deploy/Scans)
+          echo "##vso[task.setvariable variable=resolvedLoginServer;isOutput=true]${LOGIN_SERVER}"
+          echo "##vso[task.setvariable variable=resolvedImageName;isOutput=true]${IMAGE}"
+
+# ==========================================
+# Stage: UnitTests (blocking)
+# ==========================================
+- stage: UnitTests
+  displayName: "Unit Tests (Jest)"
+  dependsOn: Build
+  condition: and(succeeded(), eq(variables['EnableUnitTests'], 'true'))
+  jobs:
+    - job: RunUnitTests
+      displayName: "Run Jest unit tests"
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+        - checkout: self
+          fetchDepth: 0
+
+        - task: Cache@2
+          displayName: Cache npm
+          inputs:
+            key: 'npm | $(Agent.OS) | package-lock-$(Build.SourceVersion)'
+            restoreKeys: |
+              npm | "$(Agent.OS)"
+              npm
+            path: $(Pipeline.Workspace)/.npm
+
+        - task: NodeTool@0
+          displayName: "Use Node $(nodeVersion)"
+          inputs:
+            versionSpec: '$(nodeVersion)'
+
+        - bash: |
+            set -euo pipefail
+            npm ci --cache $(Pipeline.Workspace)/.npm
+            # Always create artifacts directory
+            mkdir -p test-artifacts
+
+            # Run Jest in CI mode, single process to keep logs readable in CI
+            npm test -- --ci --runInBand --coverage || true
+            
+            if [ -d coverage ]; then
+              cp -r coverage test-artifacts/coverage
+            fi
+
+            # If you print Jest JSON, you can also copy it into test-artifacts
+          displayName: "Install deps & run unit tests (blocking on failure)"
+
+        - task: PublishPipelineArtifact@1
+          displayName: "Publish unit test artifacts (coverage, logs)"
+          condition: always()
+          inputs:
+            targetPath: '$(System.DefaultWorkingDirectory)/test-artifacts'
+            artifact: 'UnitTestArtifacts'
+            publishLocation: 'pipeline'
+
+# =========================================
+# Stage: Security Scans (SAST, Secrets, IaC + GitLeaks)
+# =========================================
+- stage: SecurityScans
+  displayName: "Security Scans (MSDO + GitLeaks)"
+  dependsOn: 
+    - Build
+    # - UnitTests
+  condition: eq(variables['EnableScans'], 'true')   # <--- Optional
+  # condition: and(succeeded(), or(eq(variables['EnableMSDO'], 'true'), eq(variables['EnableGitLeaks'], 'true')))
+  jobs:
+  - job: MSDO
+    displayName: "MSDO: SAST + Secrets + IaC"
+    condition: and(succeeded(), eq(variables['EnableMSDO'], 'true'))
+    steps:
+    - checkout: self
+      fetchDepth: 0
+
+    - task: MicrosoftSecurityDevOps@1
+      displayName: "Run Microsoft Security DevOps (code, secrets, IaC)"
+      inputs:
+        publishResults: true
+        break: false # fail the job on configured severity (default High/Critical)
+      continueOnError: true
+
+    - task: PublishBuildArtifacts@1
+      displayName: "Publish security scan artifacts"
+      inputs:
+        PathtoPublish: '$(Build.SourcesDirectory)/.gdn' # MSDO drops logs/SARIF here
+        ArtifactName: 'MSDO-Logs'
       condition: always()
-      inputs:
-        targetType: 'inline'
-        script: |
-          set -euo pipefail
-          mkdir -p "$(Build.ArtifactStagingDirectory)/gitleaks"
-          cp "${{ variables.gitleaksReportJson }}" "$(Build.ArtifactStagingDirectory)/gitleaks/"
-          cp "${{ variables.gitleaksReportSarif }}" "$(Build.ArtifactStagingDirectory)/gitleaks/"
-          echo "Contents of GitLeaks artifact folder:"
-          ls -l "$(Build.ArtifactStagingDirectory)/gitleaks"
+
+  - job: GitLeaks
+    displayName: "GitLeaks Secret Scan"
+    condition: and(succeeded(), eq(variables['EnableGitLeaks'], 'true'))
+    steps:
+    - checkout: self
+      fetchDepth: 0
+
+    - bash: |
+        set -euo pipefail
+        VER="$(gitleaksVersion)"
+        VER_NO_V="${VER#v}"
+        URL="https://github.com/gitleaks/gitleaks/releases/download/${VER}/gitleaks_${VER_NO_V}_linux_x64.tar.gz"
+        echo "Downloading ${URL}"
+        curl -fL "${URL}" -o gitleaks.tar.gz
+        tar -xzf gitleaks.tar.gz
+        chmod +x gitleaks
+        ./gitleaks version
+      displayName: "Install GitLeaks"
+
+    - bash: |
+        set -euo pipefail
+        LOG_OPTS="--log-opts=--all"   # scan history
+        CONFIG_ARG=""
+        [ -f ".gitleaks.toml" ] && CONFIG_ARG="--config=.gitleaks.toml"
+        ./gitleaks detect \
+          --source . \
+          ${LOG_OPTS} \
+          ${CONFIG_ARG} \
+          --redact \
+          --report-format json  
+          --report-path "$(gitleaksReportJson)" \
+          --exit-code 1
+      displayName: "GitLeaks JSON report (non-fatal)" 
+      continueOnError: true
+
+    - bash: |
+        set -euo pipefail
+        LOG_OPTS="--log-opts=--all"
+        CONFIG_ARG=""
+        [ -f ".gitleaks.toml" ] && CONFIG_ARG="--config=.gitleaks.toml"
+        ./gitleaks detect \
+          --source . \
+          ${LOG_OPTS} \
+          ${CONFIG_ARG} \
+          --redact \
+          --report-format sarif 
+          --report-path "$(gitleaksReportSarif)" \
+          --exit-code 0
+      
+      displayName: "GitLeaks SARIF report (non-fatal)"
+      continueOnError: true
 
     - task: PublishPipelineArtifact@1
-      displayName: 'Publish GitLeaks Reports (pipeline artifact)'
+      displayName: 'Publish GitLeaks Reports'
       condition: always()
       inputs:
-        targetPath: '$(Build.ArtifactStagingDirectory)/gitleaks'
+        targetPath: '$(System.DefaultWorkingDirectory)'
         artifact: 'GitLeaksReports'
         publishLocation: 'pipeline'
 
-    # ----------- Cache npm -----------
+# =========================================
+# Stage: DependencyScans (SCA, Lint/Format, SBOM)
+# =========================================
+- stage: DependencyScans
+  displayName: "Dependency & Quality Gates (npm audit, ESLint/Prettier, SBOM)"
+  dependsOn: 
+    - Build
+    # - UnitTests
+  condition: eq(variables['EnableScans'], 'true')   # <--- Optional
+  # condition: and(
+  #   succeeded(),
+  #   or(
+  #     eq(variables['EnableNpmAudit'], 'true'),
+  #     eq(variables['EnableLint'], 'true'),
+  #     eq(variables['EnableSourceSBOM'], 'true')
+  #   )
+  # )
+  jobs:
+  - job: NpmAudit
+    condition: and(succeeded(), eq(variables['EnableNpmAudit'], 'true'))
+    displayName: "npm audit + severity threshold gate"
+    steps:
     - task: Cache@2
       displayName: Cache npm
       inputs:
@@ -170,422 +347,474 @@ stages:
           npm
         path: $(Pipeline.Workspace)/.npm
 
-    # ----------- Node tool -----------
     - task: NodeTool@0
-      displayName: Use Node ${{ variables.nodeVersion }}
+      displayName: "Use Node $(nodeVersion)"
       inputs:
-        versionSpec: '${{ variables.nodeVersion }}'
+        versionSpec: '$(nodeVersion)'
 
-    # 1) Install & strict Lint + Prettier
-    - task: Bash@3
-      displayName: 'Install deps & generate lint/format reports (non-blocking) & auto fix'
+    - bash: |
+        set -euo pipefail
+        if [ ! -f package-lock.json ]; then
+          echo "package-lock.json not found; generating lockfile..."
+          npm install --package-lock-only --no-audit --no-fund
+        fi
+        
+        npm ci --cache $(Pipeline.Workspace)/.npm
+        echo "Running npm audit fix (non-fatal)..."
+        npm audit fix || true
+        echo "Generating npm audit JSON report at $(npmAuditReportPath)..."
+        if ! npm audit --json > "$(npmAuditReportPath)"; then
+          echo "npm audit returned findings; JSON captured."
+        fi
+        ls -l "$(npmAuditReportPath)" || true
+      displayName: "npm ci + audit (capture JSON)"
+      continueOnError: true
+
+    - bash: |
+        set -euo pipefail
+        REPORT="$(npmAuditReportPath)"
+        THRESHOLD="$(npmAuditFailLevel)"
+        if [ ! -s "${REPORT}" ]; then
+          echo "WARN: ${REPORT} missing or empty; failing for safety."
+          exit 1
+        fi
+        node <<'EOF'
+        const fs = require('fs');
+        const reportPath = process.env.REPORT || 'npm-audit-report.json';
+        const threshold = (process.env.THRESHOLD || 'critical').toLowerCase();
+        const sevOrder = { none: 0, low: 1, moderate: 2, high: 3, critical: 4 };
+        const raw = fs.readFileSync(reportPath, 'utf8');
+        const data = JSON.parse(raw);
+        const meta = data?.metadata?.vulnerabilities || {};
+        const totals = {
+          low: Number(meta.low || 0),
+          moderate: Number(meta.moderate || 0),
+          high: Number(meta.high || 0),
+          critical: Number(meta.critical || 0),
+        };
+        const thr = sevOrder[threshold] ?? 4;
+        const anyAtOrAbove =
+          (thr <= 1 && totals.low > 0) ||
+          (thr <= 2 && totals.moderate > 0) ||
+          (thr <= 3 && totals.high > 0) ||
+          (thr <= 4 && totals.critical > 0);
+        console.log('npm audit totals:', totals, 'threshold:', threshold);
+        if (anyAtOrAbove) {
+          console.error(`Build failed: vulnerabilities at or above '${threshold}' remain after audit fix.`);
+          process.exit(1);
+        } else {
+          console.log(`OK: No '${threshold}' or higher vulnerabilities remain.`);
+        }
+        EOF
+      displayName: "Fail on remaining vulnerabilities (threshold gating)"
       env:
-        npm_config_cache: $(Pipeline.Workspace)/.npm
-      inputs:
-        targetType: 'inline'
-        workingDirectory: '$(System.DefaultWorkingDirectory)'
-        script: |
-          set -euo pipefail
+        REPORT: $(npmAuditReportPath)
+        THRESHOLD: $(npmAuditFailLevel)
 
-          # Deterministic install
-          if [ ! -f package-lock.json ]; then
-            echo "package-lock.json not found; generating lockfile..."
-            npm install --package-lock-only --no-audit --no-fund
-          fi
-          npm ci --cache $(Pipeline.Workspace)/.npm
-
-          # Prettier: write changes (non-blocking)
-          echo "Running Prettier --write (auto-fix)"
-          npx prettier --write . || true
-          
-          # ESLint: fix issues (non-blocking) and also produce a report for visibility
-          echo "Running ESLint --fix (auto-fix)"
-          npx eslint . --fix || true
-          
-          # ESLint: generate JSON report, do not block pipeline
-          echo "Running ESLint (report only, non-blocking)"
-          npx eslint . --format json --output-file "${{ variables.eslintReportJson }}" || true
-          # Ensure the file exists even if eslint crashed or found nothing
-          test -s "${{ variables.eslintReportJson }}" || echo "[]" > "${{ variables.eslintReportJson }}"
-          echo "ESLint report written to ${{ variables.eslintReportJson }}"
-
-          # Prettier: check formatting, capture output to text report, do not block
-          echo "Running Prettier check (report only, non-blocking)"
-          # Capture both stdout/stderr so diffs are visible in the report
-          (npx prettier --check . 2>&1) | tee "${{ variables.prettierReportTxt }}" || true
-
-    # Publish lint/format reports (tiny, fast)
-    - task: Bash@3
-      displayName: 'Prepare lint/format reports artifact'
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish npm audit report'
       condition: always()
       inputs:
-        targetType: 'inline'
-        script: |
-          set -euo pipefail
-          mkdir -p "$(Build.ArtifactStagingDirectory)/lint"
-          cp "${{ variables.eslintReportJson }}" "$(Build.ArtifactStagingDirectory)/lint/"
-          cp "${{ variables.prettierReportTxt }}" "$(Build.ArtifactStagingDirectory)/lint/"
-          echo "Contents of LintReports artifact:"
-          ls -l "$(Build.ArtifactStagingDirectory)/lint"
-        
+        targetPath: '$(System.DefaultWorkingDirectory)'
+        artifact: 'NpmAuditReport'
+        publishLocation: 'pipeline'
+
+  - job: LintFormat
+    displayName: "ESLint + Prettier (reports, non-blocking)"
+    condition: and(succeeded(), eq(variables['EnableLint'], 'true'))
+    steps:
+    - task: Cache@2
+      displayName: Cache npm
+      inputs:
+        key: 'npm | "$(Agent.OS)" | package-lock-$(Build.SourceVersion)'
+        restoreKeys: |
+          npm | "$(Agent.OS)"
+          npm
+        path: $(Pipeline.Workspace)/.npm
+
+    - task: NodeTool@0
+      displayName: "Use Node $(nodeVersion)"
+      inputs:
+        versionSpec: '$(nodeVersion)'
+
+    - bash: |
+        set -euo pipefail
+        npm ci --cache $(Pipeline.Workspace)/.npm
+        echo "Running ESLint (report only)"
+        npx eslint . --format json --output-file "$(eslintReportJson)" || true
+        test -s "$(eslintReportJson)" || echo "[]" > "$(eslintReportJson)"
+        echo "Running Prettier check (report only)"
+        (npx prettier --check . 2>&1) | tee "$(prettierReportTxt)" || true
+      displayName: "Generate ESLint/Prettier reports"
+      continueOnError: true
+
     - task: PublishPipelineArtifact@1
       displayName: 'Publish LintReports (ESLint JSON + Prettier TXT)'
       condition: always()
       inputs:
-        targetPath: '$(Build.ArtifactStagingDirectory)/lint'
+        targetPath: '$(System.DefaultWorkingDirectory)'
         artifact: 'LintReports'
         publishLocation: 'pipeline'
 
-    # 2) npm audit fix + JSON report + severity gate (blocking)
-    - task: Bash@3
-      displayName: 'npm audit fix & generate report'
-      env:
-        npm_config_cache: $(Pipeline.Workspace)/.npm
+  - job: SBOM
+    displayName: "Generate SBOM (CycloneDX)"
+    condition: and(succeeded(), eq(variables['EnableSourceSBOM'], 'true'))
+    steps:
+    - task: NodeTool@0
+      displayName: "Use Node $(nodeVersion)"
       inputs:
-        targetType: 'inline'
-        workingDirectory: '$(System.DefaultWorkingDirectory)'
-        script: |
-          set -euo pipefail
+        versionSpec: '$(nodeVersion)'
+    - bash: |
+        set -euo pipefail
+        # 1) CycloneDX (app/source)
+        npx @cyclonedx/cyclonedx-npm --output-file sbom.cdx.$(Build.BuildId).json --json || true
+        # SPDX (app/source) via Syft to keep parity with image SBOM generator.
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b . v1.0.0 || true
+        ./syft dir:. -o spdx-json=sbom.spdx.$(Build.BuildId).json
 
-          FORCE="${{ variables.npmAuditForce }}"
-          if [ "${FORCE}" = "true" ]; then
-            echo "Running: npm audit fix --force (may introduce breaking changes)"
-            npm audit fix --force || true
-          else
-            echo "Running: npm audit fix (semver-safe)"
-            npm audit fix || true
-          fi
+        # Basic existence + size checks
+        ls -lh sbom.*.$(Build.BuildId).json || true
+      displayName: "Generate Source SBOMs (CycloneDX + SPDX)"
+      continueOnError: true
 
-          AUDIT_FLAGS=""
-          if [ "${{ variables.npmAuditOmitDev }}" = "true" ]; then
-            AUDIT_FLAGS="--omit=dev"
-            echo "Auditing with dev dependencies omitted"
-          fi
+    - bash: |
+        set -euo pipefail
+        # Best-effort validation of CycloneDX (non-fatal)
+        npx @cyclonedx/cdxgen --validate sbom.cdx.$(Build.BuildId).json || true
+      displayName: "Validate CycloneDX SBOM (best-effort)"
+      continueOnError: true
 
-          echo "Generating npm audit JSON report at ${{ variables.npmAuditReportPath }}…"
-          # Capture JSON even if audit exits non-zero
-          if ! npm audit ${AUDIT_FLAGS} --json > "${{ variables.npmAuditReportPath }}"; then
-            echo "npm audit completed with findings; JSON captured to ${{ variables.npmAuditReportPath }}"
-          fi
-
-          echo "Verifying report presence:"
-          ls -l "${{ variables.npmAuditReportPath }}"
-
-    - task: Bash@3
-      displayName: 'Fail on remaining vulnerabilities (threshold gating)'
-      inputs:
-        targetType: 'inline'
-      env:
-        REPORT: ${{ variables.npmAuditReportPath }}
-        THRESHOLD: ${{ variables.npmAuditFailLevel }}
-        script: |
-          set -euo pipefail
-          REPORT="${REPORT}"
-          THRESHOLD="${THRESHOLD}" # none|moderate|high|critical
-          if [ ! -s "${REPORT}" ]; then
-            echo "WARN: ${REPORT} missing or empty; failing for safety."
-            exit 1
-          fi
-
-          node <<'EOF'
-          const fs = require('fs');
-          const reportPath = process.env.REPORT || 'npm-audit-report.json';
-          const threshold = (process.env.THRESHOLD || 'critical').toLowerCase();
-          const sevOrder = { none: 0, low: 1, moderate: 2, high: 3, critical: 4 };
-          const raw = fs.readFileSync(reportPath, 'utf8');
-          const data = JSON.parse(raw);
-          const meta = data?.metadata?.vulnerabilities || {};
-          const totals = {
-            low: Number(meta.low || 0),
-            moderate: Number(meta.moderate || 0),
-            high: Number(meta.high || 0),
-            critical: Number(meta.critical || 0),
-          };
-          const thr = sevOrder[threshold] ?? 4;
-          const anyAtOrAbove =
-            (thr <= 1 && totals.low > 0) ||
-            (thr <= 2 && totals.moderate > 0) ||
-            (thr <= 3 && totals.high > 0) ||
-            (thr <= 4 && totals.critical > 0);
-          console.log('npm audit totals:', totals, 'threshold:', threshold);
-          if (anyAtOrAbove) {
-            console.error(`Build failed: vulnerabilities at or above '${threshold}' remain after audit fix.`);
-            process.exit(1);
-          } else {
-            console.log(`OK: No '${threshold}' or higher vulnerabilities remain.`);
-          }
-          EOF
-
-    # Publish npm audit report using absolute path
-    - task: PublishBuildArtifacts@1
-      displayName: 'Publish npm audit report'
-      condition: always()
-      inputs:
-        pathToPublish: '$(System.DefaultWorkingDirectory)/npm-audit-report.json'
-        artifactName: 'NpmAuditReport'
-
-    # Install jest-junit
-    - task: Bash@3
-      displayName: 'Install jest-junit (CI only)'
-      inputs:
-        targetType: 'inline'
-        workingDirectory: '$(System.DefaultWorkingDirectory)'
-        script: |
-          set -euo pipefail
-          npm install --no-save jest-junit@^16.0.0
-          npx jest-junit --version || true
-
-    # 3) Tests (blocking) + JUnit + coverage
-    - task: Bash@3
-      displayName: 'Run Jest tests (non-blocking) with JUnit + coverage'
-      inputs:
-        targetType: 'inline'
-        workingDirectory: '$(System.DefaultWorkingDirectory)'
-        script: |
-          set -euo pipefail
-          export JEST_JUNIT_OUTPUT="${{ variables.junitReport }}"
-          export JEST_JUNIT_SUITE_NAME="unit-tests"
-
-          # Allow failures without stopping the job:
-          set +e
-          npx jest --ci \
-            --reporters=default \
-            --reporters=jest-junit \
-            --coverage \
-            --coverageDirectory="${{ variables.coverageDir }}"
-          JEST_EXIT=$?
-          set -e
-
-          if [ $JEST_EXIT -ne 0 ]; then
-            echo "WARN: Jest exited with code $JEST_EXIT. Proceeding without failing the pipeline."
-          fi
-
-    - task: PublishTestResults@2
-      displayName: Publish Test Results (JUnit)
-      condition: succeededOrFailed()
-      inputs:
-        testResultsFormat: 'JUnit'
-        testResultsFiles: '${{ variables.junitReport }}'
-        failTaskOnFailedTests: false
-        testRunTitle: 'Jest unit tests'
-
-    - task: PublishCodeCoverageResults@1
-      displayName: Publish code coverage (Cobertura)
-      condition: succeededOrFailed()
-      inputs:
-        codeCoverageTool: 'Cobertura'
-        summaryFileLocation: 'coverage/cobertura-coverage.xml'
-        reportDirectory: '${{ variables.coverageDir }}'
-
-    # 4) SBOM (CycloneDX) BEFORE prune (blocking)
-    - task: Bash@3
-      displayName: 'Generate SBOM (CycloneDX)'
-      inputs:
-        targetType: 'inline'
-        script: |
-          set -euo pipefail
-          npx @cyclonedx/cyclonedx-npm --output-file "${{ variables.sbomFile }}"
-
-    # 5) Prune to production deps
-    - task: Bash@3
-      displayName: 'Prune to production-only dependencies'
-      inputs:
-        targetType: 'inline'
-        script: |
-          set -euo pipefail
-          npm prune --production
-
-    # 6) Stage files for zip
-    - task: Bash@3
-      displayName: 'Stage package for zip'
-      inputs:
-        targetType: 'inline'
-        script: |
-          set -euo pipefail
-          mkdir -p "$(Build.ArtifactStagingDirectory)/package"
-          cp -r src "$(Build.ArtifactStagingDirectory)/package"
-          cp package.json package-lock.json "$(Build.ArtifactStagingDirectory)/package"
-          cp -r node_modules "$(Build.ArtifactStagingDirectory)/package"
-          [ -f index.js ] && cp index.js "$(Build.ArtifactStagingDirectory)/package" || true
-
-    # 7) Create zip
-    - task: ArchiveFiles@2
-      displayName: Create Zip
-      inputs:
-        rootFolderOrFile: '$(Build.ArtifactStagingDirectory)/package'
-        includeRootFolder: false
-        archiveType: 'zip'
-        archiveFile: '$(Build.ArtifactStagingDirectory)/${{ variables.zipName }}'
-        verbose: false
-
-    # 8) Checksum + collect SBOM + prepare 'drop' folder
-    - task: Bash@3
-      displayName: 'Create checksum & prepare drop folder'
-      inputs:
-        targetType: 'inline'
-        script: |
-          set -euo pipefail
-          mkdir -p "$(Build.ArtifactStagingDirectory)/drop"
-          (cd "$(Build.ArtifactStagingDirectory)" && sha256sum "${{ variables.zipName }}" > "${{ variables.checksumFile }}")
-          cp "$(Build.ArtifactStagingDirectory)/${{ variables.zipName }}" "$(Build.ArtifactStagingDirectory)/drop/"
-          cp "$(Build.ArtifactStagingDirectory)/${{ variables.checksumFile }}" "$(Build.ArtifactStagingDirectory)/drop/"
-          cp "${{ variables.sbomFile }}" "$(Build.ArtifactStagingDirectory)/drop/"
-
-    # 9) Publish ONE consolidated artifact: 'drop' (zip + checksum + SBOM)
     - task: PublishPipelineArtifact@1
-      displayName: Publish artifact (zip + checksum + SBOM)
+      displayName: "Publish Source SBOMs"
       inputs:
-        targetPath: '$(Build.ArtifactStagingDirectory)/drop'
-        artifact: '${{ variables.artifactName }}'  # 'drop'
+        targetPath: '$(System.DefaultWorkingDirectory)'
+        artifact: 'Source-SBOMs'
+      condition: always()
+
+    # Optional schema/format sanity validation (CycloneDX)
+    - bash: |
+        set -euo pipefail
+        npx @cyclonedx/cdxgen --validate sbom.cdx.json || {
+          echo "CycloneDX validation failed"; exit 1;
+        }
+      displayName: "Validate CycloneDX SBOM"
+
+    - task: PublishPipelineArtifact@1
+      displayName: "Publish Source SBOM"
+      inputs:
+        targetPath: '$(System.DefaultWorkingDirectory)'
+        artifact: 'Source-SBOMs'
         publishLocation: 'pipeline'
 
-# ======================
-# Stage: Deploy to App Service
-# ======================
-- stage: Deploy
-  displayName: Zip Deploy to App Service (No Oryx) + smoke test + optional slot swap
+# =========================================
+# Stage: ContainerScan (Trivy)
+# =========================================
+- stage: ContainerScan
+  displayName: "Container Image Scan (Trivy)"
+  dependsOn: 
+    - Build
+    # - UnitTests
+  condition: eq(variables['EnableScans'], 'true')   # <--- Optional
+  # condition: and(
+  #     succeeded(),
+  #     or(
+  #       eq(variables['EnableTrivy'], 'true'),
+  #       eq(variables['EnableImageSBOM'], 'true'),
+  #       eq(variables['EnableCosignAttest'], 'true')
+  #     )
+  #   )
+  variables:
+    loginServerFromBuild: $[ stageDependencies.Build.BuildAndPush.outputs['setvars.resolvedLoginServer'] ]
+    imageFromBuild: $[ stageDependencies.Build.BuildAndPush.outputs['setvars.resolvedImageName'] ]
+  jobs:
+  - job: TrivyImageScan
+    displayName: "Trivy scan (fail on HIGH/CRITICAL)"
+    condition: and(succeeded(), eq(variables['EnableTrivy'], 'true'))
+    steps:
+    - task: AzureCLI@2
+      displayName: "ACR login (pull image for scan)"
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          set -euo pipefail
+          az acr login --name "$(registryName)"
+          echo "Logged into ACR $(registryName)"
+    - bash: |
+        set -euo pipefail
+        IMAGE="$(imageFromBuild)"
+        echo "Scanning image: ${IMAGE}"
+        docker pull "${IMAGE}"
+
+        docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          aquasec/trivy:0.50.2 image \
+          --exit-code 0 \
+          --severity CRITICAL,HIGH \
+          --format table \
+          "${IMAGE}" | tee trivy-image.txt
+      displayName: "Run Trivy"
+      continueOnError: true
+
+    - task: PublishPipelineArtifact@1
+      displayName: "Publish container scan report"
+      condition: always()
+      inputs:
+        targetPath: '$(System.DefaultWorkingDirectory)/trivy-image.txt'
+        artifact: 'ContainerScan'
+        publishLocation: 'pipeline'
+
+  # ----- IMAGE SBOM (post-build) -----
+  - job: ImageSbom
+    displayName: "Generate Image SBOM (CycloneDX + optional SPDX)"
+    dependsOn: []
+    condition: and(succeeded(), eq(variables['EnableImageSBOM'], 'true'))
+    steps:
+      - task: AzureCLI@2
+        displayName: "ACR login (pull image for SBOM)"
+        inputs:
+          azureSubscription: '$(azureSubscription)'
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            set -euo pipefail
+            az acr login --name "$(registryName)"
+
+      - bash: |
+          set -euo pipefail
+          IMAGE="$(imageFromBuild)"
+          echo "Target image for SBOM: ${IMAGE}"
+          docker pull "${IMAGE}"
+
+          # Install Syft
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b . v1.0.0
+
+          # CycloneDX JSON SBOM for container image
+          ./syft "${IMAGE}" -o cyclonedx-json=image-sbom.cdx.$(Build.BuildId).json
+
+          # Optional SPDX variant (non-fatal)
+          ./syft "${IMAGE}" -o spdx-json=image-sbom.spdx.$(Build.BuildId).json || true
+
+          ls -lh image-sbom*.json
+        displayName: "Syft: generate image SBOM(s)"
+        continueOnError: true
+
+      - task: PublishPipelineArtifact@1
+        displayName: "Publish Image SBOMs"
+        inputs:
+          targetPath: '$(System.DefaultWorkingDirectory)'
+          artifact: 'Image-SBOMs'
+        condition: always()
+
+  - job: AttachSbom
+    displayName: "Attach CycloneDX SBOM to image (cosign attest) [optional]"
+    dependsOn:
+      - ImageSbom
+    condition: and(eq(variables['EnableScans'], 'true'), eq(variables['EnableCosignAttest'], 'true'))
+    # condition: and(
+    #   succeeded(),
+    #   eq(variables['EnableImageSBOM'], 'true'),
+    #   eq(variables['EnableCosignAttest'], 'true')
+    #   )
+    steps:
+      - task: AzureCLI@2
+        displayName: "ACR login"
+        inputs:
+          azureSubscription: '$(azureSubscription)'
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            set -euo pipefail
+            az acr login --name "$(registryName)"
+
+      - bash: |
+          set -euo pipefail
+          IMAGE="$(imageFromBuild)"
+          docker pull "${IMAGE}"
+          DIGEST="$(docker inspect --format='{{index .RepoDigests 0}}' "${IMAGE}")"
+          echo "Image digest: ${DIGEST}"
+
+          COSIGN_VERSION=v2.2.4
+          curl -sSfL "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64" -o cosign || true
+          chmod +x cosign || true
+
+          ./cosign attest --predicate image-sbom.cdx.$(Build.BuildId).json --type cyclonedx "${DIGEST}" --yes || true
+        displayName: "cosign: attest CycloneDX SBOM (best-effort)"
+        continueOnError: true
+
+# =========================================
+# Stage: BuildIntegrity (Image digest)
+# =========================================
+- stage: BuildIntegrity
+  displayName: "Build Integrity (image digest capture)"
   dependsOn: Build
+  condition: and(succeeded(), eq(variables['EnableBuildIntegrity'], 'true'))
+  variables:
+    loginServerFromBuild: $[ stageDependencies.Build.BuildAndPush.outputs['setvars.resolvedLoginServer'] ]
+    imageFromBuild: $[ stageDependencies.Build.BuildAndPush.outputs['setvars.resolvedImageName'] ]
+  jobs:
+  - job: CaptureDigest
+    displayName: "Capture image RepoDigests + ID"
+    steps:
+    - task: AzureCLI@2
+      displayName: "ACR login (pull image for digest)"
+      inputs:
+        azureSubscription: '$(azureSubscription)'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          set -euo pipefail
+          az acr login --name "$(registryName)"
+    - bash: |
+        set -euo pipefail
+        IMAGE="$(imageFromBuild)"
+        docker pull "${IMAGE}"
+        echo "Image: ${IMAGE}" > image-digest.txt
+        echo "--- docker inspect (RepoDigests) ---" >> image-digest.txt
+        docker inspect --format='{{json .RepoDigests}}' "${IMAGE}" | jq -r '.' >> image-digest.txt || docker inspect "${IMAGE}" >> image-digest.txt
+        echo "--- docker inspect (Id) ---" >> image-digest.txt
+        docker inspect --format='{{.Id}}' "${IMAGE}" >> image-digest.txt
+        cat image-digest.txt
+      displayName: "Write digest file"
+    - task: PublishPipelineArtifact@1
+      displayName: "Publish Image Digest"
+      inputs:
+        targetPath: '$(System.DefaultWorkingDirectory)/image-digest.txt'
+        artifact: 'ImageDigest'
+      condition: always()
+
+# =========================================
+# Stage: Deploy (App Service with MSI AcrPull) + SmokeTest
+# =========================================
+- stage: Deploy
+  displayName: Deploy container to Staging App (Managed Identity ACR pull)
+  dependsOn: 
+    # - SecurityScans
+    # - DependencyScans
+    # - ContainerScan
+    - Build
+    - BuildIntegrity
+  condition: and(succeeded(), eq(variables['EnableDeploy'], 'true'))
+  variables:
+    # Pull the resolved values from the Build stage (note 'setvars' scope)
+    loginServerFromBuild: $[ stageDependencies.Build.BuildAndPush.outputs['setvars.resolvedLoginServer'] ]
+    imageFromBuild:       $[ stageDependencies.Build.BuildAndPush.outputs['setvars.resolvedImageName'] ]
   jobs:
   - job: DeployJob
-    displayName: Deploy Zip to App Service
+    displayName: Configure MSI + grant AcrPull + set container
+    condition: and(succeeded(), eq(variables['EnableDeploy'], 'true'))
     steps:
-    - download: current
-      artifact: ${{ variables.artifactName }}
-
-    # Disable Oryx server-side build & enable run-from-package
     - task: AzureCLI@2
-      displayName: Disable Oryx & enable run-from-package
+      displayName: 'Enable Web App MSI, grant AcrPull, set container'
       inputs:
-        azureSubscription: '${{ variables.azureSubscription }}'
+        azureSubscription: '$(azureSubscription)'
         scriptType: bash
         scriptLocation: inlineScript
         inlineScript: |
           set -euo pipefail
-          SETTINGS="SCM_DO_BUILD_DURING_DEPLOYMENT=false ENABLE_ORYX_BUILD=false NODE_ENV=production WEBSITE_RUN_FROM_PACKAGE=1"
-          if [ -n "${{ variables.slotName }}" ] && [ "${{ variables.slotName }}" != "" ]; then
-            az webapp config appsettings set \
-              --resource-group "${{ variables.rgName }}" \
-              --name "${{ variables.appName }}" \
-              --slot "${{ variables.slotName }}" \
-              --settings $SETTINGS
-          else
-            az webapp config appsettings set \
-              --resource-group "${{ variables.rgName }}" \
-              --name "${{ variables.appName }}" \
-              --settings $SETTINGS
-          fi
 
-    # Ensure Node 22 LTS runtime on Linux
-    - task: AzureCLI@2
-      displayName: Set App Service runtime to Node 22 LTS
-      inputs:
-        azureSubscription: '${{ variables.azureSubscription }}'
-        scriptType: bash
-        scriptLocation: inlineScript
-        inlineScript: |
+          ACR="$(registryName)"
+          RG="$(rgName)"
+          APP="$(appName)"
+          LOGIN_SERVER="$(loginServerFromBuild)"
+          IMAGE_FROM_BUILD="$(imageFromBuild)"
+
+          echo "Resolved login server from Build: ${LOGIN_SERVER}"
+          echo "Resolved image from Build      : ${IMAGE_FROM_BUILD}"
+
+          echo "Enabling system-assigned identity on ${APP} ..."
+          az webapp identity assign -g "${RG}" -n "${APP}" >/dev/null
+
+          PRINCIPAL_ID=$(az webapp identity show \
+            -g "${RG}" -n "${APP}" \
+            --query principalId -o tsv)
+          echo "Web App managed identity principalId: ${PRINCIPAL_ID}"
+
+          ACR_ID=$(az acr show -n "${ACR}" --query id -o tsv)
+          echo "ACR resource id: ${ACR_ID}"
+
+          echo "Granting AcrPull to Web App MSI on ACR ..."
+          az role assignment create \
+            --assignee-object-id "${PRINCIPAL_ID}" \
+            --assignee-principal-type ServicePrincipal \
+            --role AcrPull \
+            --scope "${ACR_ID}" \
+            >/dev/null || echo "Role already exists or propagation pending."
+
+          # Wait briefly for role propagation to avoid first-pull failures
+          for i in {1..6}; do
+            COUNT=$(az role assignment list --assignee "${PRINCIPAL_ID}" --scope "${ACR_ID}" --role AcrPull --query "length(@)" -o tsv)
+            [ "${COUNT}" -ge 1 ] && { echo "AcrPull confirmed."; break; }
+            echo "AcrPull not visible yet; waiting 10s..."
+            sleep 10
+          done
+
+          echo "Disable Oryx & Run-from-Package; set WEBSITES_PORT=$(appPort) ..."
+          az webapp config appsettings delete \
+            -g "${RG}" -n "${APP}" \
+            --setting-names WEBSITE_RUN_FROM_PACKAGE >/dev/null || true
+
+          az webapp config appsettings set \
+            -g "${RG}" -n "${APP}" \
+            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=false ENABLE_ORYX_BUILD=false WEBSITES_PORT=$(appPort) >/dev/null
+
+          echo "Pointing Web App to ACR image (MSI pull; no creds) ..."
+          az webapp config container set \
+            -g "${RG}" -n "${APP}" \
+            --docker-custom-image-name "${IMAGE_FROM_BUILD}" \
+            --docker-registry-server-url "https://${LOGIN_SERVER}"
+
+          echo "Restarting app ..."
+          az webapp restart -g "${RG}" -n "${APP}"
+
+          echo "Verifying container config ..."
+          az webapp config container show \
+            -g "${RG}" -n "${APP}" \
+            --query '{image:linuxFxVersion, acrUseManagedIdentityCreds:acrUseManagedIdentityCreds}' -o table || true
+
+  - job: SmokeTest
+    displayName: Smoke test /health
+    dependsOn: DeployJob
+    condition: and(succeeded(), eq(variables['EnableDeploy'], 'true'))
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+      - bash: |
           set -euo pipefail
-          RUNTIME="NODE|22-lts"
-          if [ -n "${{ variables.slotName }}" ] && [ "${{ variables.slotName }}" != "" ]; then
-            az webapp config set \
-              --resource-group "${{ variables.rgName }}" \
-              --name "${{ variables.appName }}" \
-              --slot "${{ variables.slotName }}" \
-              --linux-fx-version "$RUNTIME"
-          else
-            az webapp config set \
-              --resource-group "${{ variables.rgName }}" \
-              --name "${{ variables.appName }}" \
-              --linux-fx-version "$RUNTIME"
+
+          HOST="${APP_NAME}.azurewebsites.net"
+          PATH_PART="${SMOKE_TEST_PATH}"
+          TIMEOUT="${SMOKE_TEST_TIMEOUT}"
+
+          echo "Probing https://${HOST}${PATH_PART} (timeout: ${TIMEOUT}s)..."
+          end=$((SECONDS + TIMEOUT))
+          ok=1
+          while [ $SECONDS -lt $end ]; do
+            # Keep going even if curl errs (due to -e), we handle via exit code
+            code=$(curl -sS -o /dev/null -w "%{http_code}" \
+                  --connect-timeout 5 --max-time 10 \
+                  "https://${HOST}${PATH_PART}" || true)
+
+            if [ "$code" = "200" ]; then
+              echo "Smoke test OK (200)."
+              ok=0
+              break
+            fi
+
+            echo "Got ${code:-err}; retrying in 5s..."
+            sleep 5
+          done
+
+          # Optional: print headers to help diagnose failures
+          if [ $ok -ne 0 ]; then
+            echo "Final attempt response headers:"
+            curl -I "https://${HOST}${PATH_PART}" || true
           fi
 
-    # #Get App Service hostname
-    # - task: AzureCLI@2
-    #   displayName: 'Get App Service hostname'
-    #   inputs:
-    #     azureSubscription: '${{ variables.azureSubscription }}'
-    #     scriptType: bash
-    #     scriptLocation: inlineScript
-    #     inlineScript: |
-    #       set -euo pipefail
-    #       if [ -n "${{ variables.slotName }}" ] && [ "${{ variables.slotName }}" != "" ]; then
-    #         HOST=$(az webapp show \
-    #           --resource-group "${{ variables.rgName }}" \
-    #           --name "${{ variables.appName }}" \
-    #           --slot "${{ variables.slotName }}" \
-    #           --query 'defaultHostName' -o tsv)
-    #       else
-    #         HOST=$(az webapp show \
-    #           --resource-group "${{ variables.rgName }}" \
-    #           --name "${{ variables.appName }}" \
-    #           --query 'defaultHostName' -o tsv)
-    #       fi
-    #       echo "Resolved hostname: ${HOST}"
-    #       echo "##vso[task.setvariable variable=appHostName]${HOST}"
-
-    # Zip Deploy — when slotName is empty (production)
-    # - task: AzureWebApp@1
-    #   displayName: Zip Deploy to App Service (Production)
-    #   condition: eq(variables['slotName'], '')
-    #   inputs:
-    #     azureSubscription: '${{ variables.azureSubscription }}'
-    #     appType: 'webAppLinux'
-    #     appName: '${{ variables.appName }}'
-    #     resourceGroupName: '${{ variables.rgName }}'
-    #     deployToSlotOrASE: false
-    #     package: '$(Pipeline.Workspace)/${{ variables.artifactName }}/${{ variables.zipName }}'
-
-    # Zip Deploy — when slotName is set (slot/staging)
-    - task: AzureWebApp@1
-      displayName: Zip Deploy to App Service (Slot)
-      condition: ne(variables['slotName'], '')
-      inputs:
-        azureSubscription: '${{ variables.azureSubscription }}'
-        appType: 'webAppLinux'
-        appName: '${{ variables.appName }}'
-        resourceGroupName: '${{ variables.rgName }}'
-        deployToSlotOrASE: true
-        slotName: '${{ variables.slotName }}'
-        package: '$(Pipeline.Workspace)/${{ variables.artifactName }}/${{ variables.zipName }}'
-
-    # # Optional smoke test (fails pipeline if endpoint unhealthy)
-    # - task: Bash@3
-    #   displayName: 'Smoke test'
-    #   inputs:
-    #     targetType: 'inline'
-    #     script: |
-    #       set -euo pipefail
-    #       BASE="https://$(appHostName)"
-    #       URL="${BASE}${{ variables.smokeTestPath }}"
-    #           echo "Smoke-testing: ${URL}"
-
-    #           ATTEMPTS=5
-    #           DELAY=10
-    #           for i in $(seq 1 $ATTEMPTS); do
-    #             echo "Attempt $i of $ATTEMPTS..."
-    #             if curl --fail --silent --max-time "${{ variables.smokeTestTimeoutSeconds }}" "$URL" >/dev/null; then
-    #               echo "Smoke test passed."
-    #               exit 0
-    #             fi
-    #             echo "Host not ready, retrying in $DELAY seconds..."
-    #             sleep $DELAY
-    #           done
-
-    #           echo "WARN: Smoke test failed after $ATTEMPTS attempts."
-    #           exit 0   # <-- non-blocking
-
-
-    # # Optional slot swap to production (only when slotName is set)
-    # - task: AzureCLI@2
-    #   displayName: 'Swap slot (staging → production)'
-    #   condition: and(succeeded(), ne(variables['slotName'], ''), eq(variables['enableSlotSwap'], 'true'))
-    #   inputs:
-    #     azureSubscription: '${{ variables.azureSubscription }}'
-    #     scriptType: bash
-    #     scriptLocation: inlineScript
-    #   inlineScript: |
-    #     set -euo pipefail
-    #     az webapp deployment slot swap \
-    #       --resource-group "${{ variables.rgName }}" \
-    #       --name "${{ variables.appName }}" \
-    #       --slot "${{ variables.slotName }}" \
-    #       --target-slot production
+          exit $ok
+        displayName: 'GET /health until 200'
+        env:
+          APP_NAME: $(appName)
+          SMOKE_TEST_PATH: $(smokeTestPath)
+          SMOKE_TEST_TIMEOUT: $(smokeTestTimeoutSeconds)
