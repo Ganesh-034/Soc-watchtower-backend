@@ -2643,7 +2643,7 @@ function scheduleReportVerification() {
 
 // Schedule: Run on 1st of every month at 00:00
 function scheduleMonthlyReport() {
-  // Default to "0 0 2 * *" (2nd of every month at 00:00) if not set in .env
+  
   const cronSchedule = process.env.MONTHLY_REPORT_CRON || "0 0 5 * *";
 
   schedule.scheduleJob(cronSchedule, () => {

@@ -303,7 +303,7 @@ async function getReportSasUrl(req, res) {
 
     // Create SAS token that's valid for 1 hour
     const sasExpiresOn = new Date();
-    sasExpiresOn.setMinutes(sasExpiresOn.getMinutes() + 60);
+    sasExpiresOn.setMinutes(sasExpiresOn.getMinutes() + 5);
 
     // THE CRITICAL FIX:
     // Parse the blob URL to extract the correct container and blob name
@@ -409,7 +409,7 @@ async function getDirectSasUrl(req, res) {
 
     // SAS expiration time (1 hour)
     const sasExpiresOn = new Date();
-    sasExpiresOn.setMinutes(sasExpiresOn.getMinutes() + 60);
+    sasExpiresOn.setMinutes(sasExpiresOn.getMinutes() + 5);
 
     // Parse blob URL to extract container and blob name
     const blobUrlObj = new URL(blobUrl);
