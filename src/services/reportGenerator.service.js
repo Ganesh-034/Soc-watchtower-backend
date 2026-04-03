@@ -23,6 +23,7 @@ const customers = {
   "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
   "PT.RKNForge": "PT RKN Forge Indonesia",
   "taiho-thailand": "Taiho Thailand",
+    "ajinomoto-thailand(ajt)": "Ajinomoto Thailand"
 };
 
 // Azure Blob Storage configuration
@@ -1424,7 +1425,7 @@ async function generateMonthlyReportForCustomer(
     // Define the legend data for substatus chart
     const subStatusLegend = [
       { label: "SOC Investigating", color: "#70b5fa" },
-      { label: "Awaiting Customer Response", color: "#f2a150" },
+      { label: "Awaiting Customer", color: "#f2a150" },
       { label: "False Positive", color: "#00cc00" },
       { label: "True Positive", color: "#ff0000" },
     ];
@@ -2356,7 +2357,7 @@ async function getReportDataForCustomer(customerKey, customerDisplayName) {
     // Define the legend data for substatus chart
     const subStatusLegend = [
       { label: "SOC Investigating", color: "#70b5fa" },
-      { label: "Awaiting Customer Response", color: "#f2a150" },
+      { label: "Awaiting Customer", color: "#f2a150" },
       { label: "False Positive", color: "#00cc00" },
       { label: "True Positive", color: "#ff0000" },
     ];
@@ -2914,6 +2915,7 @@ async function generateLast5MonthsReports() {
 export {
   generateMonthlyReport,
   generateAllHistoricalReports,
+  generateMonthlyReportForCustomer,
   generateLast5MonthsReports,
   getReportData,
   getReportStatus,
