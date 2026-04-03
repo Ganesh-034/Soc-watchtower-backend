@@ -2,6 +2,9 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import catchAsync from "../utils/catchAsync.js";
 import * as incidentTicketService from "../services/incidentTicket.service.js";
 
+// ← Add this helper
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 const statusMap = {
   open: 2,
   pending: 3,
@@ -40,25 +43,32 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
         if (!dbField) continue;
 
         if (column === "status") {
-          const normalizedValues = values.map((v) => v.trim().toLowerCase());
-          const statusCodes = normalizedValues
-            .map((v) => statusMap[v])
-            .filter((code) => code !== undefined);
+          const normalizedValues = values.map(v => v.trim().toLowerCase());
 
-          if (statusCodes.length === 1) {
-            mongoFilters[dbField] = statusCodes[0];
-          } else if (statusCodes.length > 1) {
-            mongoFilters[dbField] = { $in: statusCodes };
-          } else {
+          const statusCodes = normalizedValues.flatMap(v => {
+            return Object.entries(statusMap)
+              .filter(([key]) => key.includes(v))
+              .map(([, code]) => code);
+          }).filter((code, index, self) =>
+            code !== undefined && self.indexOf(code) === index
+          );
+
+          if (statusCodes.length === 0) {
             mongoFilters[dbField] = -1;
+          } else if (statusCodes.length === 1) {
+            mongoFilters[dbField] = statusCodes[0];
+          } else {
+            mongoFilters[dbField] = { $in: statusCodes };
           }
         } else {
           if (values.length === 1) {
-            mongoFilters[dbField] = { $regex: values[0], $options: "i" };
+            // ← escapeRegex added
+            mongoFilters[dbField] = { $regex: escapeRegex(values[0]), $options: "i" };
           } else if (values.length > 1) {
             mongoFilters.$or = mongoFilters.$or || [];
             for (const val of values) {
-              mongoFilters.$or.push({ [dbField]: { $regex: val, $options: "i" } });
+              // ← escapeRegex added
+              mongoFilters.$or.push({ [dbField]: { $regex: escapeRegex(val), $options: "i" } });
             }
           }
         }
@@ -71,59 +81,18 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
     }
   }
 
-  // FIX: Date Filtering Logic
-  // The inputs are timezone-shifted (e.g., "Jan 1 00:00 Local" becomes "Dec 31 18:30 UTC").
-  // To match the Chart (which counts by UTC Month), we must ignore the input times
-  // and force the range to the full UTC month boundaries.
   if (startDate || endDate) {
-    // 1. Parse the input to determine the Target Month (using endDate as the primary anchor)
-    const dateInput = endDate || startDate; 
-    const targetDate = new Date(dateInput);
-
-    // 2. Calculate strict UTC Month Boundaries
-    // getUTCFullYear() and getUTCMonth() ensure we calculate based on the UTC date of the input string
-    const year = targetDate.getUTCFullYear();
-    const month = targetDate.getUTCMonth();
-
-    // Start of month (1st day, 00:00:00.000 UTC)
-    const start = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0));
-
-    // End of month (Last day, 23:59:59.999 UTC)
-    // Date.UTC(year, month + 1, 0) gives the last day of the current month
-    const end = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
-
-    // 3. Apply Filter using same DB field parsing logic as Chart Service
-    const dbDateField = {
-      $cond: [
-        { $eq: [{ $type: "$created_at" }, "date"] },
-        "$created_at",
-        {
-          $dateFromString: {
-            dateString: "$created_at",
-            onError: null,
-            onNull: null,
-          },
-        },
-      ],
-    };
-
-    mongoFilters.$expr = {
-      $let: {
-        vars: {
-          date: dbDateField,
-        },
-        in: {
-          $and: [
-            { $ne: ["$$date", null] }, // Exclude invalid dates
-            { $gte: ["$$date", start] },
-            { $lte: ["$$date", end] },
-          ],
-        },
-      },
-    };
+    mongoFilters.created_at = mongoFilters.created_at || {};
+    if (startDate) {
+      mongoFilters.created_at.$gte = startDate;
+    }
+    if (endDate) {
+      const [year, month, day] = endDate.split('-').map(Number);
+      const nextDay = new Date(year, month - 1, day + 1);
+      mongoFilters.created_at.$lt = `${nextDay.getFullYear()}-${String(nextDay.getMonth() + 1).padStart(2, '0')}-${String(nextDay.getDate()).padStart(2, '0')}`;
+    }
   }
 
-  // Check if customerName is available from middleware
   if (!req.customerName) {
     return res
       .status(400)
@@ -139,30 +108,22 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
       mongoFilters
     );
 
-    // Handle 204 No Content when no tickets are found
     if (result.tickets && result.tickets.length === 0) {
       return res.status(204).end();
     }
 
-    // Return 200 OK with the tickets data
     return res
       .status(200)
-      .json(
-        new ApiResponse(200, result, "Incident tickets fetched successfully")
-      );
+      .json(new ApiResponse(200, result, "Incident tickets fetched successfully"));
   } catch (error) {
-    // Handle different error types
     if (error.statusCode === 400) {
       return res
         .status(400)
         .json(new ApiResponse(400, null, error.message || "Bad request"));
     } else {
-      // Default to 500 Internal Server Error for unhandled errors
       return res
         .status(500)
-        .json(
-          new ApiResponse(500, null, error.message || "Internal server error")
-        );
+        .json(new ApiResponse(500, null, error.message || "Internal server error"));
     }
   }
 });
