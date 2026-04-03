@@ -41,6 +41,10 @@ export const getCustomer = async (customerName) => {
         displayName: "Taiho Thailand",
         imageName: "customer_logo_4.webp"
       },
+            "ajinomoto-thailand(ajt)": {
+        displayName: "Ajinomoto Thailand",
+        imageName: "customer_logo_5.webp"
+      },
     };
     
     // Check if customer exists in our mapping

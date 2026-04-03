@@ -61,6 +61,7 @@ const customers = {
   "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
   "PT.RKNForge": "PT RKN Forge Indonesia",
   "taiho-thailand": "Taiho Thailand",
+  "ajinomoto-thailand(ajt)": "Ajinomoto Thailand"
 };
 // Helper function to get customer key from either key or display name
 function getCustomerKey(customerIdentifier) {
