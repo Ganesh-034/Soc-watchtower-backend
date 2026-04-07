@@ -17,13 +17,38 @@ import { generateExecutiveSummary } from "./executiveSummary.service.js";
 import { generateTicketSummary } from "./ticketSummary.service.js";
 import { stripHtmlTags } from "../utils/sanitizeHtml.js";
 // Customer configuration
-
 const customers = {
   "Hino Motor- HMST": "Hino Motor Sales Thailand HMST",
   "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
   "PT.RKNForge": "PT RKN Forge Indonesia",
   "taiho-thailand": "Taiho Thailand",
-    "ajinomoto-thailand(ajt)": "Ajinomoto Thailand"
+    "ajinomoto-thailand(ajt)": "Ajinomoto Thailand",
+
+"pt-tokairika-indonesia": "PT Tokairika Indonesia",
+  "toyotaacseautocsengineeringcoltdsoc": "Toyota ACSE Auto CS Engineering Co Ltd",
+  "pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
+  "aji-sentinel4apc-prod": "Ajinomoto Philippines",
+  "toyotafmiautomtvcomponentspvtltdsoc": "Toyota FMI Automotv Components Pvt Ltd",
+  "toyotaftsiptftsautomotiveindonesiasoc": "Toyota FTSI PT FTS Automotive Indonesia",
+  "toyotaftsthftsautomotivethailandcoltd": "Toyota FTSTH FTS Automotive Thailand Co Ltd",
+  "toyotahmmmyhinomotorsmalaysiasoc": "Toyota HMMMY Hino Motors Malaysia",
+  "toyotahmmthinomotorsmnfcthailandltdsoc": "Toyota HMMT Hino Motors Mnfc Thailand Ltd",
+  "toyotashirokiindonesiasoc": "Toyota Shiroki Indonesia",
+  "toyotatgastoyodagoseiasiasoc": "Toyota TGAS Toyoda Gosei Asia",
+  "toyotatgrttoyodagoseirubberthailandsoc": "Toyota TGRT Toyoda Gosei Rubber Thailand",
+  "toyotatkttakebethailandcoltdsoc": "Toyota TKT Takebe Thailand Co Ltd",
+  "toyotatrttokairikathailandcoltdsoc": "Toyota TRT Tokairika Thailand Co Ltd",
+  "tts-asia-internal-soc-workspace-test": "TTS Asia Internal",
+  "ajinomoto-cambodia-ajc": "Ajinomoto Cambodia",
+
+
+  "toyotatsushoapacsoc": "Toyota Tsusho Asia Pacific",
+  "toyotaadmptastradaihatsumotorsoc": "Toyota ADM PT Astra Daihatsu Motor",
+  "toyotaafpaichiforgephilippinesincsoc": "Toyota AFP Aichi Forge Philippines Inc",
+  "toyotaaftaichiforgethailandsoc": "Toyota AFT Aichi Forge Thailand",
+  "toyotaakakawashimaindonesiasoc": "Toyota AKA Kawashima Indonesia",
+  "toyotafigplfutabaindtrgujaratpvtltdsoc": "Toyota FIGPL Futaba Indtr Gujarat Pvt Ltd"
+
 };
 
 // Azure Blob Storage configuration
@@ -622,19 +647,28 @@ const filterHealthIncidentsFromHandlingStatusAll = async (
       const monthId = month.id;
       const [year, monthNum] = monthId.split("-").map((part) => parseInt(part));
       const { start, nextStart } = getMonthWindowUTC(year, monthNum);
+      
       const healthIncidents = await Incident.find({
         customer_name: customerKey,
         incident_type: "Health Incident",
-        customer_escalation: { $regex: /^yes$/i },
         created_at: { $gte: start, $lt: nextStart },
       }).lean();
-      const healthCounts = { Pending: 0, Resolved: 0, Closed: 0 };
+      
+      // Count health incidents by status
+      const healthCounts = { Pending: 0, Resolved: 0, Closed: 0, Escalated: 0 };
       healthIncidents.forEach((incident) => {
         const statusCode = incident.status;
         if (statusCode === 3) healthCounts.Pending++;
         else if (statusCode === 4) healthCounts.Resolved++;
         else if (statusCode === 5) healthCounts.Closed++;
+        else if (statusCode === 6) {
+          // For escalated health incidents, subtract from both Escalated AND Pending
+          healthCounts.Escalated++;
+          healthCounts.Pending++; // Because escalated is also counted as pending
+        }
       });
+      
+      // Subtract health incident counts
       month.statuses.Pending = Math.max(
         0,
         (month.statuses.Pending || 0) - healthCounts.Pending
@@ -643,7 +677,14 @@ const filterHealthIncidentsFromHandlingStatusAll = async (
         0,
         (month.statuses.Resolved || 0) - healthCounts.Resolved
       );
-      month.statuses.Closed = Math.max(0, (month.statuses.Closed || 0) - healthCounts.Closed);
+      month.statuses.Closed = Math.max(
+        0,
+        (month.statuses.Closed || 0) - healthCounts.Closed
+      );
+      month.statuses.Escalated = Math.max(
+        0,
+        (month.statuses.Escalated || 0) - healthCounts.Escalated
+      );
     }
     return filteredHsMonths;
   } catch (error) {
@@ -1183,60 +1224,72 @@ async function generateMonthlyReportForCustomer(
     });
 
     // Original Logic (Escalation)
-    const filterHealthIncidentsFromHandlingStatus = async (
-      customerKey,
-      sortedHsMonths
-    ) => {
-      try {
-        const filteredHsMonths = JSON.parse(JSON.stringify(sortedHsMonths));
-        for (
-          let monthIndex = 0;
-          monthIndex < filteredHsMonths.length;
-          monthIndex++
-        ) {
-          const month = filteredHsMonths[monthIndex];
-          const monthId = month.id;
-          const [year, monthNum] = monthId
-            .split("-")
-            .map((part) => parseInt(part));
-          const dateRegex = new RegExp(
-            `^${year}-${String(monthNum).padStart(2, "0")}`
-          );
-          const healthIncidents = await Incident.find({
-            customer_name: customerKey,
-            incident_type: "Health Incident",
-            customer_escalation: { $regex: /^yes$/i },
-            created_at: { $regex: dateRegex },
-          }).lean();
-          const healthCounts = { Pending: 0, Resolved: 0, Closed: 0 };
-          healthIncidents.forEach((incident) => {
-            const statusCode = incident.status;
-            if (statusCode === 3) healthCounts.Pending++;
-            else if (statusCode === 4) healthCounts.Resolved++;
-            else if (statusCode === 5) healthCounts.Closed++;
-          });
-          month.statuses.Pending = Math.max(
-            0,
-            (month.statuses.Pending || 0) - healthCounts.Pending
-          );
-          month.statuses.Resolved = Math.max(
-            0,
-            (month.statuses.Resolved || 0) - healthCounts.Resolved
-          );
-          month.statuses.Closed = Math.max(
-            0,
-            (month.statuses.Closed || 0) - healthCounts.Closed
-          );
+const filterHealthIncidentsFromHandlingStatus = async (
+  customerKey,
+  sortedHsMonths
+) => {
+  try {
+    const filteredHsMonths = JSON.parse(JSON.stringify(sortedHsMonths));
+    for (
+      let monthIndex = 0;
+      monthIndex < filteredHsMonths.length;
+      monthIndex++
+    ) {
+      const month = filteredHsMonths[monthIndex];
+      const monthId = month.id;
+      const [year, monthNum] = monthId
+        .split("-")
+        .map((part) => parseInt(part));
+      const dateRegex = new RegExp(
+        `^${year}-${String(monthNum).padStart(2, "0")}`
+      );
+      const healthIncidents = await Incident.find({
+        customer_name: customerKey,
+        incident_type: "Health Incident",
+        customer_escalation: { $regex: /^yes$/i },
+        created_at: { $regex: dateRegex },
+      }).lean();
+      
+      // Count health incidents by status
+      const healthCounts = { Pending: 0, Resolved: 0, Closed: 0, Escalated: 0 };
+      healthIncidents.forEach((incident) => {
+        const statusCode = incident.status;
+        if (statusCode === 3) healthCounts.Pending++;
+        else if (statusCode === 4) healthCounts.Resolved++;
+        else if (statusCode === 5) healthCounts.Closed++;
+        else if (statusCode === 6) {
+          // For escalated health incidents, subtract from both Escalated AND Pending
+          healthCounts.Escalated++;
+          healthCounts.Pending++; // Because escalated is also counted as pending
         }
-        return filteredHsMonths;
-      } catch (error) {
-        logger.error(
-          `Error filtering health incidents from handling status data: ${error.message}`
-        );
-        return sortedHsMonths;
-      }
-    };
-
+      });
+      
+      // Subtract health incident counts
+      month.statuses.Pending = Math.max(
+        0,
+        (month.statuses.Pending || 0) - healthCounts.Pending
+      );
+      month.statuses.Resolved = Math.max(
+        0,
+        (month.statuses.Resolved || 0) - healthCounts.Resolved
+      );
+      month.statuses.Closed = Math.max(
+        0,
+        (month.statuses.Closed || 0) - healthCounts.Closed
+      );
+      month.statuses.Escalated = Math.max(
+        0,
+        (month.statuses.Escalated || 0) - healthCounts.Escalated
+      );
+    }
+    return filteredHsMonths;
+  } catch (error) {
+    logger.error(
+      `Error filtering health incidents from handling status data: ${error.message}`
+    );
+    return sortedHsMonths;
+  }
+};
     logger.info(
       `🔍 Filtering health incidents from handling status data for ${customerKey}...`
     );
@@ -1902,6 +1955,8 @@ async function generateMonthlyReport() {
     // Get the previous month
     const now = new Date();
     const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    // const prevMonth = new Date(2025, 10, 1);
     const month = prevMonth.getMonth() + 1;
     const year = prevMonth.getFullYear();
 
@@ -2915,7 +2970,6 @@ async function generateLast5MonthsReports() {
 export {
   generateMonthlyReport,
   generateAllHistoricalReports,
-  generateMonthlyReportForCustomer,
   generateLast5MonthsReports,
   getReportData,
   getReportStatus,

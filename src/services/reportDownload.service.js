@@ -61,7 +61,34 @@ const customers = {
   "centralmotorwheel-thailand": "Centralmotorwheel Thailand",
   "PT.RKNForge": "PT RKN Forge Indonesia",
   "taiho-thailand": "Taiho Thailand",
-  "ajinomoto-thailand(ajt)": "Ajinomoto Thailand"
+  "ajinomoto-thailand(ajt)": "Ajinomoto Thailand",
+
+ 
+"pt-tokairika-indonesia": "PT Tokairika Indonesia",
+  "toyotaacseautocsengineeringcoltdsoc": "Toyota ACSE Auto CS Engineering Co Ltd",
+  "pt-aisannasmocoindustri": "PT Aisan Nasmoco Industri",
+  "aji-sentinel4apc-prod": "Ajinomoto Philippines",
+  "toyotafmiautomtvcomponentspvtltdsoc": "Toyota FMI Automotv Components Pvt Ltd",
+  "toyotaftsiptftsautomotiveindonesiasoc": "Toyota FTSI PT FTS Automotive Indonesia",
+  "toyotaftsthftsautomotivethailandcoltd": "Toyota FTSTH FTS Automotive Thailand Co Ltd",
+  "toyotahmmmyhinomotorsmalaysiasoc": "Toyota HMMMY Hino Motors Malaysia",
+  "toyotahmmthinomotorsmnfcthailandltdsoc": "Toyota HMMT Hino Motors Mnfc Thailand Ltd",
+  "toyotashirokiindonesiasoc": "Toyota Shiroki Indonesia",
+  "toyotatgastoyodagoseiasiasoc": "Toyota TGAS Toyoda Gosei Asia",
+  "toyotatgrttoyodagoseirubberthailandsoc": "Toyota TGRT Toyoda Gosei Rubber Thailand",
+  "toyotatkttakebethailandcoltdsoc": "Toyota TKT Takebe Thailand Co Ltd",
+  "toyotatrttokairikathailandcoltdsoc": "Toyota TRT Tokairika Thailand Co Ltd",
+  "tts-asia-internal-soc-workspace-test": "TTS Asia Internal",
+  "ajinomoto-cambodia-ajc": "Ajinomoto Cambodia",
+
+
+  "toyotatsushoapacsoc": "Toyota Tsusho Asia Pacific",
+  "toyotaadmptastradaihatsumotorsoc": "Toyota ADM PT Astra Daihatsu Motor",
+  "toyotaafpaichiforgephilippinesincsoc": "Toyota AFP Aichi Forge Philippines Inc",
+  "toyotaaftaichiforgethailandsoc": "Toyota AFT Aichi Forge Thailand",
+  "toyotaakakawashimaindonesiasoc": "Toyota AKA Kawashima Indonesia",
+  "toyotafigplfutabaindtrgujaratpvtltdsoc": "Toyota FIGPL Futaba Indtr Gujarat Pvt Ltd"
+
 };
 // Helper function to get customer key from either key or display name
 function getCustomerKey(customerIdentifier) {
