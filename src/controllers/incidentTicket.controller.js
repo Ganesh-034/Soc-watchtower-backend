@@ -37,6 +37,7 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
           sentinelIncidentNumber: "sentinel_incident_number",
           ttps: "ttps",
           agentName: "agent_name",
+          customerEscalation: "customer_escalation",
         };
 
         const dbField = fieldMap[column];
@@ -126,4 +127,89 @@ export const getIncidentTickets = catchAsync(async (req, res) => {
         .json(new ApiResponse(500, null, error.message || "Internal server error"));
     }
   }
+});
+
+export const exportIncidentTicketsExcel = catchAsync(async (req, res) => {
+  const { filters, startDate, endDate, columns } = req.query;
+
+  const mongoFilters = {};
+
+  if (filters) {
+    try {
+      const parsedFilters = JSON.parse(filters);
+
+      for (const filter of parsedFilters) {
+        const { column, values } = filter;
+        const fieldMap = {
+          id: '_id',
+          subject: 'subject',
+          description: 'description',
+          status: 'status',
+          priority: 'priority',
+          incidentType: 'incident_type',
+          incidentSubStatus: 'incident_sub_status',
+          socAnalysis: 'soc_analysis',
+          socRecommendation: 'soc_recommendation',
+          sentinelIncident: 'sentinel_incident_number',
+          ttps: 'ttps',
+          agentName: 'agent_name',
+          customerDisplayName: 'display_name',
+          customerEscalation: "customer_escalation",
+        };
+
+        const dbField = fieldMap[column];
+        if (!dbField) continue;
+
+        if (column === 'status') {
+          const statusCodes = [];
+          for (const v of values) {
+            const trimmed = v.trim().toLowerCase();
+            const numericValue = parseInt(trimmed, 10);
+            if (!Number.isNaN(numericValue)) { statusCodes.push(numericValue); continue; }
+            if (statusMap[trimmed] !== undefined) { statusCodes.push(statusMap[trimmed]); continue; }
+            for (const [key, code] of Object.entries(statusMap)) {
+              if (key.includes(trimmed)) statusCodes.push(code);
+            }
+          }
+          const unique = [...new Set(statusCodes)];
+          mongoFilters[dbField] = unique.length === 1 ? unique[0] : { $in: unique };
+        } else {
+          if (values.length === 1) {
+            mongoFilters[dbField] = { $regex: escapeRegex(values[0]), $options: 'i' };
+          } else if (values.length > 1) {
+            mongoFilters.$or = mongoFilters.$or || [];
+            for (const val of values) {
+              mongoFilters.$or.push({ [dbField]: { $regex: escapeRegex(val), $options: 'i' } });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      return res.status(400).json(new ApiResponse(400, null, 'Invalid filter format'));
+    }
+  }
+
+  if (startDate || endDate) {
+    mongoFilters.created_at = mongoFilters.created_at || {};
+    if (startDate) mongoFilters.created_at.$gte = startDate;
+    if (endDate) {
+      const [year, month, day] = endDate.split('-').map(Number);
+      const nextDay = new Date(year, month - 1, day + 1);
+      mongoFilters.created_at.$lt = `${nextDay.getFullYear()}-${String(nextDay.getMonth() + 1).padStart(2, '0')}-${String(nextDay.getDate()).padStart(2, '0')}`;
+    }
+  }
+
+  if (!req.customerName) {
+    return res.status(400).json(new ApiResponse(400, null, 'Customer information is required'));
+  }
+
+  mongoFilters.customerName = req.customerName;
+
+  const requestedColumns = columns ? JSON.parse(columns) : [];
+
+  const buffer = await incidentTicketService.exportIncidentTickets(mongoFilters, requestedColumns);
+
+  res.setHeader('Content-Disposition', 'attachment; filename="incident_tickets.xlsx"');
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  return res.send(buffer);
 });
