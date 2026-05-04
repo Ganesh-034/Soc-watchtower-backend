@@ -968,7 +968,10 @@ async function generateMonthlyReportForCustomer(
     // =======================================================================
     // START: LOGIC FOR "Hino Motor- HMST" TO SHOW ALL INCIDENTS
     // =======================================================================
-    const useAllIncidents = customerKey === "Hino Motor- HMST";
+
+    // const useAllIncidents = customerKey === "Hino Motor- HMST";
+
+    const useAllIncidents = false;
 
     logger.info(
       `🔍 Fetching incident severity data for customer: ${customerKey} (useAllIncidents=${useAllIncidents})`

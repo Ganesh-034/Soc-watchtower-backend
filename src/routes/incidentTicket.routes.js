@@ -28,4 +28,6 @@ router.get(
   incidentTicketController.getIncidentTickets
 );
 
+router.get('/incident_ticket_table/export', incidentTicketController.exportIncidentTicketsExcel);
+
 export default router;
