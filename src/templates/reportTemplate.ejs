@@ -451,7 +451,7 @@
     </div>
     
     <!-- Print Footer -->
-    <div class="print-footer">© 2025 SOC-WatchTower. All Rights Reserved to Toyota Tsusho Systems Thailand Co. Ltd.</div>
+    <div class="print-footer">© <span id="currentYear"></span> SOC-WatchTower. All Rights Reserved to Toyota Tsusho Systems Thailand Co. Ltd.</div>
     
     <div class="report-container">
       <!-- 1st row: Header -->
@@ -942,6 +942,7 @@
         if (generationDateTime) {
           generationDateTime.textContent = ` ${dateStr} ${timeStr}.${ms} (UTC)`;
         }
+        document.getElementById("currentYear").textContent = now.getUTCFullYear();
       }
 
       // Function to create charts
