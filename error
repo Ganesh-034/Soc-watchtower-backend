@@ -1,4 +1,145 @@
-atus: Downloaded newer image for mcr.microsoft.com/appsvc/staticappsclient:stable
+Starting: Initialize job
+Agent name: 'Azure Pipelines 1'
+Agent machine name: 'runnervmybi1p'
+Current agent version: '4.273.0'
+Runner Image Provisioner
+_internal_runner_telemetry
+Operating System
+Runner Image
+Current image version: '20260525.161.1'
+Agent running as: 'vsts'
+Prepare build directory.
+Set build variables.
+Download all required tasks.
+Downloading task: DownloadBuildArtifacts (1.220.0)
+Downloading task: CmdLine (2.274.0)
+Downloading task: AzureStaticWebApp (0.274.0)
+Checking job knob settings.
+   Knob: DockerActionRetries = true Source: $(VSTSAGENT_DOCKER_ACTION_RETRIES) 
+   Knob: AgentToolsDirectory = /opt/hostedtoolcache Source: ${AGENT_TOOLSDIRECTORY} 
+   Knob: UseGitLongPaths = true Source: $(USE_GIT_LONG_PATHS) 
+   Knob: UseNode24withHandlerData = True Source: $(DistributedTask.Agent.UseNode24withHandlerData) 
+   Knob: EnableIssueSourceValidation = true Source: $(ENABLE_ISSUE_SOURCE_VALIDATION) 
+   Knob: AgentEnablePipelineArtifactLargeChunkSize = true Source: $(AGENT_ENABLE_PIPELINEARTIFACT_LARGE_CHUNK_SIZE) 
+   Knob: ContinueAfterCancelProcessTreeKillAttempt = true Source: $(VSTSAGENT_CONTINUE_AFTER_CANCEL_PROCESSTREEKILL_ATTEMPT) 
+   Knob: ProcessHandlerSecureArguments = false Source: $(AZP_75787_ENABLE_NEW_LOGIC) 
+   Knob: ProcessHandlerSecureArguments = false Source: $(AZP_75787_ENABLE_NEW_LOGIC_LOG) 
+   Knob: ProcessHandlerTelemetry = true Source: $(AZP_75787_ENABLE_COLLECT) 
+   Knob: UseNewNodeHandlerTelemetry = True Source: $(DistributedTask.Agent.USENEWNODEHANDLERTELEMETRY) 
+   Knob: ProcessHandlerEnableNewLogic = true Source: $(AZP_75787_ENABLE_NEW_PH_LOGIC) 
+   Knob: EnableResourceMonitorDebugOutput = true Source: $(AZP_ENABLE_RESOURCE_MONITOR_DEBUG_OUTPUT) 
+   Knob: EnableResourceUtilizationWarnings = true Source: $(AZP_ENABLE_RESOURCE_UTILIZATION_WARNINGS) 
+   Knob: IgnoreVSTSTaskLib = true Source: $(AZP_AGENT_IGNORE_VSTSTASKLIB) 
+   Knob: FailJobWhenAgentDies = true Source: $(FAIL_JOB_WHEN_AGENT_DIES) 
+   Knob: EnhancedWorkerCrashHandling = true Source: ${AZP_ENHANCED_WORKER_CRASH_HANDLING} 
+   Knob: CheckForTaskDeprecation = true Source: $(AZP_AGENT_CHECK_FOR_TASK_DEPRECATION) 
+   Knob: CheckIfTaskNodeRunnerIsDeprecated246 = True Source: $(DistributedTask.Agent.CheckIfTaskNodeRunnerIsDeprecated246) 
+   Knob: EnableTimeoutLogFlushing = True Source: $(DistributedTask.Agent.EnableTimeoutLogFlushing) 
+   Knob: LogTaskNameInUserAgent = true Source: $(AZP_AGENT_LOG_TASKNAME_IN_USERAGENT) 
+
+Starting: Download
+==============================================================================
+Task         : Download build artifacts
+Description  : Download files that were saved as artifacts of a completed build
+Version      : 1.220.0
+Author       : Microsoft Corporation
+Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/download-build-artifacts
+==============================================================================
+Download from the specified build: #758
+Download artifact to: /home/vsts/work/1/
+Pattern: **
+Minimatch patterns: [**]
+Applying include pattern against original list.
+61 matches
+61 final results
+Start downloading FCS artifact- vite-build
+Using default max parallelism.
+Creating dedup client:
+ - Max dedup parallelism: 192
+ - Using blobstore domain: 0
+ - Using redirect timeout: 
+ - Hash type: Dedup64K
+Downloading: /home/vsts/work/1/vite-build/index.html
+Downloading: /home/vsts/work/1/vite-build/vite.svg
+Downloading: /home/vsts/work/1/vite-build/staticwebapp.config.json
+Downloading: /home/vsts/work/1/vite-build/assets/BreadCrumb-DDnfGEZ2.js
+Downloading: /home/vsts/work/1/vite-build/assets/CardBody-CEscLIzM.js
+Downloading: /home/vsts/work/1/vite-build/assets/Comingsoon-C8Imc5P-.css
+Downloading: /home/vsts/work/1/vite-build/assets/Comingsoon-IWH1iSsu.js
+Downloading: /home/vsts/work/1/vite-build/assets/customer_logo_1-Bww0aVXU.webp
+Downloading: /home/vsts/work/1/vite-build/assets/customer_logo_10-BMzAYD2b.webp
+Downloading: /home/vsts/work/1/vite-build/assets/customer_logo_11-BXAdeFWP.webp
+Downloading: /home/vsts/work/1/vite-build/assets/customer_logo_12-1SyqwqVR.webp
+Downloading: /home/vsts/work/1/vite-build/assets/customer_logo_13-CKE49pWQ.webp
+Downloading: /home/vsts/work/1/vite-build/assets/customer_logo_14-CsFClE27.webp
+Downloading: /home/vsts/work/1/vite-build/assets/customer_logo_15-C6E3ShNL.webp
+Downloading: /home/vsts/work/1/vite-build/assets/customer_logo_16-DgGcV2-v.webp
+Downloading: /home/vsts/work/1/vite-build/assets/customer_logo_17-xQeOThI4.webp
+
+Starting: Inspect Downloaded Artifact
+==============================================================================
+Task         : Command line
+Description  : Run a command line script using Bash on Linux and macOS and cmd.exe on Windows
+Version      : 2.274.0
+Author       : Microsoft Corporation
+Help         : https://docs.microsoft.com/azure/devops/pipelines/tasks/utility/command-line
+==============================================================================
+Generating script.
+========================== Starting Command Output ===========================
+/usr/bin/bash --noprofile --norc /home/vsts/work/_temp/7e1908b4-88d8-4701-8137-7d50bb79ee79.sh
+Pipeline Workspace:
+/home/vsts/work/1/s
+Artifact Contents:
+/home/vsts/work/1/vite-build/assets/BreadCrumb-DDnfGEZ2.js
+/home/vsts/work/1/vite-build/assets/CardBody-CEscLIzM.js
+/home/vsts/work/1/vite-build/assets/Comingsoon-C8Imc5P-.css
+/home/vsts/work/1/vite-build/assets/Comingsoon-IWH1iSsu.js
+/home/vsts/work/1/vite-build/assets/CustomerDashboard-Xo4XS66C.js
+/home/vsts/work/1/vite-build/assets/CustomerDashboard-jmKOJbzb.css
+/home/vsts/work/1/vite-build/assets/Login-CO6c415O.css
+/home/vsts/work/1/vite-build/assets/Login-p2r4j4Q9.js
+/home/vsts/work/1/vite-build/assets/NotFound-DTz8I28F.js
+/home/vsts/work/1/vite-build/assets/NotFound-UjEQnX9g.css
+/home/vsts/work/1/vite-build/assets/Unauthorized-CI1U1Tuk.js
+/home/vsts/work/1/vite-build/assets/Unauthorized-aJQ2sTdz.css
+/home/vsts/work/1/vite-build/assets/UserProfile-C3a-Oc2g.js
+/home/vsts/work/1/vite-build/assets/customer_logo_1-Bww0aVXU.webp
+/home/vsts/work/1/vite-build/assets/customer_logo_10-BMzAYD2b.webp
+/home/vsts/work/1/vite-build/assets/customer_logo_11-BXAdeFWP.webp
+/home/vsts/work/1/vite-build/assets/customer_logo_12-1SyqwqVR.webp
+/home/vsts/work/1/vite-build/assets/customer_logo_13-CKE49pWQ.webp
+/home/vsts/work/1/vite-build/assets/customer_logo_14-CsFClE27.webp
+/home/vsts/work/1/vite-build/assets/customer_logo_15-C6E3ShNL.webp
+/home/vsts/work/1/vite-build/assets/customer_logo_16-DgGcV2-v.webp
+/home/vsts/work/1/vite-build/assets/customer_logo_17-xQeOThI4.webp
+/home/vsts/work/1/vite-build/assets/customer_logo_18-BybX-Hoa.webp
+/home/vsts/work/1/vite-build/assets/customer_logo_19-CoQf9vGi.webp
+
+
+e5b98d580c88: Download complete
+c7cdd48d6d21: Verifying Checksum
+c7cdd48d6d21: Download complete
+54839ea77750: Verifying Checksum
+54839ea77750: Download complete
+7364f3ef58a1: Verifying Checksum
+7364f3ef58a1: Download complete
+9a57ac12a029: Pull complete
+673965f86294: Pull complete
+40dc2f594569: Pull complete
+c7cdd48d6d21: Pull complete
+89732bc75041: Pull complete
+3b17442d31d1: Pull complete
+2151d16d7dcc: Pull complete
+5580a4bf363d: Pull complete
+3175e53e95b1: Pull complete
+b63b9d8b66b5: Pull complete
+28fac68ae10c: Pull complete
+54839ea77750: Pull complete
+093d222846cb: Pull complete
+e5b98d580c88: Pull complete
+7364f3ef58a1: Pull complete
+Digest: sha256:8ed8ea489d04d0636b5c47fbaa44f005975ab0d1f03eddc28014cdf7a061f7f4
+Status: Downloaded newer image for mcr.microsoft.com/appsvc/staticappsclient:stable
 DeploymentId: f41ba6d1-4a5b-4ec9-b5cc-c900fc16b5c8
 
 Try to validate location at: '/working_dir/home/vsts/work/1/vite-build'.
@@ -10,3 +151,5 @@ Exiting
 
 ##[error]Error: The process '/usr/bin/bash' failed with exit code 1
 Finishing: Deploy to Azure Static Web App - Staging
+
+
