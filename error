@@ -1,36 +1,12 @@
+atus: Downloaded newer image for mcr.microsoft.com/appsvc/staticappsclient:stable
+DeploymentId: f41ba6d1-4a5b-4ec9-b5cc-c900fc16b5c8
 
-Starting to build app with Oryx
-Azure Static Web Apps utilizes Oryx to build both static applications and Azure Functions. You can find more details on Oryx here: https://github.com/microsoft/Oryx
----Oryx build logs---
-
-
-Operation performed by Microsoft Oryx, https://github.com/Microsoft/Oryx
-You can report issues at https://github.com/Microsoft/Oryx/issues
-
-Oryx Version: 0.2.20260109.4+7d54dd5970dbbf3ae6bdcf4dee57b07816a392ce, Commit: 7d54dd5970dbbf3ae6bdcf4dee57b07816a392ce, ReleaseTagName: 20260109.4
-
-Build Operation ID: b498dd50e8cbe5b4
-OS Type           : bullseye
-Image Type        : githubactions
-
-Primary SDK Storage URL: https://oryx-cdn.microsoft.io
-Backup SDK Storage URL: 
-Detecting platforms...
-Could not detect any platform in the source directory.
-Error: Could not detect the language from repo.
-
-
----End of Oryx build logs---
-Oryx was unable to determine the build steps. Continuing assuming the assets in this folder are already built. If this is an unexpected behavior please contact support.
-Finished building app with Oryx
-Failed to find a default file in the app artifacts folder (/). Valid default files: index.html,Index.html.
-If your application contains purely static content, please verify that the variable 'app_location' in your deployment configuration file points to the root of your application.
-If your application requires build steps, please validate that a default file exists in the build output directory.
-
+Try to validate location at: '/working_dir/home/vsts/work/1/vite-build'.
+App Directory Location: '/home/vsts/work/1/vite-build' is invalid. Could not detect this directory. Please verify your deployment configuration file reflects your repository structure.
 
 For further information, please visit the Azure Static Web Apps documentation at https://docs.microsoft.com/en-us/azure/static-web-apps/
 If you believe this behavior is unexpected, please raise a GitHub issue at https://github.com/azure/static-web-apps/issues/
 Exiting
 
 ##[error]Error: The process '/usr/bin/bash' failed with exit code 1
-Finishing: AzureStaticWebApp
+Finishing: Deploy to Azure Static Web App - Staging
