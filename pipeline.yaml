@@ -1,0 +1,127 @@
+trigger:
+  branches:
+    include:
+      - pipeline-test
+
+pr:
+  branches:
+    include:
+      - pipeline-test
+
+pool: 
+  vmImage: ubuntu-latest
+
+variables:
+  NODE_VERSION: '18.x'
+  OUTPUT_LOCATION: 'dist'
+
+stages:
+
+#===============================================
+#STAGE 1: BUILD + SECURITY SCANS
+#===============================================
+- stage: Build_and_Scan
+  displayName: 'Build and Security Scans'
+  jobs:
+    - job: Build_and_Scan_Job
+      displayName: 'Build and Scan Job'
+      steps:
+
+        # Install Node.js
+        - task: NodeTool@0
+          inputs:
+            versionSpec: '$(NODE_VERSION)'
+          displayName: 'Install Node.js'
+
+        # Install dependencies and build the application
+        - script: npm install
+          displayName: 'Install Dependencies'
+        #===============================================
+        # 1. Dependency vulnerability scan
+        #===============================================
+        - script: |
+            npm audit --audit-level=high || true
+          displayName: Run npm audit for vulnerability scanning (non-blocking)
+        #===============================================
+        # 2. Lint check
+        #===============================================
+        - script: |
+            npm run lint || true
+          displayName: 'Run lint check'
+        #===============================================
+        # 3. format check
+        #===============================================  
+        - script: |
+            npm run prettier:check || true
+          displayName: 'Prettier check'
+        #===============================================
+        # 4. secret scan (Git Leaks)
+        #===============================================
+        - script: |
+           docker run --rm -v $(System.DefaultWorkingDirectory):/repo zricethezav/gitleaks detect --source="/repo" --verbose || true
+          displayName: Run Git Leaks for secret scanning (non-blocking)
+        #===============================================
+        # 5. Build App  
+        #===============================================
+        - script: npm run build
+          displayName: 'Build Application'
+
+        #publish build artifacts
+        - task: PublishBuildArtifacts@1
+          inputs:
+            PathtoPublish: '$(OUTPUT_LOCATION)'
+            ArtifactName: 'vite-build'
+
+#===============================================
+#STAGE 2: DEPLOY TO STAGING
+#===============================================
+- stage: Deploy_to_Staging
+  displayName: 'Deploy to Staging'
+  dependsOn: Build_and_Scan
+  jobs:
+    - deployment: DeployStaging
+      environment: "SWA-Staging"
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            
+              - task: DownloadBuildArtifacts@0
+                inputs:
+                  artifactName: 'vite-build'
+                  downloadPath: '$(System.DefaultWorkingDirectory)'
+              - script: pwd && ls -la
+                displayName: Debug current directory
+
+              - task: AzureStaticWebApp@0
+                inputs:
+                  azure_static_web_apps_api_token: $(SWA_Deployment_Token)
+                  app_location: "."
+                  output_location: "dist"
+                  skip_api_build: true
+
+#===============================================
+#STAGE 3: DEPLOY TO PRODUCTION  (APPROVAL required)
+#===============================================
+- stage: Deploy_to_Production
+  displayName: 'Deploy to Production'
+  dependsOn: Deploy_to_Staging
+  condition: succeeded()
+  jobs:
+    - deployment: DeployProd
+      environment: "SWA-Production"
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            
+              - task: DownloadBuildArtifacts@0
+                inputs:
+                  artifactName: 'vite-build'
+                  downloadPath: '$(System.DefaultWorkingDirectory)'
+
+              - task: AzureStaticWebApp@0
+                inputs:
+                  app_location: '/'
+                  output_location: 'dist'
+                  azure_static_web_apps_api_token: $(SWA_Deployment_Token)
