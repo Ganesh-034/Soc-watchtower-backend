@@ -120,6 +120,15 @@ stages:
               find $(Pipeline.Workspace) -type f | sort | head -100
             displayName: 'Inspect Downloaded Artifact'
 
+          - - download: current
+              artifact: vite-build
+
+          - script: |
+              cp -R $(Pipeline.Workspace)/vite-build $(System.DefaultWorkingDirectory)/
+              echo "Copied artifact"
+              find $(System.DefaultWorkingDirectory)/vite-build -type f | head -20
+            displayName: Copy artifact into workspace
+
           - task: AzureStaticWebApp@0
             displayName: 'Deploy to Azure Static Web App - Staging'
             inputs:
