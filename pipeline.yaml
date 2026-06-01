@@ -83,12 +83,11 @@ stages:
       displayName: 'Verify dist folder'
 
     # Publish build artifacts
-    - task: PublishBuildArtifacts@1
+    - task: PublishPipelineArtifact@1
       displayName: 'Publish Build Artifact'
       inputs:
-        PathtoPublish: '$(OUTPUT_LOCATION)'
-        ArtifactName: 'vite-build'
-        publishLocation: 'Container'
+        targetPath: '$(OUTPUT_LOCATION)'
+        artifact: 'vite-build'
 
 #===============================================
 # STAGE 2: DEPLOY TO STAGING
@@ -108,38 +107,47 @@ stages:
         deploy:
           steps:
 
-          - download: current
-            artifact: vite-build
+          - checkout: self
 
-          # Debug artifact structure
+          - task: DownloadPipelineArtifact@2
+            displayName: 'Download Build Artifact'
+            inputs:
+              buildType: 'current'
+              artifactName: 'vite-build'
+              targetPath: '$(System.DefaultWorkingDirectory)/vite-build'
+
           - script: |
-              echo "Pipeline Workspace:"
-              pwd
+              echo "======================================="
+              echo "System.DefaultWorkingDirectory"
+              echo "$(System.DefaultWorkingDirectory)"
+              echo "======================================="
 
               echo "Artifact Contents:"
-              find $(Pipeline.Workspace) -type f | sort | head -100
-            displayName: 'Inspect Downloaded Artifact'
+              find "$(System.DefaultWorkingDirectory)/vite-build" -type f | sort | head -100
 
-          - - download: current
-              artifact: vite-build
+              echo ""
+              echo "Checking index.html..."
 
-          - script: |
-              cp -R $(Pipeline.Workspace)/vite-build $(System.DefaultWorkingDirectory)/
-              echo "Copied artifact"
-              find $(System.DefaultWorkingDirectory)/vite-build -type f | head -20
-            displayName: Copy artifact into workspace
+              if [ ! -f "$(System.DefaultWorkingDirectory)/vite-build/index.html" ]; then
+                echo "ERROR: index.html not found"
+                exit 1
+              fi
+
+              echo "SUCCESS: index.html found"
+            displayName: 'Verify Downloaded Artifact'
 
           - task: AzureStaticWebApp@0
             displayName: 'Deploy to Azure Static Web App - Staging'
             inputs:
               azure_static_web_apps_api_token: $(SWA_Deployment_Token)
 
-              # Deploy already-built artifact
-              app_location: '$(Pipeline.Workspace)/vite-build'
+              app_location: 'vite-build'
+              api_location: ''
+              output_location: ''
 
-              # Prevent Oryx build
               skip_app_build: true
               skip_api_build: true
+         
 
 #===============================================
 # STAGE 3: DEPLOY TO PRODUCTION
