@@ -8,120 +8,165 @@ pr:
     include:
       - pipeline-test
 
-pool: 
+pool:
   vmImage: ubuntu-latest
 
 variables:
   NODE_VERSION: '18.x'
   OUTPUT_LOCATION: 'dist'
 
+#===============================================
+# STAGE 1: BUILD + SECURITY SCANS
+#===============================================
 stages:
-
-#===============================================
-#STAGE 1: BUILD + SECURITY SCANS
-#===============================================
 - stage: Build_and_Scan
   displayName: 'Build and Security Scans'
+
   jobs:
-    - job: Build_and_Scan_Job
-      displayName: 'Build and Scan Job'
-      steps:
+  - job: Build_and_Scan_Job
+    displayName: 'Build and Scan Job'
 
-        # Install Node.js
-        - task: NodeTool@0
-          inputs:
-            versionSpec: '$(NODE_VERSION)'
-          displayName: 'Install Node.js'
+    steps:
 
-        # Install dependencies and build the application
-        - script: npm install
-          displayName: 'Install Dependencies'
-        #===============================================
-        # 1. Dependency vulnerability scan
-        #===============================================
-        - script: |
-            npm audit --audit-level=high || true
-          displayName: Run npm audit for vulnerability scanning (non-blocking)
-        #===============================================
-        # 2. Lint check
-        #===============================================
-        - script: |
-            npm run lint || true
-          displayName: 'Run lint check'
-        #===============================================
-        # 3. format check
-        #===============================================  
-        - script: |
-            npm run prettier:check || true
-          displayName: 'Prettier check'
-        #===============================================
-        # 4. secret scan (Git Leaks)
-        #===============================================
-        - script: |
-           docker run --rm -v $(System.DefaultWorkingDirectory):/repo zricethezav/gitleaks detect --source="/repo" --verbose || true
-          displayName: Run Git Leaks for secret scanning (non-blocking)
-        #===============================================
-        # 5. Build App  
-        #===============================================
-        - script: npm run build
-          displayName: 'Build Application'
+    # Install Node.js
+    - task: NodeTool@0
+      displayName: 'Install Node.js'
+      inputs:
+        versionSpec: '$(NODE_VERSION)'
 
-        #publish build artifacts
-        - task: PublishBuildArtifacts@1
-          inputs:
-            PathtoPublish: '$(OUTPUT_LOCATION)'
-            ArtifactName: 'vite-build'
+    # Install dependencies
+    - script: npm install
+      displayName: 'Install Dependencies'
+
+    #===============================================
+    # 1. Dependency vulnerability scan
+    #===============================================
+    - script: |
+        npm audit --audit-level=high || true
+      displayName: 'Run npm audit for vulnerability scanning (non-blocking)'
+
+    #===============================================
+    # 2. Lint check
+    #===============================================
+    - script: |
+        npm run lint || true
+      displayName: 'Run lint check'
+
+    #===============================================
+    # 3. Format check
+    #===============================================
+    - script: |
+        npm run prettier:check || true
+      displayName: 'Prettier check'
+
+    #===============================================
+    # 4. Secret scan (GitLeaks)
+    #===============================================
+    - script: |
+        docker run --rm \
+          -v $(System.DefaultWorkingDirectory):/repo \
+          zricethezav/gitleaks detect \
+          --source="/repo" \
+          --verbose || true
+      displayName: 'Run GitLeaks for secret scanning (non-blocking)'
+
+    #===============================================
+    # 5. Build Application
+    #===============================================
+    - script: npm run build
+      displayName: 'Build Application'
+
+    # Verify build output
+    - script: |
+        echo "Build output:"
+        ls -la dist
+      displayName: 'Verify dist folder'
+
+    # Publish build artifacts
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Build Artifact'
+      inputs:
+        PathtoPublish: '$(OUTPUT_LOCATION)'
+        ArtifactName: 'vite-build'
+        publishLocation: 'Container'
 
 #===============================================
-#STAGE 2: DEPLOY TO STAGING
+# STAGE 2: DEPLOY TO STAGING
 #===============================================
 - stage: Deploy_to_Staging
   displayName: 'Deploy to Staging'
   dependsOn: Build_and_Scan
-  jobs:
-    - deployment: DeployStaging
-      environment: "SWA-Staging"
-      strategy:
-        runOnce:
-          deploy:
-            steps:
-            
-              - task: DownloadBuildArtifacts@0
-                inputs:
-                  artifactName: 'vite-build'
-                  downloadPath: '$(System.DefaultWorkingDirectory)'
-              - script: pwd && ls -la
-                displayName: Debug current directory
+  condition: succeeded()
 
-              - task: AzureStaticWebApp@0
-                inputs:
-                  azure_static_web_apps_api_token: $(SWA_Deployment_Token)
-                  app_location: "."
-                  output_location: "dist"
-                  skip_api_build: true
+  jobs:
+  - deployment: DeployStaging
+    displayName: 'Deploy to Staging Environment'
+    environment: 'SWA-Staging'
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          - download: current
+            artifact: vite-build
+
+          # Debug artifact structure
+          - script: |
+              echo "Pipeline Workspace:"
+              pwd
+
+              echo "Artifact Contents:"
+              find $(Pipeline.Workspace) -type f | sort | head -100
+            displayName: 'Inspect Downloaded Artifact'
+
+          - task: AzureStaticWebApp@0
+            displayName: 'Deploy to Azure Static Web App - Staging'
+            inputs:
+              azure_static_web_apps_api_token: $(SWA_Deployment_Token)
+
+              # Deploy already-built artifact
+              app_location: '$(Pipeline.Workspace)/vite-build'
+
+              # Prevent Oryx build
+              skip_app_build: true
+              skip_api_build: true
 
 #===============================================
-#STAGE 3: DEPLOY TO PRODUCTION  (APPROVAL required)
+# STAGE 3: DEPLOY TO PRODUCTION
 #===============================================
 - stage: Deploy_to_Production
   displayName: 'Deploy to Production'
   dependsOn: Deploy_to_Staging
   condition: succeeded()
-  jobs:
-    - deployment: DeployProd
-      environment: "SWA-Production"
-      strategy:
-        runOnce:
-          deploy:
-            steps:
-            
-              - task: DownloadBuildArtifacts@0
-                inputs:
-                  artifactName: 'vite-build'
-                  downloadPath: '$(System.DefaultWorkingDirectory)'
 
-              - task: AzureStaticWebApp@0
-                inputs:
-                  app_location: '/'
-                  output_location: 'dist'
-                  azure_static_web_apps_api_token: $(SWA_Deployment_Token)
+  jobs:
+  - deployment: DeployProd
+    displayName: 'Deploy to Production Environment'
+    environment: 'SWA-Production'
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          - download: current
+            artifact: vite-build
+
+          # Debug artifact structure
+          - script: |
+              echo "Artifact Contents:"
+              find $(Pipeline.Workspace) -type f | sort | head -100
+            displayName: 'Inspect Downloaded Artifact'
+
+          - task: AzureStaticWebApp@0
+            displayName: 'Deploy to Azure Static Web App - Production'
+            inputs:
+              azure_static_web_apps_api_token: $(SWA_Deployment_Token)
+
+              # Deploy already-built artifact
+              app_location: '$(Pipeline.Workspace)/vite-build'
+
+              # Prevent Oryx build
+              skip_app_build: true
+              skip_api_build: true
