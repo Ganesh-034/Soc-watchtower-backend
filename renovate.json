@@ -1,0 +1,5 @@
+{
+  "extends": ["config:recommended"],
+  "platform": "azure",
+  "repositories": ["Security AI Dashboard/soc_watchtower_backend"]
+}
