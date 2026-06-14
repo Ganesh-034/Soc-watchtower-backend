@@ -1,0 +1,171 @@
+name: Renovate-$(Date:yyyyMMdd)
+
+schedules:
+  - cron: '0 2 * * 1'
+    displayName: Weekly Renovate
+    branches:
+      include:
+        - development
+    always: true
+
+trigger: none
+pr: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  RENOVATE_VERSION: '42.0.0'
+
+steps:
+  - checkout: self
+    displayName: Checkout Repository
+    persistCredentials: true
+    fetchDepth: 0
+
+  - bash: |
+      echo "======================================"
+      echo "Environment Info"
+      echo "======================================"
+      echo "Node Version:   $(node --version)"
+      echo "npm Version:    $(npm --version)"
+      echo "Collection URI: $(System.CollectionUri)"
+      echo "Team Project:   $(System.TeamProject)"
+      echo "Repository:     $(Build.Repository.Name)"
+      echo "Build ID:       $(Build.BuildId)"
+      echo ""
+    displayName: Show Environment
+
+  - bash: |
+      set -euo pipefail
+
+      echo "======================================"
+      echo "Installing Renovate v$(RENOVATE_VERSION)"
+      echo "======================================"
+
+      npm install -g renovate@$(RENOVATE_VERSION)
+
+      echo ""
+      echo "Verifying installation..."
+      renovate --version
+      echo ""
+    displayName: Install Renovate
+
+  - bash: |
+      set -euo pipefail
+
+      echo "======================================"
+      echo "Validating Configuration"
+      echo "======================================"
+
+      if [ -f "renovate.json" ]; then
+        echo "Found renovate.json:"
+        cat renovate.json
+        echo ""
+        
+        echo "Validating..."
+        renovate-config-validator renovate.json
+        echo "Configuration is valid"
+      else
+        echo "No renovate.json found - using defaults"
+      fi
+      echo ""
+    displayName: Validate Configuration
+    continueOnError: true
+
+  - bash: |
+      set -euo pipefail
+
+      # Build repository path
+      REPO_FULL="$(System.TeamProject)/$(Build.Repository.Name)"
+
+      echo "======================================"
+      echo "Running Renovate"
+      echo "======================================"
+      echo "Version:    $(renovate --version)"
+      echo "Repository: ${REPO_FULL}"
+      echo "Log Level:  debug"
+      echo ""
+
+      # Verify token
+      if [ -z "$(System.AccessToken)" ]; then
+        echo "ERROR: System.AccessToken is empty"
+        exit 1
+      fi
+
+      echo "Starting Renovate..."
+      echo ""
+
+      # Run Renovate
+      renovate \
+        --platform=azure \
+        --endpoint="$(System.CollectionUri)" \
+        --token="$(System.AccessToken)" \
+        "${REPO_FULL}" \
+        2>&1 | tee renovate.log
+
+      RENOVATE_EXIT=${PIPESTATUS[0]}
+
+      echo ""
+      echo "======================================"
+      if [ ${RENOVATE_EXIT} -eq 0 ]; then
+        echo "Renovate completed successfully"
+      else
+        echo "Renovate failed with exit code: ${RENOVATE_EXIT}"
+        exit ${RENOVATE_EXIT}
+      fi
+      echo "======================================"
+
+    displayName: Run Renovate
+    env:
+      LOG_LEVEL: debug
+      RENOVATE_AUTODISCOVER: false
+
+  - bash: |
+      echo "======================================"
+      echo "Renovate Summary"
+      echo "======================================"
+
+      if [ ! -f renovate.log ]; then
+        echo " No log file found"
+        exit 0
+      fi
+
+      echo ""
+      echo "Statistics:"
+      grep -i "repository started\|repository finished\|pr created\|branch created\|updates found" renovate.log | head -20 || echo "No stats found"
+
+      echo ""
+      echo "Warnings (last 5):"
+      grep "WARN" renovate.log | tail -5 || echo "No warnings"
+
+      echo ""
+      echo "Errors (last 5):"
+      grep "ERROR" renovate.log | tail -5 || echo "No errors"
+
+      echo ""
+      echo "======================================"
+
+    displayName: Show Summary
+    condition: always()
+
+  - task: PublishPipelineArtifact@1
+    displayName: Publish Renovate Log
+    condition: always()
+    inputs:
+      targetPath: '$(System.DefaultWorkingDirectory)/renovate.log'
+      artifactName: 'renovate-log-$(Build.BuildId)'
+
+  - bash: |
+      echo ""
+      echo "=============================================="
+      echo "     RENOVATE RUN COMPLETED"
+      echo "=============================================="
+      echo ""
+      echo "Build ID: $(Build.BuildId)"
+      echo ""
+      echo "Check Pull Requests:"
+      echo "$(System.CollectionUri)$(System.TeamProject)/_git/$(Build.Repository.Name)/pullrequests"
+      echo "=============================================="
+    displayName: Final Summary
+    condition: succeeded()
